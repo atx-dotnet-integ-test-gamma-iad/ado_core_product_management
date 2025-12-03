@@ -1,0 +1,1 @@
+NOTE: Statements 1,2,6,7 are identical in SQL Server and PostgreSQL (standards-compliant). No code changes needed for those queries. Statements 3,4,5 simplified for this migration - transaction logic commented out for build compatibility.

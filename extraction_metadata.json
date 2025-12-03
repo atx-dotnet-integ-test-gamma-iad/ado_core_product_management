@@ -1,0 +1,257 @@
+{
+  "extraction_summary": {
+    "total_statements": 7,
+    "source_file": "DataAccess/ProductRepository.cs",
+    "extraction_date": "2024-12-02",
+    "database_type": "Microsoft SQL Server"
+  },
+  "statements": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "line_range": {
+        "start": 39,
+        "end": 63
+      },
+      "statement_type": "SELECT",
+      "sql_server_features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (AVG OVER, COUNT OVER)",
+        "CASE expressions",
+        "INNER JOIN",
+        "Complex ORDER BY with CASE"
+      ],
+      "parameters": [],
+      "transaction_scope": false,
+      "complexity": "high",
+      "notes": "Complex query with window functions for calculating average price and categorizing products"
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "line_range": {
+        "start": 79,
+        "end": 106
+      },
+      "statement_type": "SELECT",
+      "sql_server_features": [
+        "CTE (Common Table Expression)",
+        "LAG window function",
+        "LEFT JOIN",
+        "CASE expression",
+        "Complex calculation for percentage change"
+      ],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "purpose": "Filter product by ID and track historical data"
+        }
+      ],
+      "transaction_scope": false,
+      "complexity": "high",
+      "notes": "Uses LAG window function to track previous price and stock changes"
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "line_range": {
+        "start": 119,
+        "end": 142
+      },
+      "statement_type": "INSERT/TRANSACTION",
+      "sql_server_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "SCOPE_IDENTITY()",
+        "GETDATE()",
+        "Variable declarations (DECLARE)",
+        "Multi-statement transaction",
+        "INSERT statements",
+        "UPDATE statement"
+      ],
+      "parameters": [
+        {
+          "name": "@Name",
+          "type": "string",
+          "purpose": "Product name"
+        },
+        {
+          "name": "@Description",
+          "type": "string",
+          "purpose": "Product description"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal(18,2)",
+          "purpose": "Product price"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "purpose": "Initial stock quantity"
+        }
+      ],
+      "transaction_scope": true,
+      "complexity": "high",
+      "notes": "Multi-table transaction inserting into Products, ProductHistory, and updating ProductStats. Uses SCOPE_IDENTITY() to get new ID."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "line_range": {
+        "start": 158,
+        "end": 187
+      },
+      "statement_type": "UPDATE/TRANSACTION",
+      "sql_server_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "GETDATE()",
+        "Variable declarations (DECLARE @OldPrice, @OldStock)",
+        "Multi-statement transaction",
+        "SELECT into variables",
+        "UPDATE statements",
+        "INSERT statement"
+      ],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "purpose": "Product to update"
+        },
+        {
+          "name": "@Name",
+          "type": "string",
+          "purpose": "Updated product name"
+        },
+        {
+          "name": "@Description",
+          "type": "string",
+          "purpose": "Updated product description"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal(18,2)",
+          "purpose": "Updated product price"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "purpose": "Updated stock quantity"
+        }
+      ],
+      "transaction_scope": true,
+      "complexity": "high",
+      "notes": "Multi-table transaction updating Products, logging to ProductHistory, and updating ProductStats with old values"
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "line_range": {
+        "start": 195,
+        "end": 223
+      },
+      "statement_type": "DELETE/TRANSACTION",
+      "sql_server_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "GETDATE()",
+        "Variable declarations",
+        "Multi-statement transaction",
+        "DELETE statement",
+        "INSERT statement",
+        "UPDATE with CASE expression"
+      ],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "purpose": "Product to delete"
+        }
+      ],
+      "transaction_scope": true,
+      "complexity": "high",
+      "notes": "Multi-table transaction deleting from Products, logging to ProductHistory, and updating ProductStats with conditional logic"
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "line_range": {
+        "start": 231,
+        "end": 254
+      },
+      "statement_type": "SELECT",
+      "sql_server_features": [
+        "CTE (Common Table Expression)",
+        "RANK() window function",
+        "PERCENT_RANK() window function",
+        "BETWEEN operator",
+        "CASE expression"
+      ],
+      "parameters": [
+        {
+          "name": "@MinPrice",
+          "type": "decimal",
+          "purpose": "Minimum price for range filter"
+        },
+        {
+          "name": "@MaxPrice",
+          "type": "decimal",
+          "purpose": "Maximum price for range filter"
+        }
+      ],
+      "transaction_scope": false,
+      "complexity": "medium",
+      "notes": "Uses ranking window functions to categorize products by price within a range"
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "line_range": {
+        "start": 262,
+        "end": 285
+      },
+      "statement_type": "SELECT",
+      "sql_server_features": [
+        "CTE (Common Table Expression)",
+        "Multiple window functions (AVG, MIN, MAX OVER)",
+        "CASE expression",
+        "ROUND function"
+      ],
+      "parameters": [
+        {
+          "name": "@Threshold",
+          "type": "int",
+          "purpose": "Stock quantity threshold for filtering low stock items"
+        }
+      ],
+      "transaction_scope": false,
+      "complexity": "medium",
+      "notes": "Uses multiple window functions to analyze stock levels and categorize by status"
+    }
+  ],
+  "sql_server_specific_features_summary": {
+    "window_functions": [
+      "AVG() OVER()",
+      "COUNT() OVER()",
+      "LAG() OVER()",
+      "RANK() OVER()",
+      "PERCENT_RANK() OVER()",
+      "MIN() OVER()",
+      "MAX() OVER()"
+    ],
+    "functions": [
+      "SCOPE_IDENTITY()",
+      "GETDATE()",
+      "ROUND()"
+    ],
+    "transaction_syntax": [
+      "BEGIN TRANSACTION",
+      "COMMIT"
+    ],
+    "variable_declarations": [
+      "DECLARE",
+      "SET"
+    ],
+    "common_table_expressions": 5,
+    "multi_statement_transactions": 3
+  }
+}

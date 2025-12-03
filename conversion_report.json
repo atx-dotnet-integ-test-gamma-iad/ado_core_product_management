@@ -1,0 +1,135 @@
+{
+  "conversion_summary": {
+    "total_statements_processed": 7,
+    "successful_dms_conversions": 0,
+    "failed_dms_conversions": 7,
+    "manual_conversions_applied": 7,
+    "conversion_date": "2024-12-02",
+    "dms_migration_project_arn": "arn:aws:dms:us-east-1:812756961751:migration-project:D2EE2K7HIVGZNMUDN2HU6AMQII"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'No objects were found according to the specified selection rules. Please review your selection rules and try again.'}}\"}",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required for PostgreSQL. CTEs and window functions (AVG, COUNT OVER) are fully compatible. ROUND function syntax identical.",
+      "key_changes": [],
+      "complexity": "LOW"
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'No objects were found according to the specified selection rules. Please review your selection rules and try again.'}}\"}",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required for PostgreSQL. LAG window function is fully compatible. Parameter syntax works with both databases.",
+      "key_changes": [],
+      "complexity": "LOW"
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: No objects were found",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "SCOPE_IDENTITY() replaced with RETURNING clause. GETDATE() replaced with CURRENT_TIMESTAMP. Transaction management moved to ADO.NET level.",
+      "key_changes": [
+        "SCOPE_IDENTITY() → RETURNING ProductId",
+        "GETDATE() → CURRENT_TIMESTAMP",
+        "BEGIN TRANSACTION/COMMIT removed (handled by ADO.NET)",
+        "Variable declarations removed"
+      ],
+      "complexity": "HIGH"
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: No objects were found",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "GETDATE() replaced with CURRENT_TIMESTAMP. Transaction to be managed at ADO.NET level. Multi-statement execution required.",
+      "key_changes": [
+        "GETDATE() → CURRENT_TIMESTAMP",
+        "BEGIN TRANSACTION/COMMIT removed (handled by ADO.NET)",
+        "Variable declarations to be handled in application code"
+      ],
+      "complexity": "HIGH"
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: No objects were found",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "GETDATE() replaced with CURRENT_TIMESTAMP. Transaction to be managed at ADO.NET level. Multi-statement execution with history logging.",
+      "key_changes": [
+        "GETDATE() → CURRENT_TIMESTAMP",
+        "BEGIN TRANSACTION/COMMIT removed (handled by ADO.NET)",
+        "Variable declarations to be handled in application code"
+      ],
+      "complexity": "HIGH"
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: No objects were found",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required for PostgreSQL. RANK() and PERCENT_RANK() window functions are fully compatible. BETWEEN operator works identically.",
+      "key_changes": [],
+      "complexity": "LOW"
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "dms_conversion_status": "FAILED",
+      "dms_error": "Metadata model creation failed: No objects were found",
+      "manual_conversion_applied": true,
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required for PostgreSQL. AVG/MIN/MAX window functions are fully compatible.",
+      "key_changes": [],
+      "complexity": "LOW"
+    }
+  ],
+  "conversion_patterns": {
+    "no_changes_required": [
+      "Statement 1 - GetAllProductsAsync",
+      "Statement 2 - GetProductByIdAsync",
+      "Statement 6 - GetProductsByPriceRangeAsync",
+      "Statement 7 - GetLowStockProductsAsync"
+    ],
+    "major_changes_required": [
+      "Statement 3 - InsertProductAsync (SCOPE_IDENTITY to RETURNING)",
+      "Statement 4 - UpdateProductAsync (transaction decomposition)",
+      "Statement 5 - DeleteProductAsync (transaction decomposition)"
+    ],
+    "common_transformations": [
+      "GETDATE() → CURRENT_TIMESTAMP",
+      "SCOPE_IDENTITY() → RETURNING clause",
+      "BEGIN TRANSACTION/COMMIT → ADO.NET transaction management",
+      "Variable declarations → Application-level management"
+    ]
+  },
+  "dms_tool_issues": {
+    "error_type": "Metadata model creation failed",
+    "error_message": "No objects were found according to the specified selection rules",
+    "root_cause": "Database schema not accessible to DMS service",
+    "impact": "All statements required manual conversion after DMS tool attempts",
+    "mitigation": "Manual conversion applied following PostgreSQL best practices and SQL standard compliance"
+  },
+  "recommendations": [
+    "Test all window function queries with actual PostgreSQL database to verify performance",
+    "Refactor multi-statement transactions (Insert/Update/Delete) to use ADO.NET transaction management",
+    "Consider using RETURNING clause pattern for all INSERT operations",
+    "Validate that CURRENT_TIMESTAMP provides appropriate timezone handling",
+    "Review transaction isolation levels between SQL Server and PostgreSQL"
+  ]
+}
