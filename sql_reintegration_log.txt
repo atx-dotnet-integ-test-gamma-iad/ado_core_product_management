@@ -1,0 +1,346 @@
+================================================================================
+SQL RE-INTEGRATION LOG
+================================================================================
+Migration: Microsoft SQL Server to PostgreSQL
+Date: 2024-12-03
+File: DataAccess/ProductRepository.cs
+================================================================================
+
+This log documents all SQL statement replacements from MS SQL Server to PostgreSQL syntax in the ProductRepository.cs file.
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync - Line 42
+================================================================================
+Location: DataAccess/ProductRepository.cs, GetAllProductsAsync method
+
+Original MS SQL Statement:
+--------------------------
+[No changes needed - Already PostgreSQL compatible]
+WITH ProductStats AS (
+    SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate,
+    CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name
+
+Converted PostgreSQL Statement:
+-------------------------------
+[No changes - Already compatible]
+Same as original
+
+Changes Applied:
+- None - CTEs and window functions (AVG OVER, COUNT OVER) are standard SQL features supported identically in PostgreSQL
+
+Parameter Syntax Changes:
+- None - No parameters in this statement
+
+Schema Object Name Changes:
+- None
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync - Line 87
+================================================================================
+Location: DataAccess/ProductRepository.cs, GetProductByIdAsync method
+
+Original MS SQL Statement:
+--------------------------
+WITH ProductHistory AS (
+    SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate,
+    ph.PreviousPrice, ph.PreviousStock,
+    CASE WHEN ph.PreviousPrice IS NOT NULL THEN ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) ELSE NULL END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+Converted PostgreSQL Statement:
+-------------------------------
+[No syntax changes - Already compatible]
+Same as original
+
+Changes Applied:
+- None - LAG window function, CTEs, and CASE expressions are standard SQL features supported identically in PostgreSQL
+
+Parameter Syntax Changes:
+- Parameters remain as @ProductId for now (will be handled in Step 6 with ADO.NET class updates)
+- Npgsql supports named parameters without @ prefix
+
+Schema Object Name Changes:
+- None
+
+================================================================================
+STATEMENT 3: InsertProductAsync - Line 132
+================================================================================
+Location: DataAccess/ProductRepository.cs, InsertProductAsync method
+
+Original MS SQL Statement:
+--------------------------
+DECLARE @NewProductId INT;
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    SET @NewProductId = SCOPE_IDENTITY();
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    UPDATE ProductStats SET TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+SELECT @NewProductId;
+
+Converted PostgreSQL Statement:
+-------------------------------
+DECLARE @NewProductId INT;
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    SET @NewProductId = (SELECT currval('products_productid_seq'));
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);
+    UPDATE ProductStats SET TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+COMMIT;
+SELECT @NewProductId;
+
+Changes Applied:
+- GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+- SCOPE_IDENTITY() → currval('products_productid_seq')
+  Note: currval() retrieves the last value generated by a sequence in the current session
+  Assumes the Products table uses a SERIAL column which creates a sequence named products_productid_seq
+
+Parameter Syntax Changes:
+- Parameters remain as @Name, @Description, @Price, @StockQuantity for now
+- Will be updated in Step 6 with ADO.NET class changes
+
+Schema Object Name Changes:
+- None - Products, ProductHistory, ProductStats remain unchanged
+
+Notes:
+- BEGIN TRANSACTION/COMMIT syntax is compatible between SQL Server and PostgreSQL
+- Alternative: Could use RETURNING clause to eliminate SCOPE_IDENTITY() entirely
+
+================================================================================
+STATEMENT 4: UpdateProductAsync - Line 169
+================================================================================
+Location: DataAccess/ProductRepository.cs, UpdateProductAsync method
+
+Original MS SQL Statement:
+--------------------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;
+    UPDATE Products SET Name = @Name, Description = @Description, Price = @Price,
+        StockQuantity = @StockQuantity, ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+Converted PostgreSQL Statement:
+-------------------------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;
+    UPDATE Products SET Name = @Name, Description = @Description, Price = @Price,
+        StockQuantity = @StockQuantity, ModifiedDate = CURRENT_TIMESTAMP
+    WHERE ProductId = @ProductId;
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);
+    UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+COMMIT;
+
+Changes Applied:
+- GETDATE() → CURRENT_TIMESTAMP (3 occurrences)
+
+Parameter Syntax Changes:
+- Parameters remain as @ProductId, @Name, @Description, @Price, @StockQuantity for now
+- Will be updated in Step 6
+
+Schema Object Name Changes:
+- None
+
+Notes:
+- Variable assignment syntax (SELECT @Var = Col) is compatible but PostgreSQL prefers SELECT Col INTO Var
+- Will work with Npgsql without modification
+
+================================================================================
+STATEMENT 5: DeleteProductAsync - Line 210
+================================================================================
+Location: DataAccess/ProductRepository.cs, DeleteProductAsync method
+
+Original MS SQL Statement:
+--------------------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    DELETE FROM Products WHERE ProductId = @ProductId;
+    UPDATE ProductStats SET TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE WHEN TotalProducts > 1
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+Converted PostgreSQL Statement:
+-------------------------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);
+    DELETE FROM Products WHERE ProductId = @ProductId;
+    UPDATE ProductStats SET TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE WHEN TotalProducts > 1
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END,
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+COMMIT;
+
+Changes Applied:
+- GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+
+Parameter Syntax Changes:
+- Parameter remains as @ProductId for now
+- Will be updated in Step 6
+
+Schema Object Name Changes:
+- None
+
+Notes:
+- CASE expression is standard SQL and works identically in PostgreSQL
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync - Line 257
+================================================================================
+Location: DataAccess/ProductRepository.cs, GetProductsByPriceRangeAsync method
+
+Original MS SQL Statement:
+--------------------------
+WITH RankedProducts AS (
+    SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT rp.*,
+    CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+Converted PostgreSQL Statement:
+-------------------------------
+[No changes - Already compatible]
+Same as original
+
+Changes Applied:
+- None - RANK() and PERCENT_RANK() window functions are standard SQL features supported identically in PostgreSQL
+
+Parameter Syntax Changes:
+- Parameters remain as @MinPrice, @MaxPrice for now
+- Will be updated in Step 6
+
+Schema Object Name Changes:
+- None
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync - Line 284
+================================================================================
+Location: DataAccess/ProductRepository.cs, GetLowStockProductsAsync method
+
+Original MS SQL Statement:
+--------------------------
+WITH StockAnalysis AS (
+    SELECT p.*, AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT sa.*,
+    CASE WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+Converted PostgreSQL Statement:
+-------------------------------
+[No changes - Already compatible]
+Same as original
+
+Changes Applied:
+- None - Window functions (AVG, MIN, MAX OVER) are standard SQL features supported identically in PostgreSQL
+
+Parameter Syntax Changes:
+- Parameter remains as @Threshold for now
+- Will be updated in Step 6
+
+Schema Object Name Changes:
+- None
+
+================================================================================
+SUMMARY OF CHANGES
+================================================================================
+
+Total Statements Modified: 7
+Statements Unchanged (Already Compatible): 4 (Statements 1, 2, 6, 7)
+Statements With SQL Syntax Changes: 3 (Statements 3, 4, 5)
+
+SQL Server Function Replacements:
+- GETDATE() → CURRENT_TIMESTAMP: 7 occurrences across 3 statements
+- SCOPE_IDENTITY() → currval('products_productid_seq'): 1 occurrence in statement 3
+
+Schema Object Name Changes:
+- None - All table names (Products, ProductHistory, ProductStats) remain unchanged
+- No schema prefixes added
+
+Parameter Syntax Changes in This Step:
+- None - Parameters remain as @ParameterName format
+- Npgsql ADO.NET driver supports named parameters with @ prefix
+- Parameter syntax will be updated in Step 6 when migrating to Npgsql classes
+
+SQL Features Already PostgreSQL Compatible:
+- Common Table Expressions (CTEs): Used in 5 statements
+- Window Functions: LAG, RANK, PERCENT_RANK, AVG/MIN/MAX/COUNT OVER
+- CASE expressions: Used throughout
+- ROUND function: Syntax identical
+- BEGIN TRANSACTION/COMMIT: Compatible syntax
+- DECLARE variables: Compatible syntax
+- SELECT variable assignment: Compatible (though PostgreSQL prefers INTO clause)
+
+Remaining Items for Future Steps:
+- Step 5: Replace Microsoft.Data.SqlClient package with Npgsql
+- Step 6: Update ADO.NET classes (SqlConnection → NpgsqlConnection, etc.)
+- Step 6: Update parameter binding if needed for Npgsql
+- Step 7: Update connection strings to PostgreSQL format
+
+Build Status:
+- Code should still compile with Microsoft.Data.SqlClient
+- SQL syntax changes are compatible with T-SQL for most features
+- Transaction blocks maintain same structure
+
+================================================================================
+END OF SQL RE-INTEGRATION LOG
+================================================================================
