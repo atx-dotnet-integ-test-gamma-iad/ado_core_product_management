@@ -1,0 +1,266 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+AWS Database Migration Service - Statement Conversion
+================================================================================
+Project: AdoCore SQL Server to PostgreSQL Migration
+Date: 2024-12-28
+DMS Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Region: us-east-1
+Source Database: ProductManagement (SQL Server 2019)
+Target Database: postgres (PostgreSQL 13)
+Schema: dbo → productmanagement_dbo
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync - CTE with Window Functions
+================================================================================
+Timestamp: 2025-12-28T12:12:07.976620
+Status: SUCCESS
+Metadata Model: sql-conversion-1766923930
+Conversion Request ID: 958a8d63-1b55-45b9-a18b-bbdf92e8bb55
+
+Workflow Steps:
+1. create_metadata_model: COMPLETED (2 poll attempts)
+2. convert_metadata_model: COMPLETED (2 poll attempts)
+3. extract_converted_sql: COMPLETED
+
+Input SQL Length: 564 characters
+Output SQL Length: 736 characters
+
+Key Transformations:
+- Table: Products → productmanagement_dbo.products
+- CTE name: ProductStats → productstats (lowercase)
+- Column names: All converted to lowercase
+- Window functions: AVG() OVER(), COUNT() OVER() preserved
+- ORDER BY: Added NULLS FIRST clauses
+
+Conversion Result: CLEAN SUCCESS - No warnings or errors
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync - CTE with LAG Window Function
+================================================================================
+Timestamp: 2025-12-28T12:12:49.867823
+Status: SUCCESS
+Metadata Model: sql-conversion-1766923972
+Conversion Request ID: 4068e922-a527-43ab-b405-899f2f578709
+
+Workflow Steps:
+1. create_metadata_model: COMPLETED (2 poll attempts)
+2. convert_metadata_model: COMPLETED (2 poll attempts)
+3. extract_converted_sql: COMPLETED
+
+Input SQL Length: 637 characters
+Output SQL Length: 660 characters
+
+Key Transformations:
+- Table: Products → productmanagement_dbo.products
+- CTE name: ProductHistory → producthistory (lowercase)
+- LAG() window function preserved
+- LEFT JOIN → LEFT OUTER JOIN
+- Parameter @ProductId preserved
+
+Conversion Result: CLEAN SUCCESS - No warnings or errors
+
+================================================================================
+STATEMENT 3: InsertProductAsync - Multi-Statement Transaction Block
+================================================================================
+Timestamp: 2025-12-28T12:13:31.188313
+Status: ERROR
+Error Message: Metadata model creation failed: {'error': "Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}"}
+Error Timestamp: 2025-12-28T12:13:46.109577
+
+Workflow Steps:
+1. create_metadata_model: STARTED (failed during creation)
+
+Input SQL Length: 695 characters
+
+Reason for Failure:
+DMS tool cannot handle complex multi-statement transaction blocks with:
+- DECLARE variable declarations
+- BEGIN TRANSACTION/COMMIT control flow
+- SCOPE_IDENTITY() function
+- Multiple DML statements in sequence
+- Variable assignment and usage
+
+Manual Conversion Applied: YES
+Manual Conversion Method:
+- Split transaction into separate SQL statements for ADO.NET execution
+- SCOPE_IDENTITY() replaced with RETURNING clause
+- GETDATE() replaced with CURRENT_TIMESTAMP
+- Transaction management moved to C# code using BeginTransactionAsync()
+- Variables managed in C# code between statement executions
+
+Manual Conversion Documented: YES (in converted_statements.sql)
+
+================================================================================
+STATEMENT 4: UpdateProductAsync - Multi-Statement Transaction Block
+================================================================================
+Timestamp: 2025-12-28T12:15:21.785234
+Status: SUCCESS (with warning)
+Metadata Model: sql-conversion-1766924123
+Conversion Request ID: d28bd164-4b2e-480b-94ff-7f345f276ef5
+
+Workflow Steps:
+1. create_metadata_model: COMPLETED (2 poll attempts)
+2. convert_metadata_model: COMPLETED (2 poll attempts)
+3. extract_converted_sql: COMPLETED
+
+Input SQL Length: 694 characters
+Output SQL Length: 812 characters
+
+Key Transformations:
+- Table: Products → productmanagement_dbo.products
+- Table: ProductHistory → productmanagement_dbo.producthistory
+- Table: ProductStats → productmanagement_dbo.productstats
+- DECLARE @OldPrice → var_OldPrice variable
+- DECLARE @OldStock → var_OldStock variable
+- GETDATE() → clock_timestamp()
+- Column names: All converted to lowercase
+
+DMS Warning:
+[7807 - Severity CRITICAL] PostgreSQL does not support explicit transaction 
+management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your 
+source code manually.
+
+Manual Adaptation Applied: YES
+- Transaction syntax removed from SQL
+- Transaction management moved to C# ADO.NET code
+- Statements split for sequential execution within transaction
+- Variables managed in C# code
+
+Conversion Result: SUCCESS with manual adaptation needed
+
+================================================================================
+STATEMENT 5: DeleteProductAsync - Multi-Statement Transaction Block
+================================================================================
+Timestamp: 2025-12-28T12:16:03.641464
+Status: SUCCESS (with warning)
+Metadata Model: sql-conversion-1766924165
+Conversion Request ID: c6cd8aba-20fc-4a7b-923b-cf6e96f786ce
+
+Workflow Steps:
+1. create_metadata_model: COMPLETED (2 poll attempts)
+2. convert_metadata_model: COMPLETED (2 poll attempts)
+3. extract_converted_sql: COMPLETED
+
+Input SQL Length: 750 characters
+Output SQL Length: 770 characters
+
+Key Transformations:
+- Table: Products → productmanagement_dbo.products
+- Table: ProductHistory → productmanagement_dbo.producthistory
+- Table: ProductStats → productmanagement_dbo.productstats
+- DECLARE @OldPrice → var_OldPrice variable
+- DECLARE @OldStock → var_OldStock variable
+- GETDATE() → clock_timestamp()
+- CASE expression preserved
+
+DMS Warning:
+[7807 - Severity CRITICAL] PostgreSQL does not support explicit transaction 
+management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your 
+source code manually.
+
+Manual Adaptation Applied: YES
+- Transaction syntax removed from SQL
+- Transaction management moved to C# ADO.NET code
+- Statements split for sequential execution within transaction
+- Variables managed in C# code
+
+Conversion Result: SUCCESS with manual adaptation needed
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync - CTE with Ranking Functions
+================================================================================
+Timestamp: 2025-12-28T12:13:57.981220
+Status: SUCCESS
+Metadata Model: sql-conversion-1766924040
+Conversion Request ID: 490c9a3f-f9fe-4a28-bdb0-e3b049da8ae3
+
+Workflow Steps:
+1. create_metadata_model: COMPLETED (2 poll attempts)
+2. convert_metadata_model: COMPLETED (2 poll attempts)
+3. extract_converted_sql: COMPLETED
+
+Input SQL Length: 478 characters
+Output SQL Length: 526 characters
+
+Key Transformations:
+- Table: Products → productmanagement_dbo.products
+- CTE name: RankedProducts → rankedproducts (lowercase)
+- RANK() OVER preserved
+- PERCENT_RANK() OVER preserved
+- Parameters @MinPrice, @MaxPrice preserved
+- ORDER BY: Added NULLS FIRST
+
+Conversion Result: CLEAN SUCCESS - No warnings or errors
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync - CTE with Multiple Window Functions
+================================================================================
+Timestamp: 2025-12-28T12:14:39.333142
+Status: SUCCESS
+Metadata Model: sql-conversion-1766924081
+Conversion Request ID: 5f61621c-5af1-46a6-b716-d665ce5315ab
+
+Workflow Steps:
+1. create_metadata_model: COMPLETED (2 poll attempts)
+2. convert_metadata_model: COMPLETED (2 poll attempts)
+3. extract_converted_sql: COMPLETED
+
+Input SQL Length: 521 characters
+Output SQL Length: 604 characters
+
+Key Transformations:
+- Table: Products → productmanagement_dbo.products
+- CTE name: StockAnalysis → stockanalysis (lowercase)
+- Multiple window functions preserved: AVG(), MIN(), MAX() OVER()
+- ROUND() function preserved
+- CASE expression preserved
+- Parameter @Threshold preserved
+- ORDER BY: Added NULLS FIRST
+
+Conversion Result: CLEAN SUCCESS - No warnings or errors
+
+================================================================================
+CONVERSION SUMMARY
+================================================================================
+
+Total Statements Submitted to DMS: 7
+Successful Conversions: 6
+Failed Conversions: 1 (Statement 3 - complex transaction block)
+
+Success Rate: 85.7%
+
+Clean Successes (no warnings): 4
+  - Statement 1: GetAllProductsAsync
+  - Statement 2: GetProductByIdAsync
+  - Statement 6: GetProductsByPriceRangeAsync
+  - Statement 7: GetLowStockProductsAsync
+
+Successes with Warnings: 2
+  - Statement 4: UpdateProductAsync (transaction warning)
+  - Statement 5: DeleteProductAsync (transaction warning)
+
+Failures Requiring Manual Conversion: 1
+  - Statement 3: InsertProductAsync (statement definition invalid)
+
+Common DMS Transformations Applied:
+✓ Schema prefix: dbo tables → productmanagement_dbo.tables
+✓ Case conversion: All identifiers to lowercase
+✓ Function replacements: GETDATE() → CURRENT_TIMESTAMP/clock_timestamp()
+✓ Order by enhancement: Added NULLS FIRST clauses
+✓ Join syntax: LEFT JOIN → LEFT OUTER JOIN
+✓ Window functions: Fully preserved (AVG, COUNT, LAG, RANK, PERCENT_RANK, MIN, MAX)
+✓ CTEs: Fully preserved and converted
+✓ CASE expressions: Fully preserved
+✓ Parameters: @ParameterName syntax preserved
+
+DMS Limitations Encountered:
+✗ Complex multi-statement transaction blocks with variable declarations
+✗ SCOPE_IDENTITY() function (needs RETURNING clause)
+✗ BEGIN TRANSACTION/COMMIT in standalone SQL (needs ADO.NET management)
+
+All conversions documented and ready for code integration.
+
+================================================================================
+END OF DMS CONVERSION LOG
+================================================================================
