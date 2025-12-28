@@ -1,0 +1,197 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "dms_tool_successful": 4,
+    "dms_tool_failed": 3,
+    "manual_conversions_required": 3,
+    "conversion_date": "2025-12-28T04:41:00Z",
+    "migration_project_arn": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": "1",
+      "statement_name": "GetAllProductsAsync",
+      "complexity": "medium",
+      "conversion_method": "DMS_TOOL",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1766896889",
+      "conversion_timestamp": "2025-12-28T04:41:56.672820",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products"
+      },
+      "syntax_conversions": [
+        "Column names converted to lowercase",
+        "NULLS FIRST added to ORDER BY clauses",
+        "Window functions preserved (AVG OVER, COUNT OVER)",
+        "CTE syntax preserved"
+      ],
+      "notes": "Successfully converted with schema qualification"
+    },
+    {
+      "statement_id": "2",
+      "statement_name": "GetProductByIdAsync",
+      "complexity": "easy-medium",
+      "conversion_method": "DMS_TOOL",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1766896932",
+      "conversion_timestamp": "2025-12-28T04:42:38.273536",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products"
+      },
+      "syntax_conversions": [
+        "LAG window function preserved",
+        "LEFT JOIN converted to LEFT OUTER JOIN",
+        "Column names converted to lowercase",
+        "Parameter @ProductId preserved",
+        "NULLS FIRST added to ORDER BY implicit"
+      ],
+      "notes": "Successfully converted with parameter preservation"
+    },
+    {
+      "statement_id": "3",
+      "statement_name": "InsertProductAsync",
+      "complexity": "hard",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_status": "error",
+      "dms_error": "Metadata model creation failed: Statement definition is not valid.",
+      "dms_error_timestamp": "2025-12-28T04:43:07.031145",
+      "reason_for_manual_conversion": "DMS tool does not support multi-statement transaction blocks with DECLARE, SET, and procedural logic",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "productmanagement_dbo.producthistory",
+        "ProductStats": "productmanagement_dbo.productstats"
+      },
+      "syntax_conversions": [
+        "DECLARE @NewProductId INT removed (using DO block or RETURNING)",
+        "SCOPE_IDENTITY() converted to RETURNING productid",
+        "GETDATE() converted to CURRENT_TIMESTAMP",
+        "BEGIN TRANSACTION/COMMIT removed (handled by application)",
+        "SET @NewProductId converted to RETURNING INTO",
+        "All table names fully qualified with schema",
+        "Column names converted to lowercase"
+      ],
+      "manual_conversion_approach": "Created DO block version and simplified single-statement version using RETURNING clause. Recommended approach is to use RETURNING in INSERT statement and handle subsequent operations in application transaction.",
+      "notes": "Manual conversion required due to T-SQL procedural syntax. Two versions provided: DO block (for demonstration) and simplified RETURNING version (recommended for application use)."
+    },
+    {
+      "statement_id": "4",
+      "statement_name": "UpdateProductAsync",
+      "complexity": "hard",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_status": "not_attempted",
+      "reason_for_manual_conversion": "Similar to statement 3 - multi-statement transaction with DECLARE and procedural logic",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "productmanagement_dbo.producthistory",
+        "ProductStats": "productmanagement_dbo.productstats"
+      },
+      "syntax_conversions": [
+        "DECLARE variables converted to DO block local variables",
+        "SELECT INTO syntax preserved (PostgreSQL compatible)",
+        "GETDATE() converted to CURRENT_TIMESTAMP",
+        "BEGIN TRANSACTION/COMMIT removed (handled by application)",
+        "All table names fully qualified with schema",
+        "Column names converted to lowercase"
+      ],
+      "manual_conversion_approach": "Created DO block with local variables. Application should wrap in explicit transaction BEGIN/COMMIT.",
+      "notes": "Manual conversion preserves transaction logic. Application layer should handle transaction boundaries."
+    },
+    {
+      "statement_id": "5",
+      "statement_name": "DeleteProductAsync",
+      "complexity": "hard",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_status": "not_attempted",
+      "reason_for_manual_conversion": "Similar to statements 3 and 4 - multi-statement transaction with complex logic",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "productmanagement_dbo.producthistory",
+        "ProductStats": "productmanagement_dbo.productstats"
+      },
+      "syntax_conversions": [
+        "DECLARE variables converted to DO block local variables",
+        "SELECT INTO syntax preserved",
+        "GETDATE() converted to CURRENT_TIMESTAMP",
+        "CASE expression in UPDATE preserved (fully compatible)",
+        "BEGIN TRANSACTION/COMMIT removed (handled by application)",
+        "All table names fully qualified with schema",
+        "Column names converted to lowercase"
+      ],
+      "manual_conversion_approach": "Created DO block maintaining transaction integrity. CASE expression for AveragePrice calculation preserved.",
+      "notes": "Manual conversion maintains complex CASE logic for average price calculation when TotalProducts > 1."
+    },
+    {
+      "statement_id": "6",
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "complexity": "medium",
+      "conversion_method": "DMS_TOOL",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1766897002",
+      "conversion_timestamp": "2025-12-28T04:43:47.942545",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products"
+      },
+      "syntax_conversions": [
+        "RANK() OVER window function preserved",
+        "PERCENT_RANK() OVER function converted to percent_rank()",
+        "BETWEEN clause preserved",
+        "Column names converted to lowercase",
+        "Parameters @MinPrice and @MaxPrice preserved",
+        "NULLS FIRST added to ORDER BY"
+      ],
+      "notes": "Successfully converted with window function preservation"
+    },
+    {
+      "statement_id": "7",
+      "statement_name": "GetLowStockProductsAsync",
+      "complexity": "medium",
+      "conversion_method": "DMS_TOOL",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1766897033",
+      "conversion_timestamp": "2025-12-28T04:44:18.718751",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products"
+      },
+      "syntax_conversions": [
+        "AVG() OVER, MIN() OVER, MAX() OVER window functions preserved",
+        "ROUND function preserved",
+        "CASE expression preserved",
+        "Column names converted to lowercase",
+        "Parameter @Threshold preserved",
+        "NULLS FIRST added to ORDER BY"
+      ],
+      "notes": "Successfully converted with multiple window functions"
+    }
+  ],
+  "schema_transformation_notes": {
+    "default_schema_change": "All references to 'Products' table converted to 'productmanagement_dbo.products'",
+    "schema_qualification": "DMS tool fully qualifies all table names with schema prefix",
+    "case_sensitivity": "PostgreSQL uses lowercase for all identifiers by default. DMS tool respects this convention.",
+    "additional_tables": "ProductHistory and ProductStats tables also need schema qualification in application code"
+  },
+  "critical_observations": {
+    "dms_limitations": "DMS statement conversion tool cannot handle multi-statement transaction blocks with T-SQL procedural logic (DECLARE, SET, BEGIN TRANSACTION/COMMIT within single statement)",
+    "parameter_handling": "DMS tool preserves parameter markers (e.g., @ProductId) in converted SQL. Application layer must handle parameter conversion to PostgreSQL positional ($1, $2) or named parameters.",
+    "transaction_handling": "Transaction control (BEGIN TRANSACTION/COMMIT) must be handled at application layer, not within SQL statements",
+    "returning_clause": "PostgreSQL RETURNING clause is the preferred approach for getting identity values, replacing SQL Server's SCOPE_IDENTITY()",
+    "window_functions": "All window functions (LAG, RANK, PERCENT_RANK, AVG/MIN/MAX OVER) are fully compatible and preserved by DMS",
+    "case_expressions": "CASE expressions are fully compatible between SQL Server and PostgreSQL"
+  },
+  "recommendations": {
+    "application_changes_required": [
+      "Replace SCOPE_IDENTITY() calls with RETURNING clause results",
+      "Implement transaction management in application code for Insert/Update/Delete operations",
+      "Convert parameter markers from @ to $ positional notation if using prepared statements",
+      "Update connection strings and driver from Microsoft.Data.SqlClient to Npgsql",
+      "Test all DATE/TIME functions - GETDATE() equivalents use CURRENT_TIMESTAMP or NOW()",
+      "Review and update schema references to use productmanagement_dbo prefix"
+    ],
+    "testing_priorities": [
+      "Test transaction statements (3, 4, 5) thoroughly with actual PostgreSQL database",
+      "Verify window function results match SQL Server results",
+      "Test parameter binding with new PostgreSQL syntax",
+      "Validate CASE expression outcomes",
+      "Check ROUND function precision behavior"
+    ]
+  }
+}
