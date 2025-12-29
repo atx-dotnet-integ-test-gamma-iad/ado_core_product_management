@@ -1,0 +1,360 @@
+=============================================================================
+SQL STATEMENT EXTRACTION LOG
+Migration: Microsoft SQL Server to PostgreSQL
+Date: 2024-12-29
+=============================================================================
+
+EXTRACTION SOURCE 1: DataAccess/ProductRepository.cs
+---------------------------------------------------------------------
+
+Statement #1:
+  Method: GetAllProductsAsync
+  Type: SELECT (Complex CTE with Window Functions)
+  Lines: 39-69
+  Parameters: None
+  Features:
+    - Common Table Expression (CTE) named ProductStats
+    - Window functions: AVG() OVER(), COUNT() OVER()
+    - INNER JOIN
+    - CASE expressions
+    - ROUND function
+    - ORDER BY with CASE
+  Complexity: HIGH
+  Transaction: NO
+
+Statement #2:
+  Method: GetProductByIdAsync
+  Type: SELECT (CTE with LAG Window Function)
+  Lines: 80-108
+  Parameters: @ProductId (INT)
+  Features:
+    - Common Table Expression (CTE) named ProductHistory
+    - LAG window function
+    - LEFT JOIN
+    - CASE expression with NULL handling
+    - ROUND function
+  Complexity: HIGH
+  Transaction: NO
+
+Statement #3:
+  Method: InsertProductAsync
+  Type: Multi-Statement Transaction Block (INSERT)
+  Lines: 121-144
+  Parameters: @Name (NVARCHAR), @Description (NVARCHAR), @Price (DECIMAL), @StockQuantity (INT)
+  Features:
+    - DECLARE variable (@NewProductId)
+    - BEGIN TRANSACTION / COMMIT
+    - INSERT statements (3 total)
+    - SCOPE_IDENTITY() function
+    - GETDATE() function
+    - UPDATE statement
+    - SELECT to return identity
+  Complexity: HIGH
+  Transaction: YES
+
+Statement #4:
+  Method: UpdateProductAsync
+  Type: Multi-Statement Transaction Block (UPDATE)
+  Lines: 157-186
+  Parameters: @ProductId (INT), @Name (NVARCHAR), @Description (NVARCHAR), @Price (DECIMAL), @StockQuantity (INT)
+  Features:
+    - BEGIN TRANSACTION / COMMIT
+    - DECLARE variables (@OldPrice, @OldStock)
+    - SELECT to capture old values
+    - UPDATE statements (2 total)
+    - INSERT into history table
+    - GETDATE() function
+  Complexity: HIGH
+  Transaction: YES
+
+Statement #5:
+  Method: DeleteProductAsync
+  Type: Multi-Statement Transaction Block (DELETE)
+  Lines: 199-227
+  Parameters: @ProductId (INT)
+  Features:
+    - BEGIN TRANSACTION / COMMIT
+    - DECLARE variables (@OldPrice, @OldStock)
+    - SELECT to capture old values
+    - DELETE statement
+    - INSERT into history table
+    - UPDATE with CASE expression
+    - GETDATE() function
+  Complexity: HIGH
+  Transaction: YES
+
+Statement #6:
+  Method: GetProductsByPriceRangeAsync
+  Type: SELECT (CTE with RANK Window Functions)
+  Lines: 239-260
+  Parameters: @MinPrice (DECIMAL), @MaxPrice (DECIMAL)
+  Features:
+    - Common Table Expression (CTE) named RankedProducts
+    - RANK() OVER window function
+    - PERCENT_RANK() OVER window function
+    - BETWEEN operator
+    - CASE expression
+    - ORDER BY
+  Complexity: HIGH
+  Transaction: NO
+
+Statement #7:
+  Method: GetLowStockProductsAsync
+  Type: SELECT (CTE with Aggregate Window Functions)
+  Lines: 273-296
+  Parameters: @Threshold (INT)
+  Features:
+    - Common Table Expression (CTE) named StockAnalysis
+    - AVG() OVER window function
+    - MIN() OVER window function
+    - MAX() OVER window function
+    - CASE expression
+    - ROUND function
+    - WHERE clause with comparison
+    - ORDER BY
+  Complexity: HIGH
+  Transaction: NO
+
+EXTRACTION SOURCE 2: Database/Scripts/01_InitialSetup.sql
+---------------------------------------------------------------------
+
+Statement #8:
+  Type: DDL - CREATE DATABASE
+  Lines: 2-5
+  Features:
+    - CREATE DATABASE statement
+    - IF NOT EXISTS check
+  Complexity: LOW
+  Notes: Database creation statement
+
+Statement #9:
+  Type: DDL - CREATE TABLE (Categories)
+  Lines: 48-54
+  Features:
+    - IDENTITY column
+    - PRIMARY KEY
+    - NOT NULL constraints
+    - NULL columns
+    - DEFAULT GETDATE()
+  Complexity: MEDIUM
+
+Statement #10:
+  Type: DDL - ALTER TABLE (Foreign Key)
+  Lines: 57-60
+  Features:
+    - Self-referencing foreign key
+    - ADD CONSTRAINT
+  Complexity: MEDIUM
+
+Statement #11:
+  Type: DDL - CREATE TABLE (Suppliers)
+  Lines: 63-73
+  Features:
+    - IDENTITY column
+    - PRIMARY KEY
+    - NOT NULL constraints
+    - DEFAULT values (1, GETDATE())
+  Complexity: MEDIUM
+
+Statement #12:
+  Type: DDL - CREATE TABLE (Products)
+  Lines: 76-93
+  Features:
+    - IDENTITY column
+    - PRIMARY KEY
+    - Multiple foreign keys
+    - DECIMAL precision
+    - DEFAULT values
+  Complexity: HIGH
+
+Statement #13:
+  Type: DDL - CREATE TABLE (ProductHistory)
+  Lines: 96-108
+  Features:
+    - IDENTITY column
+    - PRIMARY KEY
+    - FOREIGN KEY
+    - VARCHAR and NVARCHAR columns
+    - DEFAULT GETDATE()
+  Complexity: MEDIUM
+
+Statement #14:
+  Type: DDL - CREATE TABLE (ProductStats)
+  Lines: 111-120
+  Features:
+    - PRIMARY KEY with DEFAULT value
+    - Multiple DEFAULT values (0, GETDATE())
+    - DECIMAL columns
+  Complexity: MEDIUM
+
+Statement #15-19:
+  Type: DDL - CREATE INDEX
+  Lines: 123, 126, 129, 132, 135
+  Features:
+    - Regular indexes
+    - Unique index
+    - Multiple indexes on different tables
+  Complexity: LOW
+
+Statement #20:
+  Type: DML - INSERT (Categories)
+  Lines: 138-160
+  Features:
+    - Multi-row INSERT
+    - 20 rows of data
+    - NULL values for parent references
+  Complexity: MEDIUM
+
+Statement #21:
+  Type: DML - INSERT (Suppliers)
+  Lines: 163-173
+  Features:
+    - Multi-row INSERT
+    - 8 rows of data
+    - International phone numbers
+  Complexity: MEDIUM
+
+Statement #22:
+  Type: DML - INSERT (Products)
+  Lines: 176-214
+  Features:
+    - Multi-row INSERT
+    - 18 rows of data
+    - Complex data with multiple columns
+    - Comments within statement
+  Complexity: HIGH
+
+Statement #23:
+  Type: DML - INSERT (ProductStats)
+  Lines: 217-219
+  Features:
+    - Single row INSERT
+    - GETDATE() function
+  Complexity: LOW
+
+Statement #24:
+  Type: DML - UPDATE (ProductStats)
+  Lines: 222-230
+  Features:
+    - UPDATE with subqueries
+    - Multiple aggregate functions (COUNT, AVG, SUM)
+    - GETDATE() function
+  Complexity: MEDIUM
+
+Statement #25:
+  Type: DDL - CREATE TRIGGER
+  Lines: 233-278
+  Features:
+    - AFTER trigger (INSERT, UPDATE, DELETE)
+    - SET NOCOUNT ON
+    - Multiple conditional blocks
+    - inserted/deleted table references
+    - SYSTEM_USER function
+    - Complex logic for different operations
+  Complexity: VERY HIGH
+
+Statement #26:
+  Type: DDL - CREATE STORED PROCEDURE (sp_GetAllProducts)
+  Lines: 281-287
+  Features:
+    - CREATE OR ALTER
+    - SET NOCOUNT ON
+    - Simple SELECT with ORDER BY
+  Complexity: LOW
+
+Statement #27:
+  Type: DDL - CREATE STORED PROCEDURE (sp_GetProductById)
+  Lines: 290-298
+  Features:
+    - CREATE OR ALTER
+    - Parameter @ProductId
+    - SET NOCOUNT ON
+    - SELECT with WHERE
+  Complexity: LOW
+
+Statement #28:
+  Type: DDL - CREATE STORED PROCEDURE (sp_InsertProduct)
+  Lines: 301-312
+  Features:
+    - CREATE OR ALTER
+    - Multiple parameters
+    - SET NOCOUNT ON
+    - INSERT statement
+    - SCOPE_IDENTITY() return
+  Complexity: MEDIUM
+
+Statement #29:
+  Type: DDL - CREATE STORED PROCEDURE (sp_UpdateProduct)
+  Lines: 315-330
+  Features:
+    - CREATE OR ALTER
+    - Multiple parameters
+    - SET NOCOUNT ON
+    - UPDATE statement
+    - GETDATE() function
+  Complexity: MEDIUM
+
+Statement #30:
+  Type: DDL - CREATE STORED PROCEDURE (sp_DeleteProduct)
+  Lines: 333-341
+  Features:
+    - CREATE OR ALTER
+    - Parameter @ProductId
+    - SET NOCOUNT ON
+    - DELETE statement
+  Complexity: LOW
+
+=============================================================================
+EXTRACTION STATISTICS
+=============================================================================
+
+Total Statements Extracted: 30 (34 including multiple indexes counted separately)
+
+By Source File:
+  - ProductRepository.cs: 7 statements
+  - 01_InitialSetup.sql: 23+ statements
+
+By Type:
+  - SELECT queries: 4 (all with CTEs and window functions)
+  - Transaction blocks: 3 (INSERT, UPDATE, DELETE)
+  - CREATE TABLE: 5
+  - ALTER TABLE: 1
+  - CREATE INDEX: 5
+  - INSERT statements: 4
+  - UPDATE statements: 1
+  - CREATE TRIGGER: 1
+  - CREATE STORED PROCEDURE: 5
+  - CREATE DATABASE: 1
+
+By Complexity:
+  - LOW: 7 statements
+  - MEDIUM: 9 statements
+  - HIGH: 6 statements
+  - VERY HIGH: 1 statement
+
+Critical Features Requiring Special Attention:
+  1. Window Functions (AVG/COUNT/LAG/RANK/PERCENT_RANK/MIN/MAX OVER)
+  2. Common Table Expressions (CTEs)
+  3. IDENTITY columns and SCOPE_IDENTITY()
+  4. GETDATE() function
+  5. Transaction blocks (BEGIN TRANSACTION/COMMIT)
+  6. System functions (SYSTEM_USER)
+  7. Trigger syntax (inserted/deleted tables)
+  8. Parameter syntax (@paramName)
+  9. NVARCHAR vs VARCHAR types
+  10. IF NOT EXISTS checks
+  11. CREATE OR ALTER syntax
+  12. Self-referencing foreign keys
+
+=============================================================================
+NOTES FOR DMS CONVERSION
+=============================================================================
+
+1. All statements extracted maintain their original context and location
+2. Transaction blocks are extracted as complete units (not fragmented)
+3. Parameterized queries preserve parameter names for tracking
+4. Complex queries with CTEs and window functions are priority for DMS tool
+5. Schema DDL statements may result in object name changes from DMS
+6. All statements ready for DMS MCP tool processing
+
+=============================================================================
