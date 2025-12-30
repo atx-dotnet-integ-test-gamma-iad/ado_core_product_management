@@ -1,0 +1,103 @@
+-- =========================================================================
+-- DMS CONVERSION LOG
+-- SQL Server to PostgreSQL Statement Conversion Results
+-- Date: 2024-12-30
+-- DMS Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+-- =========================================================================
+
+STATEMENT 1: GetAllProductsAsync - CTE with Window Functions
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:41:53.206037
+DMS Output: Successfully converted WITH CTE statement
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - Window functions (AVG OVER, COUNT OVER) preserved
+  - Added NULLS FIRST to ORDER BY clauses
+  - Schema qualified table references
+
+STATEMENT 2: GetProductByIdAsync - CTE with LAG Window Function
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:43:20.956686
+DMS Output: Successfully converted WITH CTE with LAG function
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - LAG window function syntax preserved
+  - LEFT JOIN converted to LEFT OUTER JOIN
+  - Parameter @ProductId preserved
+  - Added NULLS FIRST to ORDER BY
+
+STATEMENT 3: InsertProductAsync - Transaction with SCOPE_IDENTITY
+Status: DMS_TOOL - PARTIAL FAILURE (Transaction block not supported)
+Conversion timestamp: 2025-12-30T15:44:47.412651
+DMS Error: "Metadata model creation failed: Statement definition is not valid."
+Note: Full transaction block (BEGIN TRANSACTION/COMMIT) with multiple statements and variable declarations is not supported by DMS tool
+
+STATEMENT 3a: InsertProductAsync - INSERT portion only
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:45:12.968702
+DMS Output: Successfully converted INSERT statement
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - INSERT statement converted successfully
+  - Parameters preserved
+  - Schema qualified table reference
+Manual Conversion Required: Transaction wrapper, SCOPE_IDENTITY() to RETURNING, GETDATE() to NOW()
+
+STATEMENT 4: UpdateProductAsync - UPDATE with GETDATE
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:46:37.542312
+DMS Output: Successfully converted UPDATE statement
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - UPDATE statement converted successfully
+  - GETDATE() converted to clock_timestamp()
+  - Parameters preserved
+
+STATEMENT 5: DeleteProductAsync - DELETE statement
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:48:02.104451
+DMS Output: Successfully converted DELETE statement
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - DELETE statement converted successfully
+  - Parameters preserved
+
+STATEMENT 6: GetProductsByPriceRangeAsync - CTE with RANK and PERCENT_RANK
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:49:28.030486
+DMS Output: Successfully converted WITH CTE with ranking functions
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - RANK() and PERCENT_RANK() window functions preserved
+  - CTE syntax maintained
+  - Added NULLS FIRST to ORDER BY
+  - Parameters preserved
+
+STATEMENT 7: GetLowStockProductsAsync - CTE with Multiple Window Functions
+Status: DMS_TOOL - SUCCESS
+Conversion timestamp: 2025-12-30T15:50:54.097733
+DMS Output: Successfully converted WITH CTE with multiple window functions
+Schema Change: Products -> productmanagement_dbo.products
+Key Conversions:
+  - AVG, MIN, MAX window functions preserved
+  - CTE syntax maintained
+  - Added NULLS FIRST to ORDER BY
+  - Parameters preserved
+
+=========================================================================
+CONVERSION SUMMARY
+=========================================================================
+Total Statements Processed: 7
+Successfully Converted by DMS Tool: 6 (Statements 1, 2, 4, 5, 6, 7)
+Partially Converted (INSERT only): 1 (Statement 3a)
+Failed in DMS Tool: 1 (Statement 3 - full transaction block)
+Manual Conversion Required: Statement 3 (transaction wrapper and SQL Server specific functions)
+
+Key Schema Transformations Applied by DMS:
+- All table references qualified with schema: productmanagement_dbo
+- GETDATE() converted to clock_timestamp()
+- ORDER BY clauses enhanced with NULLS FIRST
+- LEFT JOIN converted to LEFT OUTER JOIN
+- Window function syntax preserved
+- CTE (WITH) syntax preserved
+- Parameter syntax (@param) preserved
