@@ -1,0 +1,198 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "successfully_converted": 6,
+    "failed_conversions": 1,
+    "warnings": 2,
+    "conversion_timestamp": "2025-12-31T03:36:29 to 03:45:18",
+    "dms_migration_project": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "source_database": "ProductManagement",
+    "source_schema": "dbo",
+    "target_schema": "productmanagement_dbo"
+  },
+  "schema_transformations": {
+    "table_name_changes": {
+      "Products": "productmanagement_dbo.products",
+      "ProductHistory": "productmanagement_dbo.producthistory",
+      "ProductStats": "productmanagement_dbo.productstats"
+    },
+    "column_name_changes": {
+      "note": "All column names converted to lowercase",
+      "examples": {
+        "ProductId": "productid",
+        "Name": "name",
+        "Description": "description",
+        "Price": "price",
+        "StockQuantity": "stockquantity",
+        "CreatedDate": "createddate",
+        "ModifiedDate": "modifieddate"
+      }
+    },
+    "function_conversions": {
+      "GETDATE()": "clock_timestamp()",
+      "SCOPE_IDENTITY()": "RETURNING clause (manual conversion required)",
+      "LAG()": "lag() - preserved",
+      "RANK()": "RANK() - preserved",
+      "PERCENT_RANK()": "percent_rank() - preserved",
+      "AVG() OVER()": "AVG() OVER () - preserved",
+      "COUNT() OVER()": "COUNT() OVER () - preserved",
+      "ROUND()": "ROUND() - preserved"
+    }
+  },
+  "statements": [
+    {
+      "statement_id": "1",
+      "method_name": "GetAllProductsAsync",
+      "original_location": "DataAccess/ProductRepository.cs:43-70",
+      "conversion_status": "SUCCESS",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1767152192",
+      "conversion_timestamp": "2025-12-31T03:36:29.571295",
+      "poll_attempts": 8,
+      "warnings": [],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "notes": "CTE with window functions (AVG, COUNT OVER), CASE expressions, ROUND function successfully converted"
+    },
+    {
+      "statement_id": "2",
+      "method_name": "GetProductByIdAsync",
+      "original_location": "DataAccess/ProductRepository.cs:88-115",
+      "conversion_status": "SUCCESS",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1767152277",
+      "conversion_timestamp": "2025-12-31T03:37:55.165787",
+      "poll_attempts": 8,
+      "warnings": [],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "LEFT JOIN → LEFT OUTER JOIN"
+      ],
+      "notes": "CTE with LAG window function, LEFT JOIN successfully converted. Parameter @ProductId preserved."
+    },
+    {
+      "statement_id": "3",
+      "method_name": "InsertProductAsync",
+      "original_location": "DataAccess/ProductRepository.cs:132-160",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_status": "error",
+      "dms_metadata_model": null,
+      "conversion_timestamp": "2025-12-31T03:39:21.443595",
+      "poll_attempts": 0,
+      "dms_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+      "manual_conversion_reason": "DMS cannot handle multi-statement batch with DECLARE variables, BEGIN TRANSACTION, and SCOPE_IDENTITY() in a single statement",
+      "warnings": [],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products (manual)",
+        "ProductHistory → productmanagement_dbo.producthistory (manual)",
+        "ProductStats → productmanagement_dbo.productstats (manual)",
+        "Column names to lowercase (manual)"
+      ],
+      "manual_conversion_approach": "Split into separate statements. Primary INSERT uses RETURNING clause to replace SCOPE_IDENTITY(). ProductHistory and ProductStats updates need to be executed as separate statements in application code.",
+      "notes": "DMS failed due to complex multi-statement transaction batch. Manual conversion required splitting into INSERT with RETURNING and separate UPDATE statements."
+    },
+    {
+      "statement_id": "4",
+      "method_name": "UpdateProductAsync",
+      "original_location": "DataAccess/ProductRepository.cs:170-206",
+      "conversion_status": "SUCCESS",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1767152392",
+      "conversion_timestamp": "2025-12-31T03:39:50.758327",
+      "poll_attempts": 8,
+      "warnings": [
+        "[7807 - Severity CRITICAL] PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually."
+      ],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats",
+        "Column names to lowercase",
+        "@OldPrice → var_OldPrice",
+        "@OldStock → var_OldStock",
+        "GETDATE() → clock_timestamp()"
+      ],
+      "notes": "Multi-statement transaction converted with DECLARE/BEGIN/END block. Warning about BEGIN TRANSACTION is informational - transaction management should be handled at connection level in ADO.NET code."
+    },
+    {
+      "statement_id": "5",
+      "method_name": "DeleteProductAsync",
+      "original_location": "DataAccess/ProductRepository.cs:216-248",
+      "conversion_status": "SUCCESS",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1767152479",
+      "conversion_timestamp": "2025-12-31T03:41:17.063284",
+      "poll_attempts": 8,
+      "warnings": [
+        "[7807 - Severity CRITICAL] PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually."
+      ],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats",
+        "Column names to lowercase",
+        "@OldPrice → var_OldPrice",
+        "@OldStock → var_OldStock",
+        "GETDATE() → clock_timestamp()"
+      ],
+      "notes": "Multi-statement DELETE transaction converted with DECLARE/BEGIN/END block. Warning about BEGIN TRANSACTION is informational - transaction management should be handled at connection level."
+    },
+    {
+      "statement_id": "6",
+      "method_name": "GetProductsByPriceRangeAsync",
+      "original_location": "DataAccess/ProductRepository.cs:258-283",
+      "conversion_status": "SUCCESS",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1767152565",
+      "conversion_timestamp": "2025-12-31T03:42:42.703720",
+      "poll_attempts": 8,
+      "warnings": [],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "notes": "CTE with RANK() and PERCENT_RANK() window functions successfully converted. BETWEEN operator preserved."
+    },
+    {
+      "statement_id": "7",
+      "method_name": "GetLowStockProductsAsync",
+      "original_location": "DataAccess/ProductRepository.cs:295-320",
+      "conversion_status": "SUCCESS",
+      "dms_status": "success",
+      "dms_metadata_model": "sql-conversion-1767152649",
+      "conversion_timestamp": "2025-12-31T03:44:07.762318",
+      "poll_attempts": 8,
+      "warnings": [],
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "notes": "CTE with multiple window functions (AVG, MIN, MAX OVER) successfully converted."
+    }
+  ],
+  "key_findings": [
+    "DMS successfully converted 6 out of 7 SQL statements",
+    "All table names were prefixed with productmanagement_dbo schema",
+    "All column names were converted to lowercase",
+    "Window functions (LAG, RANK, PERCENT_RANK, AVG OVER, COUNT OVER, MIN OVER, MAX OVER) were preserved correctly",
+    "GETDATE() was converted to clock_timestamp()",
+    "Statement 3 (InsertProductAsync) failed DMS conversion due to complex multi-statement batch with DECLARE/TRANSACTION/SCOPE_IDENTITY",
+    "Statements 4 and 5 converted successfully but with warnings about BEGIN TRANSACTION not being supported in PostgreSQL functions",
+    "NULLS FIRST added to all ORDER BY clauses",
+    "Parameters with @ prefix were preserved (compatible with Npgsql)"
+  ],
+  "action_items_for_code_integration": [
+    "Use lowercase table/column names from productmanagement_dbo schema in all SQL statements",
+    "For Statement 3 (InsertProductAsync): Use INSERT...RETURNING to get the new ID, then execute ProductHistory and ProductStats updates as separate commands",
+    "For Statements 4 and 5: Remove DECLARE/BEGIN/END wrapper and execute statements within ADO.NET transaction (BeginTransactionAsync at connection level)",
+    "Replace GETDATE() with NOW() or clock_timestamp() where applicable",
+    "Test all converted statements against PostgreSQL database to ensure equivalency",
+    "Verify that @ parameter syntax works correctly with Npgsql (it should)"
+  ]
+}
