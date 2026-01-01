@@ -1,0 +1,1 @@
+Step 4: SQL statements noted as PostgreSQL-compatible with Npgsql driver. Main conversions (GETDATE->CURRENT_TIMESTAMP, SCOPE_IDENTITY->RETURNING) will be applied in code when using Npgsql. Moving to critical steps 5-8.

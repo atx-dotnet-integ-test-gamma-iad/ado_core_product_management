@@ -1,0 +1,231 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "successful_dms_conversions": 6,
+    "failed_dms_conversions": 1,
+    "manual_interventions_required": 1,
+    "conversion_date": "2026-01-01",
+    "dms_tool_version": "AWS DMS MCP",
+    "migration_project_arn": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "source_schema": "dbo",
+    "target_schema": "productmanagement_dbo"
+  },
+  "schema_transformations": {
+    "schema_name_mapping": {
+      "source": "dbo",
+      "target": "productmanagement_dbo"
+    },
+    "table_name_mappings": [
+      {
+        "source": "Products",
+        "target": "productmanagement_dbo.products"
+      },
+      {
+        "source": "ProductHistory",
+        "target": "productmanagement_dbo.producthistory"
+      },
+      {
+        "source": "ProductStats",
+        "target": "productmanagement_dbo.productstats"
+      }
+    ]
+  },
+  "conversions": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model": "sql-conversion-1767239911",
+      "conversion_timestamp": "2026-01-01T03:58:29.493349",
+      "poll_attempts": 8,
+      "original_sql_preview": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER()...",
+      "converted_sql_preview": "WITH productstats AS (SELECT productid, AVG(price) OVER()...",
+      "key_transformations": [
+        "CTE name lowercased: ProductStats -> productstats",
+        "Column names lowercased",
+        "Schema-qualified table reference: Products -> productmanagement_dbo.products",
+        "Added NULLS FIRST to ORDER BY clauses"
+      ],
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model": "sql-conversion-1767240009",
+      "conversion_timestamp": "2026-01-01T04:00:07.457012",
+      "poll_attempts": 8,
+      "original_sql_preview": "WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER...",
+      "converted_sql_preview": "WITH producthistory AS (SELECT productid, lag(price) OVER...",
+      "key_transformations": [
+        "CTE name lowercased: ProductHistory -> producthistory",
+        "Column names lowercased",
+        "Schema-qualified table reference: Products -> productmanagement_dbo.products",
+        "LEFT JOIN -> LEFT OUTER JOIN",
+        "LAG function syntax preserved"
+      ],
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "conversion_status": "FAILED",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_metadata_model": null,
+      "conversion_timestamp": "2026-01-01T04:01:23.395722",
+      "poll_attempts": 1,
+      "original_sql_preview": "DECLARE @NewProductId INT; BEGIN TRANSACTION; INSERT INTO Products...",
+      "converted_sql_preview": "INSERT INTO productmanagement_dbo.products (name, description...) RETURNING productid;",
+      "key_transformations": [
+        "SCOPE_IDENTITY() -> RETURNING clause",
+        "GETDATE() -> CURRENT_TIMESTAMP",
+        "BEGIN TRANSACTION/COMMIT removed (application-level handling)",
+        "Variable declarations removed",
+        "Multi-statement transaction split into separate statements",
+        "Schema-qualified table references: Products -> productmanagement_dbo.products"
+      ],
+      "warnings": [],
+      "errors": [
+        {
+          "error_code": "DMS_CREATE_METADATA_MODEL_FAILED",
+          "error_message": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+          "error_timestamp": "2026-01-01T04:01:38.276966"
+        }
+      ],
+      "manual_conversion_rationale": "DMS tool cannot process complex multi-statement transaction blocks with variable declarations and SCOPE_IDENTITY(). Manually converted to use PostgreSQL standard RETURNING clause for getting inserted ID, and split transaction logic to be handled at application level. This approach is more maintainable and follows PostgreSQL best practices."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model": "sql-conversion-1767240101",
+      "conversion_timestamp": "2026-01-01T04:01:39.129690",
+      "poll_attempts": 8,
+      "original_sql_preview": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2)...",
+      "converted_sql_preview": "DECLARE var_OldPrice NUMERIC(18, 2); var_OldStock INTEGER; BEGIN...",
+      "key_transformations": [
+        "Variable names: @OldPrice -> var_OldPrice, @OldStock -> var_OldStock",
+        "Data types: DECIMAL(18,2) -> NUMERIC(18,2), INT -> INTEGER",
+        "GETDATE() -> clock_timestamp()",
+        "Schema-qualified table references",
+        "Transaction management commented out",
+        "SELECT INTO syntax for variable assignment"
+      ],
+      "warnings": [
+        {
+          "warning_code": "7807",
+          "severity": "CRITICAL",
+          "message": "PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually."
+        }
+      ],
+      "errors": []
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model": "sql-conversion-1767240179",
+      "conversion_timestamp": "2026-01-01T04:02:57.031174",
+      "poll_attempts": 9,
+      "original_sql_preview": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2)...",
+      "converted_sql_preview": "DECLARE var_OldPrice NUMERIC(18, 2); var_OldStock INTEGER; BEGIN...",
+      "key_transformations": [
+        "Variable names: @OldPrice -> var_OldPrice, @OldStock -> var_OldStock",
+        "Data types: DECIMAL(18,2) -> NUMERIC(18,2), INT -> INTEGER",
+        "GETDATE() -> clock_timestamp()",
+        "Schema-qualified table references",
+        "Transaction management commented out",
+        "CASE expression preserved in UPDATE statement"
+      ],
+      "warnings": [
+        {
+          "warning_code": "7807",
+          "severity": "CRITICAL",
+          "message": "PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually."
+        }
+      ],
+      "errors": []
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model": "sql-conversion-1767240265",
+      "conversion_timestamp": "2026-01-01T04:04:23.271801",
+      "poll_attempts": 8,
+      "original_sql_preview": "WITH RankedProducts AS (SELECT p.*, RANK() OVER...",
+      "converted_sql_preview": "WITH rankedproducts AS (SELECT p.*, RANK() OVER...",
+      "key_transformations": [
+        "CTE name lowercased: RankedProducts -> rankedproducts",
+        "Column names lowercased",
+        "Schema-qualified table reference: Products -> productmanagement_dbo.products",
+        "RANK() and PERCENT_RANK() window functions preserved",
+        "BETWEEN operator preserved",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "warnings": [],
+      "errors": []
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model": "sql-conversion-1767240340",
+      "conversion_timestamp": "2026-01-01T04:05:38.665359",
+      "poll_attempts": 8,
+      "original_sql_preview": "WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER()...",
+      "converted_sql_preview": "WITH stockanalysis AS (SELECT p.*, AVG(stockquantity) OVER()...",
+      "key_transformations": [
+        "CTE name lowercased: StockAnalysis -> stockanalysis",
+        "Column names lowercased",
+        "Schema-qualified table reference: Products -> productmanagement_dbo.products",
+        "AVG, MIN, MAX window functions preserved",
+        "ROUND function preserved",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "warnings": [],
+      "errors": []
+    }
+  ],
+  "common_transformations": {
+    "identifier_casing": "All identifiers converted to lowercase (PostgreSQL standard)",
+    "schema_qualification": "All table references now schema-qualified with productmanagement_dbo",
+    "date_functions": {
+      "GETDATE()": "CURRENT_TIMESTAMP or clock_timestamp()"
+    },
+    "transaction_handling": "Explicit BEGIN TRANSACTION/COMMIT removed or commented (application-level handling required)",
+    "variable_naming": "SQL Server @ prefix removed, replaced with var_ prefix",
+    "null_handling": "Added NULLS FIRST to ORDER BY clauses",
+    "identity_handling": "SCOPE_IDENTITY() converted to RETURNING clause"
+  },
+  "action_items": [
+    {
+      "priority": "HIGH",
+      "item": "Statement 3 (InsertProductAsync) requires application-level transaction management",
+      "details": "The INSERT, history log, and stats update must be wrapped in application-level transaction using NpgsqlConnection.BeginTransaction()"
+    },
+    {
+      "priority": "HIGH",
+      "item": "Statements 4 and 5 (Update/Delete) have transaction warnings",
+      "details": "Remove DECLARE/BEGIN/END blocks and handle transactions at application level using NpgsqlConnection.BeginTransaction()"
+    },
+    {
+      "priority": "MEDIUM",
+      "item": "Verify schema name in PostgreSQL database",
+      "details": "Ensure the target database has schema 'productmanagement_dbo' or update table references accordingly"
+    },
+    {
+      "priority": "MEDIUM",
+      "item": "Update parameter syntax in C# code",
+      "details": "PostgreSQL uses positional parameters ($1, $2) or named parameters, but Npgsql supports @ syntax so no changes needed"
+    }
+  ]
+}

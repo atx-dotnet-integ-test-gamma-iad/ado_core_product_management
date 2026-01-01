@@ -1,0 +1,197 @@
+{
+  "extraction_summary": {
+    "total_statements_extracted": 7,
+    "source_files_analyzed": 1,
+    "extraction_date": "2026-01-01",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL"
+  },
+  "statements": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 42,
+      "statement_type": "SELECT",
+      "construction_method": "inline_const_string",
+      "has_parameters": false,
+      "parameters": [],
+      "special_features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (AVG OVER, COUNT OVER)",
+        "CASE statement",
+        "ROUND function",
+        "Complex ORDER BY with CASE"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products"
+      ],
+      "requires_transaction": false,
+      "sql_statement_preview": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice..."
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 83,
+      "statement_type": "SELECT",
+      "construction_method": "inline_const_string",
+      "has_parameters": true,
+      "parameters": [
+        "@ProductId"
+      ],
+      "special_features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (LAG OVER)",
+        "CASE statement",
+        "ROUND function",
+        "LEFT JOIN"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products"
+      ],
+      "requires_transaction": false,
+      "sql_statement_preview": "WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER..."
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 118,
+      "statement_type": "TRANSACTION_BLOCK",
+      "construction_method": "inline_const_string",
+      "has_parameters": true,
+      "parameters": [
+        "@Name",
+        "@Description",
+        "@Price",
+        "@StockQuantity"
+      ],
+      "special_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "SCOPE_IDENTITY()",
+        "GETDATE()",
+        "Multiple INSERT and UPDATE statements",
+        "Variable declaration and assignment"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products",
+        "ProductHistory",
+        "ProductStats"
+      ],
+      "requires_transaction": true,
+      "sql_statement_preview": "DECLARE @NewProductId INT; BEGIN TRANSACTION; INSERT INTO Products..."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 149,
+      "statement_type": "TRANSACTION_BLOCK",
+      "construction_method": "inline_const_string",
+      "has_parameters": true,
+      "parameters": [
+        "@ProductId",
+        "@Name",
+        "@Description",
+        "@Price",
+        "@StockQuantity"
+      ],
+      "special_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "GETDATE()",
+        "Multiple UPDATE and INSERT statements",
+        "Variable declaration and assignment"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products",
+        "ProductHistory",
+        "ProductStats"
+      ],
+      "requires_transaction": true,
+      "sql_statement_preview": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT..."
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 187,
+      "statement_type": "TRANSACTION_BLOCK",
+      "construction_method": "inline_const_string",
+      "has_parameters": true,
+      "parameters": [
+        "@ProductId"
+      ],
+      "special_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "GETDATE()",
+        "DELETE statement",
+        "Multiple UPDATE and INSERT statements",
+        "Variable declaration and assignment",
+        "CASE expression in UPDATE"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products",
+        "ProductHistory",
+        "ProductStats"
+      ],
+      "requires_transaction": true,
+      "sql_statement_preview": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT..."
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 226,
+      "statement_type": "SELECT",
+      "construction_method": "inline_const_string",
+      "has_parameters": true,
+      "parameters": [
+        "@MinPrice",
+        "@MaxPrice"
+      ],
+      "special_features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (RANK OVER, PERCENT_RANK OVER)",
+        "CASE statement",
+        "BETWEEN operator"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products"
+      ],
+      "requires_transaction": false,
+      "sql_statement_preview": "WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price)..."
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "source_file": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "line_number": 257,
+      "statement_type": "SELECT",
+      "construction_method": "inline_const_string",
+      "has_parameters": true,
+      "parameters": [
+        "@Threshold"
+      ],
+      "special_features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (AVG OVER, MIN OVER, MAX OVER)",
+        "CASE statement",
+        "ROUND function",
+        "WHERE clause with computed column"
+      ],
+      "sql_complexity": "complex",
+      "tables_referenced": [
+        "Products"
+      ],
+      "requires_transaction": false,
+      "sql_statement_preview": "WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER()..."
+    }
+  ]
+}
