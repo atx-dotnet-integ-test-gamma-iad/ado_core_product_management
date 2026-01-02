@@ -1,0 +1,254 @@
+{
+  "conversion_metadata": {
+    "conversion_date": "2026-01-02",
+    "total_statements": 7,
+    "dms_successful_conversions": 6,
+    "dms_failed_conversions": 1,
+    "manual_conversions_required": 1,
+    "dms_conversion_with_warnings": 2,
+    "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "source_database": "ProductManagement",
+    "source_schema": "dbo",
+    "target_schema": "productmanagement_dbo"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": 1,
+      "statement_name": "STMT_001",
+      "source_location": "DataAccess/ProductRepository.cs:GetAllProductsAsync",
+      "statement_type": "SELECT with CTE and window functions",
+      "original_sql": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "success",
+        "conversion_timestamp": "2026-01-02T20:10:34.101331",
+        "metadata_model_name": "sql-conversion-1767384636",
+        "workflow_completed": true
+      },
+      "converted_sql": "WITH productstats\nAS (SELECT\n    productid, AVG(price) OVER () AS avgprice, COUNT(*) OVER () AS totalproducts\n    FROM productmanagement_dbo.products)\nSELECT\n    p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate,\n    CASE\n        WHEN p.price > ps.avgprice THEN 'Above Average'\n        WHEN p.price < ps.avgprice THEN 'Below Average'\n        ELSE 'Average'\n    END AS pricecategory, ROUND((p.price / ps.avgprice) * 100, 2) AS pricepercentageofaverage\n    FROM productmanagement_dbo.products AS p\n    INNER JOIN productstats AS ps\n        ON p.productid = ps.productid\n    ORDER BY\n    CASE\n        WHEN p.price > ps.avgprice THEN 1\n        ELSE 2\n    END NULLS FIRST, p.name NULLS FIRST;",
+      "conversion_method": "DMS_TOOL",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "manual_interventions": [],
+      "timestamp": "2026-01-02T20:11:45.357973"
+    },
+    {
+      "statement_id": 2,
+      "statement_name": "STMT_002",
+      "source_location": "DataAccess/ProductRepository.cs:GetProductByIdAsync",
+      "statement_type": "SELECT with CTE and LAG window function",
+      "original_sql": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "success",
+        "conversion_timestamp": "2026-01-02T20:12:01.796539",
+        "metadata_model_name": "sql-conversion-1767384723",
+        "workflow_completed": true
+      },
+      "converted_sql": "WITH producthistory\nAS (SELECT\n    productid, lag(price) OVER (ORDER BY modifieddate) AS previousprice, lag(stockquantity) OVER (ORDER BY modifieddate) AS previousstock\n    FROM productmanagement_dbo.products\n    WHERE productid = @ProductId)\nSELECT\n    p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate, ph.previousprice, ph.previousstock,\n    CASE\n        WHEN ph.previousprice IS NOT NULL THEN ROUND(((p.price - ph.previousprice) / ph.previousprice) * 100, 2)\n        ELSE NULL\n    END AS pricechangepercentage\n    FROM productmanagement_dbo.products AS p\n    LEFT OUTER JOIN producthistory AS ph\n        ON p.productid = ph.productid\n    WHERE p.productid = @ProductId;",
+      "conversion_method": "DMS_TOOL",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "LEFT JOIN → LEFT OUTER JOIN",
+        "Column names to lowercase"
+      ],
+      "manual_interventions": [],
+      "timestamp": "2026-01-02T20:13:12.457017"
+    },
+    {
+      "statement_id": 3,
+      "statement_name": "STMT_003",
+      "source_location": "DataAccess/ProductRepository.cs:InsertProductAsync",
+      "statement_type": "INSERT Transaction Block",
+      "original_sql": "DECLARE @NewProductId INT;\n\nBEGIN TRANSACTION;\n    INSERT INTO Products (Name, Description, Price, StockQuantity)\n    VALUES (@Name, @Description, @Price, @StockQuantity);\n    \n    SET @NewProductId = SCOPE_IDENTITY();\n    \n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());\n    \n    UPDATE ProductStats\n    SET \n        TotalProducts = TotalProducts + 1,\n        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),\n        LastUpdated = GETDATE()\n    WHERE StatId = 1;\nCOMMIT;\n\nSELECT @NewProductId;",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+        "error_timestamp": "2026-01-02T20:13:43.683839",
+        "reason": "DMS tool cannot process complex transaction blocks with DECLARE, SET, and multiple statements"
+      },
+      "converted_sql": "INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)\nVALUES (@Name, @Description, @Price, @StockQuantity)\nRETURNING productid;\n\nINSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)\nVALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);\n\nUPDATE productmanagement_dbo.productstats\nSET \n    totalproducts = totalproducts + 1,\n    averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1),\n    lastupdated = CURRENT_TIMESTAMP\nWHERE statid = 1;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats",
+        "Column names to lowercase"
+      ],
+      "manual_interventions": [
+        "SCOPE_IDENTITY() replaced with RETURNING clause on INSERT",
+        "GETDATE() replaced with CURRENT_TIMESTAMP",
+        "DECLARE @NewProductId removed - handled in C# code",
+        "BEGIN TRANSACTION/COMMIT removed - managed by C# BeginTransactionAsync/CommitAsync",
+        "Split into separate SQL statements for C# execution",
+        "Added manual conversion notes for application-level transaction handling"
+      ],
+      "timestamp": "2026-01-02T20:13:43.683839"
+    },
+    {
+      "statement_id": 4,
+      "statement_name": "STMT_004",
+      "source_location": "DataAccess/ProductRepository.cs:UpdateProductAsync",
+      "statement_type": "UPDATE Transaction Block",
+      "original_sql": "BEGIN TRANSACTION;\n    DECLARE @OldPrice DECIMAL(18,2);\n    DECLARE @OldStock INT;\n    \n    SELECT @OldPrice = Price, @OldStock = StockQuantity\n    FROM Products\n    WHERE ProductId = @ProductId;\n    \n    UPDATE Products\n    SET \n        Name = @Name,\n        Description = @Description,\n        Price = @Price,\n        StockQuantity = @StockQuantity,\n        ModifiedDate = GETDATE()\n    WHERE ProductId = @ProductId;\n    \n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());\n    \n    UPDATE ProductStats\n    SET \n        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,\n        LastUpdated = GETDATE()\n    WHERE StatId = 1;\nCOMMIT;",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "success",
+        "conversion_timestamp": "2026-01-02T20:13:54.922197",
+        "metadata_model_name": "sql-conversion-1767384837",
+        "workflow_completed": true,
+        "warnings": [
+          "[7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]"
+        ]
+      },
+      "converted_sql": "SELECT price, stockquantity\nFROM productmanagement_dbo.products\nWHERE productid = @ProductId;\n\nUPDATE productmanagement_dbo.products\nSET name = @Name, description = @Description, price = @Price, stockquantity = @StockQuantity, modifieddate = CURRENT_TIMESTAMP\nWHERE productid = @ProductId;\n\nINSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)\nVALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);\n\nUPDATE productmanagement_dbo.productstats\nSET averageprice = (averageprice * totalproducts - @OldPrice + @Price) / totalproducts, lastupdated = CURRENT_TIMESTAMP\nWHERE statid = 1;",
+      "conversion_method": "DMS_TOOL",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats",
+        "GETDATE() → clock_timestamp() (adjusted to CURRENT_TIMESTAMP)",
+        "DECIMAL(18,2) → NUMERIC(18,2)",
+        "Column names to lowercase"
+      ],
+      "manual_interventions": [
+        "Changed clock_timestamp() to CURRENT_TIMESTAMP for consistency",
+        "BEGIN TRANSACTION/COMMIT managed by C# transaction handling",
+        "DECLARE statements removed - variable handling in C# code"
+      ],
+      "timestamp": "2026-01-02T20:15:05.672472"
+    },
+    {
+      "statement_id": 5,
+      "statement_name": "STMT_005",
+      "source_location": "DataAccess/ProductRepository.cs:DeleteProductAsync",
+      "statement_type": "DELETE Transaction Block",
+      "original_sql": "BEGIN TRANSACTION;\n    DECLARE @OldPrice DECIMAL(18,2);\n    DECLARE @OldStock INT;\n    \n    SELECT @OldPrice = Price, @OldStock = StockQuantity\n    FROM Products\n    WHERE ProductId = @ProductId;\n    \n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());\n    \n    DELETE FROM Products \n    WHERE ProductId = @ProductId;\n    \n    UPDATE ProductStats\n    SET \n        TotalProducts = TotalProducts - 1,\n        AveragePrice = CASE \n            WHEN TotalProducts > 1 \n            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)\n            ELSE 0\n        END,\n        LastUpdated = GETDATE()\n    WHERE StatId = 1;\nCOMMIT;",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "success",
+        "conversion_timestamp": "2026-01-02T20:15:21.967936",
+        "metadata_model_name": "sql-conversion-1767384924",
+        "workflow_completed": true,
+        "warnings": [
+          "[7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]"
+        ]
+      },
+      "converted_sql": "SELECT price, stockquantity\nFROM productmanagement_dbo.products\nWHERE productid = @ProductId;\n\nINSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)\nVALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);\n\nDELETE FROM productmanagement_dbo.products\nWHERE productid = @ProductId;\n\nUPDATE productmanagement_dbo.productstats\nSET totalproducts = totalproducts - 1, averageprice =\nCASE\n    WHEN totalproducts > 1 THEN (averageprice * totalproducts - @OldPrice) / (totalproducts - 1)\n    ELSE 0\nEND, lastupdated = CURRENT_TIMESTAMP\nWHERE statid = 1;",
+      "conversion_method": "DMS_TOOL",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats",
+        "GETDATE() → clock_timestamp() (adjusted to CURRENT_TIMESTAMP)",
+        "Column names to lowercase"
+      ],
+      "manual_interventions": [
+        "Changed clock_timestamp() to CURRENT_TIMESTAMP for consistency",
+        "BEGIN TRANSACTION/COMMIT managed by C# transaction handling",
+        "DECLARE statements removed - variable handling in C# code"
+      ],
+      "timestamp": "2026-01-02T20:16:32.805400"
+    },
+    {
+      "statement_id": 6,
+      "statement_name": "STMT_006",
+      "source_location": "DataAccess/ProductRepository.cs:GetProductsByPriceRangeAsync",
+      "statement_type": "SELECT with CTE and ranking functions",
+      "original_sql": "WITH RankedProducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.Price) as PriceRank,\n        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p\n    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'\n        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as PriceSegment\nFROM RankedProducts rp\nORDER BY rp.PriceRank",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "success",
+        "conversion_timestamp": "2026-01-02T20:16:48.296034",
+        "metadata_model_name": "sql-conversion-1767385010",
+        "workflow_completed": true
+      },
+      "converted_sql": "WITH rankedproducts\nAS (SELECT\n    p.*, RANK() OVER (ORDER BY p.price) AS pricerank, percent_rank() OVER (ORDER BY p.price) AS pricepercentile\n    FROM productmanagement_dbo.products AS p\n    WHERE p.price BETWEEN @MinPrice AND @MaxPrice)\nSELECT\n    rp.*,\n    CASE\n        WHEN rp.pricepercentile <= 0.25 THEN 'Budget'\n        WHEN rp.pricepercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END AS pricesegment\n    FROM rankedproducts AS rp\n    ORDER BY rp.pricerank NULLS FIRST;",
+      "conversion_method": "DMS_TOOL",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "manual_interventions": [],
+      "timestamp": "2026-01-02T20:17:59.191390"
+    },
+    {
+      "statement_id": 7,
+      "statement_name": "STMT_007",
+      "source_location": "DataAccess/ProductRepository.cs:GetLowStockProductsAsync",
+      "statement_type": "SELECT with CTE and multiple window functions",
+      "original_sql": "WITH StockAnalysis AS (\n    SELECT \n        p.*,\n        AVG(StockQuantity) OVER() as AvgStock,\n        MIN(StockQuantity) OVER() as MinStock,\n        MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN StockQuantity <= @Threshold THEN 'Critical'\n        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as StockStatus,\n    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa\nWHERE StockQuantity <= @Threshold\nORDER BY StockQuantity",
+      "dms_request_parameters": {
+        "schema_name": "dbo",
+        "database_name": "ProductManagement",
+        "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+      },
+      "dms_response": {
+        "status": "success",
+        "conversion_timestamp": "2026-01-02T20:18:14.999858",
+        "metadata_model_name": "sql-conversion-1767385097",
+        "workflow_completed": true
+      },
+      "converted_sql": "WITH stockanalysis\nAS (SELECT\n    p.*, AVG(stockquantity) OVER () AS avgstock, MIN(stockquantity) OVER () AS minstock, MAX(stockquantity) OVER () AS maxstock\n    FROM productmanagement_dbo.products AS p)\nSELECT\n    sa.*,\n    CASE\n        WHEN stockquantity <= @Threshold THEN 'Critical'\n        WHEN stockquantity <= avgstock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END AS stockstatus, ROUND((stockquantity / avgstock) * 100, 2) AS stockpercentageofaverage\n    FROM stockanalysis AS sa\n    WHERE stockquantity <= @Threshold\n    ORDER BY stockquantity NULLS FIRST;",
+      "conversion_method": "DMS_TOOL",
+      "schema_transformations": [
+        "Products → productmanagement_dbo.products",
+        "Column names to lowercase",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "manual_interventions": [],
+      "timestamp": "2026-01-02T20:19:26.379568"
+    }
+  ],
+  "summary": {
+    "total_statements_processed": 7,
+    "dms_tool_successful": 6,
+    "dms_tool_failed": 1,
+    "manual_conversions": 1,
+    "dms_warnings": 2,
+    "key_transformations": [
+      "SCOPE_IDENTITY() → RETURNING clause (1 occurrence)",
+      "GETDATE() → CURRENT_TIMESTAMP (8 occurrences across 3 transaction blocks)",
+      "@ParameterName syntax retained (will be converted in C# code)",
+      "BEGIN TRANSACTION/COMMIT → Managed by C# transaction handling",
+      "DECLARE @Variable → Managed in C# code",
+      "Schema: dbo.Products → productmanagement_dbo.products",
+      "Schema: dbo.ProductHistory → productmanagement_dbo.producthistory",
+      "Schema: dbo.ProductStats → productmanagement_dbo.productstats",
+      "Column names converted to lowercase",
+      "CTE names converted to lowercase",
+      "Added NULLS FIRST to ORDER BY clauses",
+      "LEFT JOIN → LEFT OUTER JOIN",
+      "DECIMAL(18,2) → NUMERIC(18,2)"
+    ]
+  }
+}
