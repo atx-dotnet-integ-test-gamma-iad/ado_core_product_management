@@ -1,0 +1,567 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+================================================================================
+Conversion Date: 2026-01-03
+Tool: AWS DMS MCP Statement Conversion Tool (dms-mcp____statement_conversion_tool)
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Source Database: Microsoft SQL Server (ProductManagement database, dbo schema)
+Target Database: PostgreSQL (productmanagement_dbo schema)
+Region: us-east-1
+Total Statements Processed: 7
+Successful DMS Conversions: 6
+Failed DMS Conversions: 1
+Manual Interventions Required: 3 (transaction assembly for statements 3, 4, 5)
+================================================================================
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync (CTE with Window Functions)
+================================================================================
+Conversion Timestamp: 2026-01-03T19:30:03.415438
+Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+DMS Workflow:
+  1. create_metadata_model: COMPLETED (2 poll attempts)
+     - Request ID: 07361d83-111c-470a-8235-70d63e0d5627
+     - Model Name: sql-conversion-1767468605
+  2. convert_metadata_model: COMPLETED (6 poll attempts)
+     - Request ID: bd2a96ca-8108-47a9-b923-c1b00a90a286
+  3. extract_converted_sql: COMPLETED
+
+Original SQL:
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+Converted SQL:
+WITH productstats
+AS (SELECT
+    productid, AVG(price) OVER () AS avgprice, COUNT(*) OVER () AS totalproducts
+    FROM productmanagement_dbo.products)
+SELECT
+    p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate,
+    CASE
+        WHEN p.price > ps.avgprice THEN 'Above Average'
+        WHEN p.price < ps.avgprice THEN 'Below Average'
+        ELSE 'Average'
+    END AS pricecategory, ROUND((p.price / ps.avgprice) * 100, 2) AS pricepercentageofaverage
+    FROM productmanagement_dbo.products AS p
+    INNER JOIN productstats AS ps
+        ON p.productid = ps.productid
+    ORDER BY
+    CASE
+        WHEN p.price > ps.avgprice THEN 1
+        ELSE 2
+    END NULLS FIRST, p.name NULLS FIRST;
+
+Key Transformations:
+- Schema: Products -> productmanagement_dbo.products
+- CTE and column names converted to lowercase
+- Added NULLS FIRST to ORDER BY clauses
+- Window functions (AVG OVER, COUNT OVER) syntax preserved
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync (CTE with LAG Window Function)
+================================================================================
+Conversion Timestamp: 2026-01-03T19:31:31.153318
+Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+DMS Workflow:
+  1. create_metadata_model: COMPLETED (2 poll attempts)
+     - Request ID: 97d88ab6-42cf-4b97-848a-0b58bc0a44f8
+     - Model Name: sql-conversion-1767468693
+  2. convert_metadata_model: COMPLETED (7 poll attempts)
+     - Request ID: f4ed2a02-49a4-4f23-8045-0aee8bd34443
+  3. extract_converted_sql: COMPLETED
+
+Original SQL:
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+Converted SQL:
+WITH producthistory
+AS (SELECT
+    productid, lag(price) OVER (ORDER BY modifieddate) AS previousprice, lag(stockquantity) OVER (ORDER BY modifieddate) AS previousstock
+    FROM productmanagement_dbo.products
+    WHERE productid = @ProductId)
+SELECT
+    p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate, ph.previousprice, ph.previousstock,
+    CASE
+        WHEN ph.previousprice IS NOT NULL THEN ROUND(((p.price - ph.previousprice) / ph.previousprice) * 100, 2)
+        ELSE NULL
+    END AS pricechangepercentage
+    FROM productmanagement_dbo.products AS p
+    LEFT OUTER JOIN producthistory AS ph
+        ON p.productid = ph.productid
+    WHERE p.productid = @ProductId;
+
+Key Transformations:
+- Schema: Products -> productmanagement_dbo.products
+- CTE and column names converted to lowercase
+- LAG() window function syntax preserved (PostgreSQL compatible)
+- LEFT JOIN -> LEFT OUTER JOIN (explicit syntax)
+- Parameter @ProductId preserved
+
+================================================================================
+STATEMENT 3: InsertProductAsync (Transaction with SCOPE_IDENTITY)
+================================================================================
+Conversion Timestamp: 2026-01-03T19:33:08.479389
+Status: ERROR - DMS Tool Failed, Manual Conversion Applied
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+
+DMS Workflow:
+  1. create_metadata_model: STARTED at 2026-01-03T19:33:10.712017
+     - FAILED at 2026-01-03T19:33:23.471845
+
+DMS Error Message:
+"Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+
+Root Cause:
+DMS MCP tool does not support complex multi-statement transaction blocks with variable declarations, SCOPE_IDENTITY(), and multiple DML operations.
+
+Original SQL:
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    -- Insert the new product
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+Manual Conversion Strategy:
+1. Converted individual INSERT statement through DMS successfully:
+   - Result: INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity) VALUES (@Name, @Description, @Price, @StockQuantity);
+2. Applied PostgreSQL RETURNING clause for SCOPE_IDENTITY() replacement
+3. Converted GETDATE() to clock_timestamp() based on DMS pattern from other statements
+4. Converted transaction syntax: BEGIN TRANSACTION -> BEGIN, COMMIT -> COMMIT
+5. Removed @ prefix from local variable declarations
+
+Manually Converted SQL (DO block version):
+DO $$
+DECLARE NewProductId INT;
+BEGIN
+    INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity)
+    RETURNING productid INTO NewProductId;
+    
+    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+    VALUES (NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, clock_timestamp());
+    
+    UPDATE productmanagement_dbo.productstats
+    SET 
+        totalproducts = totalproducts + 1,
+        averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1),
+        lastupdated = clock_timestamp()
+    WHERE statid = 1;
+    
+    SELECT NewProductId;
+END $$;
+
+Simplified Alternative (for ADO.NET):
+INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING productid;
+
+Note: Additional statements (history logging, stats update) would be executed separately in code.
+
+Key Transformations Applied:
+- Schema: Products -> productmanagement_dbo.products
+- Schema: ProductHistory -> productmanagement_dbo.producthistory
+- Schema: ProductStats -> productmanagement_dbo.productstats
+- SCOPE_IDENTITY() -> RETURNING clause
+- GETDATE() -> clock_timestamp()
+- DECLARE @var -> DECLARE var
+- BEGIN TRANSACTION -> BEGIN
+- Column names to lowercase
+
+================================================================================
+STATEMENT 4: UpdateProductAsync (Transaction with History Logging) - COMPONENT
+================================================================================
+Conversion Timestamp: 2026-01-03T19:34:56.598944
+Status: PARTIAL SUCCESS - Individual UPDATE converted, transaction manually assembled
+Conversion Method: DMS_TOOL for UPDATE + manual transaction assembly
+
+DMS Workflow (UPDATE statement only):
+  1. create_metadata_model: COMPLETED (2 poll attempts)
+     - Request ID: 7ee7d560-7b1c-404a-be4a-83a804cd51a4
+     - Model Name: sql-conversion-1767468898
+  2. convert_metadata_model: COMPLETED (7 poll attempts)
+     - Request ID: 4a9f7156-9d78-468c-86ec-21d14fdd8384
+  3. extract_converted_sql: COMPLETED
+
+Original UPDATE Statement (tested individually):
+UPDATE Products
+SET 
+    Name = @Name,
+    Description = @Description,
+    Price = @Price,
+    StockQuantity = @StockQuantity,
+    ModifiedDate = GETDATE()
+WHERE ProductId = @ProductId
+
+DMS Converted UPDATE:
+UPDATE productmanagement_dbo.products
+SET name = @Name, description = @Description, price = @Price, stockquantity = @StockQuantity, modifieddate = clock_timestamp()
+WHERE productid = @ProductId;
+
+Full Transaction (Manual Assembly):
+Original:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+Manually Assembled (using DMS conversion patterns):
+DO $$
+DECLARE OldPrice DECIMAL(18,2);
+DECLARE OldStock INT;
+BEGIN
+    SELECT price, stockquantity INTO OldPrice, OldStock
+    FROM productmanagement_dbo.products
+    WHERE productid = @ProductId;
+    
+    UPDATE productmanagement_dbo.products
+    SET name = @Name, description = @Description, price = @Price, stockquantity = @StockQuantity, modifieddate = clock_timestamp()
+    WHERE productid = @ProductId;
+    
+    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+    VALUES (@ProductId, 'UPDATE', OldPrice, @Price, OldStock, @StockQuantity, clock_timestamp());
+    
+    UPDATE productmanagement_dbo.productstats
+    SET 
+        averageprice = (averageprice * totalproducts - OldPrice + @Price) / totalproducts,
+        lastupdated = clock_timestamp()
+    WHERE statid = 1;
+END $$;
+
+Key Transformations:
+- GETDATE() -> clock_timestamp() (from DMS)
+- Schema transformations (from DMS)
+- Column name lowercase (from DMS)
+- Transaction structure manually converted
+
+================================================================================
+STATEMENT 5: DeleteProductAsync (Transaction with Cascading) - COMPONENT
+================================================================================
+Conversion Timestamp: 2026-01-03T19:36:31.207869
+Status: PARTIAL SUCCESS - Individual DELETE converted, transaction manually assembled
+Conversion Method: DMS_TOOL for DELETE + manual transaction assembly
+
+DMS Workflow (DELETE statement only):
+  1. create_metadata_model: COMPLETED (2 poll attempts)
+     - Request ID: b75802e6-7e62-4631-aa4a-90108b0b3c44
+     - Model Name: sql-conversion-1767468993
+  2. convert_metadata_model: COMPLETED (6 poll attempts)
+     - Request ID: d78def63-46c7-4887-8e54-ac06339314e5
+  3. extract_converted_sql: COMPLETED
+
+Original DELETE Statement (tested individually):
+DELETE FROM Products 
+WHERE ProductId = @ProductId
+
+DMS Converted DELETE:
+DELETE FROM productmanagement_dbo.products
+WHERE productid = @ProductId;
+
+Full Transaction (Manual Assembly):
+Original:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+Manually Assembled (using DMS conversion patterns):
+DO $$
+DECLARE OldPrice DECIMAL(18,2);
+DECLARE OldStock INT;
+BEGIN
+    SELECT price, stockquantity INTO OldPrice, OldStock
+    FROM productmanagement_dbo.products
+    WHERE productid = @ProductId;
+    
+    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+    VALUES (@ProductId, 'DELETE', OldPrice, NULL, OldStock, NULL, clock_timestamp());
+    
+    DELETE FROM productmanagement_dbo.products
+    WHERE productid = @ProductId;
+    
+    UPDATE productmanagement_dbo.productstats
+    SET 
+        totalproducts = totalproducts - 1,
+        averageprice = CASE 
+            WHEN totalproducts > 1 
+            THEN (averageprice * totalproducts - OldPrice) / (totalproducts - 1)
+            ELSE 0
+        END,
+        lastupdated = clock_timestamp()
+    WHERE statid = 1;
+END $$;
+
+Key Transformations:
+- GETDATE() -> clock_timestamp() (from DMS)
+- Schema transformations (from DMS)
+- Column name lowercase (from DMS)
+- Transaction structure manually converted
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync (CTE with RANK and PERCENT_RANK)
+================================================================================
+Conversion Timestamp: 2026-01-03T19:37:56.705694
+Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+DMS Workflow:
+  1. create_metadata_model: COMPLETED (2 poll attempts)
+     - Request ID: 7ccf17c5-980c-4ff2-b4f0-bfe0c33e1104
+     - Model Name: sql-conversion-1767469078
+  2. convert_metadata_model: COMPLETED (6 poll attempts)
+     - Request ID: 3cbf6459-35f0-4b52-91b9-4b4757121ce8
+  3. extract_converted_sql: COMPLETED
+
+Original SQL:
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+Converted SQL:
+WITH rankedproducts
+AS (SELECT
+    p.*, RANK() OVER (ORDER BY p.price) AS pricerank, percent_rank() OVER (ORDER BY p.price) AS pricepercentile
+    FROM productmanagement_dbo.products AS p
+    WHERE p.price BETWEEN @MinPrice AND @MaxPrice)
+SELECT
+    rp.*,
+    CASE
+        WHEN rp.pricepercentile <= 0.25 THEN 'Budget'
+        WHEN rp.pricepercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END AS pricesegment
+    FROM rankedproducts AS rp
+    ORDER BY rp.pricerank NULLS FIRST;
+
+Key Transformations:
+- Schema: Products -> productmanagement_dbo.products
+- CTE and column names converted to lowercase
+- RANK() and PERCENT_RANK() functions preserved (PostgreSQL compatible)
+- Added NULLS FIRST to ORDER BY
+- Parameters @MinPrice and @MaxPrice preserved
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync (CTE with Aggregate Window Functions)
+================================================================================
+Conversion Timestamp: 2026-01-03T19:39:23.076015
+Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+DMS Workflow:
+  1. create_metadata_model: COMPLETED (2 poll attempts)
+     - Request ID: 2cf257b5-bf6c-4448-8365-c8135bcefd9f
+     - Model Name: sql-conversion-1767469165
+  2. convert_metadata_model: COMPLETED (6 poll attempts)
+     - Request ID: 818f7d52-2f92-4451-9c22-01c9d0f019a1
+  3. extract_converted_sql: COMPLETED
+
+Original SQL:
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+Converted SQL:
+WITH stockanalysis
+AS (SELECT
+    p.*, AVG(stockquantity) OVER () AS avgstock, MIN(stockquantity) OVER () AS minstock, MAX(stockquantity) OVER () AS maxstock
+    FROM productmanagement_dbo.products AS p)
+SELECT
+    sa.*,
+    CASE
+        WHEN stockquantity <= @Threshold THEN 'Critical'
+        WHEN stockquantity <= avgstock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END AS stockstatus, ROUND((stockquantity / avgstock) * 100, 2) AS stockpercentageofaverage
+    FROM stockanalysis AS sa
+    WHERE stockquantity <= @Threshold
+    ORDER BY stockquantity NULLS FIRST;
+
+Key Transformations:
+- Schema: Products -> productmanagement_dbo.products
+- CTE and column names converted to lowercase
+- AVG/MIN/MAX OVER() functions preserved (PostgreSQL compatible)
+- Added NULLS FIRST to ORDER BY
+- Parameter @Threshold preserved
+
+================================================================================
+SUMMARY STATISTICS
+================================================================================
+Total Statements: 7
+DMS Success (Complete): 4 (Statements 1, 2, 6, 7)
+DMS Success (Partial - Components): 2 (Statements 4, 5 - individual DML statements)
+DMS Failures: 1 (Statement 3 - complex transaction block)
+Manual Conversions Required: 3 (Statements 3, 4, 5 - transaction assembly)
+
+Schema Transformations (Consistent across all statements):
+  dbo.Products -> productmanagement_dbo.products
+  dbo.ProductHistory -> productmanagement_dbo.producthistory
+  dbo.ProductStats -> productmanagement_dbo.productstats
+
+T-SQL to PostgreSQL Mappings Applied:
+  GETDATE() -> clock_timestamp()
+  SCOPE_IDENTITY() -> RETURNING clause
+  BEGIN TRANSACTION -> BEGIN
+  COMMIT -> COMMIT
+  DECLARE @var -> DECLARE var
+  SET @var = value -> var := value or INTO clause
+  All column/table names -> lowercase
+
+PostgreSQL Enhancements by DMS:
+  - NULLS FIRST clauses in ORDER BY
+  - Explicit LEFT OUTER JOIN
+  - PostgreSQL-compatible window function syntax
+
+Limitations Encountered:
+  - DMS cannot process complex multi-statement transaction blocks
+  - Workaround: Convert individual DML statements, manually assemble transactions
+  - This approach maintains DMS schema transformations while enabling transaction logic
+
+================================================================================
+END OF CONVERSION LOG
+================================================================================

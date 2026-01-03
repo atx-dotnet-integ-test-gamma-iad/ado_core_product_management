@@ -1,0 +1,157 @@
+======================================================================================
+CONNECTION STRING MIGRATION - SQL Server to PostgreSQL
+======================================================================================
+Generated: 2026-01-03
+Purpose: Documents connection string transformations for PostgreSQL migration
+======================================================================================
+
+TRANSFORMATION SUMMARY:
+--------------------------------------------------------------------------------------
+FROM: SQL Server Connection String Format
+TO:   PostgreSQL (Npgsql) Connection String Format
+--------------------------------------------------------------------------------------
+
+DEVCONNECTION TRANSFORMATION:
+--------------------------------------------------------------------------------------
+Original (SQL Server):
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+Converted (PostgreSQL):
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true
+
+Parameter Transformations:
+- Server=localhost            -> Host=localhost              (Parameter name change)
+- (implicit port 1433)        -> Port=5432                   (PostgreSQL default port)
+- Database=ProductManagement  -> Database=ProductManagement  (Preserved)
+- Trusted_Connection=True     -> Username=postgres;Password=postgres  (Windows auth -> explicit credentials)
+- MultipleActiveResultSets=true -> (REMOVED)                (SQL Server specific)
+- TrustServerCertificate=True -> (REMOVED)                  (SQL Server specific)
+- (not present)               -> Pooling=true                (PostgreSQL best practice)
+--------------------------------------------------------------------------------------
+
+PRODCONNECTION TRANSFORMATION:
+--------------------------------------------------------------------------------------
+Original (SQL Server):
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+Converted (PostgreSQL):
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true
+
+Parameter Transformations:
+- Server=localhost            -> Host=localhost              (Parameter name change)
+- (implicit port 1433)        -> Port=5432                   (PostgreSQL default port)
+- Database=ProductManagement  -> Database=ProductManagement  (Preserved)
+- Trusted_Connection=True     -> Username=postgres;Password=postgres  (Windows auth -> explicit credentials)
+- MultipleActiveResultSets=true -> (REMOVED)                (SQL Server specific)
+- TrustServerCertificate=True -> (REMOVED)                  (SQL Server specific)
+- (not present)               -> Pooling=true                (PostgreSQL best practice)
+--------------------------------------------------------------------------------------
+
+PARAMETER MAPPING REFERENCE:
+--------------------------------------------------------------------------------------
+SQL Server Parameter          PostgreSQL Parameter          Notes
+--------------------------------------------------------------------------------------
+Server                        Host                          Database server hostname/IP
+(none - default 1433)         Port                          Explicit port (5432 for PostgreSQL)
+Database                      Database                      Database name (unchanged)
+Trusted_Connection            Username + Password           Windows auth -> explicit credentials
+User ID                       Username                      Alternative parameter name
+Password                      Password                      Same parameter
+Integrated Security           Username + Password           Windows auth -> explicit credentials
+MultipleActiveResultSets      (not applicable)              SQL Server specific feature
+TrustServerCertificate        SSL Mode                      SSL/TLS configuration
+Connect Timeout               Timeout                       Connection timeout
+Application Name              Application Name              Same parameter
+Pooling                       Pooling                       Connection pooling (recommended: true)
+Min Pool Size                 Minimum Pool Size             Connection pool sizing
+Max Pool Size                 Maximum Pool Size             Connection pool sizing
+(none)                        SSL Mode                      SSL connection mode (Prefer, Require, Disable)
+(none)                        Trust Server Certificate      PostgreSQL SSL cert validation
+--------------------------------------------------------------------------------------
+
+ADDITIONAL PostgreSQL CONNECTION STRING OPTIONS:
+--------------------------------------------------------------------------------------
+Optional parameters not included in current configuration:
+
+Security:
+- SSL Mode=Prefer              (Enable SSL if available)
+- SSL Mode=Require             (Require SSL connection)
+- SSL Mode=Disable             (Disable SSL)
+- Trust Server Certificate=true (Skip cert validation - dev only)
+
+Performance:
+- Pooling=true                 (INCLUDED - Enable connection pooling)
+- Minimum Pool Size=0          (Minimum connections in pool)
+- Maximum Pool Size=100        (Maximum connections in pool)
+- Connection Idle Lifetime=300 (Seconds before idle connection is closed)
+- Connection Pruning Interval=10 (Seconds between connection pool cleanup)
+
+Timeouts:
+- Timeout=30                   (Connection timeout in seconds)
+- Command Timeout=30           (Command execution timeout)
+- Internal Command Timeout=-1  (Internal operations timeout)
+
+Other:
+- SearchPath=schema1,schema2   (PostgreSQL schema search path)
+- Client Encoding=UTF8         (Character encoding)
+- Application Name=MyApp       (Application identifier)
+- Include Error Detail=true    (Detailed error messages)
+--------------------------------------------------------------------------------------
+
+SECURITY NOTES:
+--------------------------------------------------------------------------------------
+1. CREDENTIAL MANAGEMENT:
+   - Current configuration uses placeholder credentials (postgres/postgres)
+   - PRODUCTION: Replace with actual secure credentials
+   - RECOMMENDATION: Use environment variables or secure configuration providers
+   - Example: Username=${PG_USER};Password=${PG_PASSWORD}
+
+2. SSL/TLS CONFIGURATION:
+   - Current configuration does not specify SSL Mode
+   - PRODUCTION: Add "SSL Mode=Require" for encrypted connections
+   - PostgreSQL server must be configured for SSL
+   - Certificate validation recommended for production
+
+3. CONNECTION STRING PROTECTION:
+   - Store sensitive connection strings in secure configuration
+   - Use User Secrets for development (dotnet user-secrets)
+   - Use Azure Key Vault, AWS Secrets Manager, or similar for production
+   - Never commit actual production credentials to source control
+--------------------------------------------------------------------------------------
+
+VALIDATION CHECKLIST:
+--------------------------------------------------------------------------------------
+✓ Server -> Host parameter transformed
+✓ Port explicitly specified (5432)
+✓ Database name preserved (ProductManagement)
+✓ Authentication changed from Windows to username/password
+✓ SQL Server specific parameters removed (MultipleActiveResultSets, TrustServerCertificate)
+✓ Pooling enabled for performance
+✓ Both DevConnection and ProdConnection updated consistently
+✓ Environment setting preserved
+--------------------------------------------------------------------------------------
+
+TESTING RECOMMENDATIONS:
+--------------------------------------------------------------------------------------
+1. Verify PostgreSQL server is running on localhost:5432
+2. Confirm ProductManagement database exists in PostgreSQL
+3. Ensure postgres user has appropriate permissions
+4. Test connection with both DevConnection and ProdConnection
+5. Verify connection pooling works correctly under load
+6. Monitor connection pool statistics
+7. Test error handling for connection failures
+8. Validate SSL configuration if enabled
+--------------------------------------------------------------------------------------
+
+DEPLOYMENT NOTES:
+--------------------------------------------------------------------------------------
+1. Update connection strings for each environment (Dev, Test, Prod)
+2. Configure PostgreSQL server hostnames/IPs per environment
+3. Use different credentials for each environment
+4. Enable SSL Mode=Require for production
+5. Adjust pool sizes based on application load
+6. Configure appropriate timeouts for application needs
+7. Update documentation with environment-specific settings
+--------------------------------------------------------------------------------------
+
+======================================================================================

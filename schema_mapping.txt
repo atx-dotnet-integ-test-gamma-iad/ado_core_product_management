@@ -1,0 +1,112 @@
+======================================================================================
+SCHEMA OBJECT NAME MAPPING - SQL Server to PostgreSQL
+======================================================================================
+Generated: 2026-01-03
+Source: AWS DMS MCP Tool Conversion
+Purpose: Documents schema object name transformations for code re-integration
+======================================================================================
+
+SCHEMA TRANSFORMATIONS:
+--------------------------------------------------------------------------------------
+SQL Server Schema      PostgreSQL Schema           Transformation Rule
+--------------------------------------------------------------------------------------
+dbo                    productmanagement_dbo       Database name prefix added
+--------------------------------------------------------------------------------------
+
+TABLE TRANSFORMATIONS:
+--------------------------------------------------------------------------------------
+SQL Server Table       PostgreSQL Table            Full Qualified Name
+--------------------------------------------------------------------------------------
+Products               products                    productmanagement_dbo.products
+ProductHistory         producthistory              productmanagement_dbo.producthistory
+ProductStats           productstats                productmanagement_dbo.productstats
+--------------------------------------------------------------------------------------
+
+COLUMN NAME TRANSFORMATIONS:
+--------------------------------------------------------------------------------------
+All column names converted to lowercase per PostgreSQL convention:
+- ProductId -> productid
+- Name -> name
+- Description -> description
+- Price -> price
+- StockQuantity -> stockquantity
+- CreatedDate -> createddate
+- ModifiedDate -> modifieddate
+- CategoryId -> categoryid
+- SupplierId -> supplierid
+- And all other columns follow the same lowercase pattern
+--------------------------------------------------------------------------------------
+
+CTE NAME TRANSFORMATIONS:
+--------------------------------------------------------------------------------------
+SQL Server CTE         PostgreSQL CTE              Notes
+--------------------------------------------------------------------------------------
+ProductStats           productstats                Lowercase transformation
+ProductHistory         producthistory              Lowercase transformation (CTE, not table)
+RankedProducts         rankedproducts              Lowercase transformation
+StockAnalysis          stockanalysis               Lowercase transformation
+--------------------------------------------------------------------------------------
+
+ALIAS AND DERIVED COLUMN TRANSFORMATIONS:
+--------------------------------------------------------------------------------------
+SQL Server Name        PostgreSQL Name             Context
+--------------------------------------------------------------------------------------
+AvgPrice               avgprice                    Window function result
+TotalProducts          totalproducts               Window function result
+PriceCategory          pricecategory               CASE expression alias
+PricePercentageOfAverage  pricepercentageofaverage   Calculated column alias
+PreviousPrice          previousprice               LAG function result
+PreviousStock          previousstock               LAG function result
+PriceChangePercentage  pricechangepercentage       Calculated column alias
+PriceRank              pricerank                   RANK function result
+PricePercentile        pricepercentile             PERCENT_RANK function result
+PriceSegment           pricesegment                CASE expression alias
+AvgStock               avgstock                    AVG window function result
+MinStock               minstock                    MIN window function result
+MaxStock               maxstock                    MAX window function result
+StockStatus            stockstatus                 CASE expression alias
+StockPercentageOfAverage  stockpercentageofaverage   Calculated column alias
+--------------------------------------------------------------------------------------
+
+CRITICAL NOTES FOR CODE INTEGRATION:
+--------------------------------------------------------------------------------------
+1. Schema Qualification Required:
+   All table references MUST use fully qualified names: productmanagement_dbo.tablename
+   This is non-negotiable as DMS explicitly generated this schema prefix.
+
+2. Column Name Case Sensitivity:
+   PostgreSQL is case-sensitive for identifiers. All column references in code
+   (MapProductFromReader method) must use lowercase names to match PostgreSQL schema.
+
+3. Parameter Names Preserved:
+   Parameter markers (@Name, @ProductId, etc.) kept in mixed case as Npgsql
+   supports both styles. This minimizes code changes during migration.
+
+4. CTE Names:
+   All CTE names converted to lowercase. SQL statements updated accordingly.
+
+5. Backward Compatibility:
+   These transformations are ONE-WAY only. Original SQL Server names no longer valid
+   after migration completes. All code must reference PostgreSQL schema objects.
+
+======================================================================================
+CODE INTEGRATION CHECKLIST:
+======================================================================================
+✓ SQL statements updated with productmanagement_dbo schema prefix
+✓ All table names converted to lowercase (products, producthistory, productstats)
+✓ All column names converted to lowercase
+✓ All CTE names converted to lowercase
+✓ MapProductFromReader updated to use lowercase column references
+✓ Window function aliases updated to lowercase
+✓ CASE expression aliases updated to lowercase
+✓ Parameter names preserved (minimal code impact)
+
+======================================================================================
+VALIDATION:
+======================================================================================
+- All 7 SQL statements in ProductRepository.cs updated with new schema names
+- MapProductFromReader method updated with lowercase column references
+- Schema transformations consistent across all statements
+- DMS tool schema decisions respected 100%
+
+======================================================================================
