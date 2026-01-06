@@ -1,0 +1,251 @@
+{
+  "conversion_log_version": "1.0",
+  "conversion_timestamp": "2026-01-06T20:44:07",
+  "dms_configuration": {
+    "migration_project_arn": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "region": "us-east-1",
+    "schema_name": "dbo",
+    "database_name": "ProductManagement",
+    "source_database": "SQL Server 2019",
+    "target_database": "PostgreSQL 13"
+  },
+  "summary": {
+    "total_statements": 7,
+    "successful_conversions": 5,
+    "failed_conversions": 2,
+    "conversions_with_warnings": 2
+  },
+  "conversions": [
+    {
+      "statement_number": 1,
+      "method_name": "GetAllProductsAsync",
+      "conversion_status": "success",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model_name": "sql-conversion-1767732250",
+      "dms_request_identifier": "ff27c44c-ad79-4f67-b201-fb3d76cc67c7",
+      "dms_conversion_request_identifier": "f3d4cd37-0990-4223-bcaf-1948fcc74079",
+      "conversion_timestamp": "2026-01-06T20:46:01.246979",
+      "poll_attempts": {
+        "create_metadata_model": 4,
+        "convert_metadata_model": 8
+      },
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductStats": "productstats (CTE - lowercased)"
+      },
+      "syntax_changes": [
+        "Column names lowercased",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "warnings": [],
+      "manual_adjustments_needed": false
+    },
+    {
+      "statement_number": 2,
+      "method_name": "GetProductByIdAsync",
+      "conversion_status": "success",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model_name": "sql-conversion-1767732380",
+      "dms_request_identifier": "095387fe-ad6c-49e6-a68c-4aa598b80234",
+      "dms_conversion_request_identifier": "c2352e54-9006-4ba1-8ce3-087cb3de65a1",
+      "conversion_timestamp": "2026-01-06T20:47:39.394370",
+      "poll_attempts": {
+        "create_metadata_model": 2,
+        "convert_metadata_model": 7
+      },
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "producthistory (CTE - lowercased)"
+      },
+      "syntax_changes": [
+        "Column names lowercased",
+        "LAG window function preserved",
+        "LEFT JOIN to LEFT OUTER JOIN",
+        "Parameter @ProductId retained"
+      ],
+      "warnings": [],
+      "manual_adjustments_needed": false
+    },
+    {
+      "statement_number": 3,
+      "method_name": "InsertProductAsync",
+      "conversion_status": "error",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+      "dms_error_timestamp": "2026-01-06T20:48:11.530353",
+      "manual_conversion_applied": true,
+      "manual_conversion_rationale": "DMS failed to convert complex transaction block with DECLARE, BEGIN TRANSACTION, SCOPE_IDENTITY(), and multiple statements. Manual conversion splits the transaction into three separate statements to be executed within application-level transaction using NpgsqlConnection.BeginTransaction().",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "productmanagement_dbo.producthistory",
+        "ProductStats": "productmanagement_dbo.productstats"
+      },
+      "syntax_changes": [
+        "Removed DECLARE @NewProductId INT",
+        "Removed BEGIN TRANSACTION/COMMIT (managed at application level)",
+        "SCOPE_IDENTITY() replaced with RETURNING productid",
+        "GETDATE() replaced with CURRENT_TIMESTAMP",
+        "Column and table names lowercased",
+        "Split into 3 separate statements"
+      ],
+      "warnings": [
+        "Transaction management must be handled at C# application level",
+        "Multiple statements must be executed in sequence within transaction",
+        "RETURNING clause value must be captured and used in subsequent statements"
+      ],
+      "manual_adjustments_needed": true
+    },
+    {
+      "statement_number": 4,
+      "method_name": "UpdateProductAsync",
+      "conversion_status": "success",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model_name": "sql-conversion-1767732505",
+      "dms_request_identifier": "5d977c94-a3d8-412c-80a7-b74fdbcb436a",
+      "dms_conversion_request_identifier": "6673af3a-6005-4808-a6d8-05027211b411",
+      "conversion_timestamp": "2026-01-06T20:49:44.875897",
+      "poll_attempts": {
+        "create_metadata_model": 2,
+        "convert_metadata_model": 7
+      },
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "productmanagement_dbo.producthistory",
+        "ProductStats": "productmanagement_dbo.productstats"
+      },
+      "syntax_changes": [
+        "Variable names: @OldPrice to var_OldPrice, @OldStock to var_OldStock",
+        "GETDATE() to clock_timestamp()",
+        "Column and table names lowercased",
+        "Transaction wrapped in BEGIN/END block with DECLARE"
+      ],
+      "warnings": [
+        "[7807 - Severity CRITICAL] PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually."
+      ],
+      "manual_adjustments_needed": true,
+      "manual_adjustment_description": "Remove DECLARE/BEGIN/END block structure. Retrieve old values in C# code before executing UPDATE, INSERT, and UPDATE statements within application-level transaction."
+    },
+    {
+      "statement_number": 5,
+      "method_name": "DeleteProductAsync",
+      "conversion_status": "success",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model_name": "sql-conversion-1767732610",
+      "dms_request_identifier": "a95670ca-51e0-4384-adf6-970449ce4f7a",
+      "dms_conversion_request_identifier": "362dbfea-aff1-404e-890e-b932b95dd54f",
+      "conversion_timestamp": "2026-01-06T20:51:29.329759",
+      "poll_attempts": {
+        "create_metadata_model": 2,
+        "convert_metadata_model": 7
+      },
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "ProductHistory": "productmanagement_dbo.producthistory",
+        "ProductStats": "productmanagement_dbo.productstats"
+      },
+      "syntax_changes": [
+        "Variable names: @OldPrice to var_OldPrice, @OldStock to var_OldStock",
+        "GETDATE() to clock_timestamp()",
+        "Column and table names lowercased",
+        "CASE expression preserved",
+        "Transaction wrapped in BEGIN/END block with DECLARE"
+      ],
+      "warnings": [
+        "[7807 - Severity CRITICAL] PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually."
+      ],
+      "manual_adjustments_needed": true,
+      "manual_adjustment_description": "Remove DECLARE/BEGIN/END block structure. Retrieve old values in C# code before executing INSERT, DELETE, and UPDATE statements within application-level transaction."
+    },
+    {
+      "statement_number": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "conversion_status": "success",
+      "conversion_method": "DMS_TOOL",
+      "dms_metadata_model_name": "sql-conversion-1767732708",
+      "dms_request_identifier": "3e035b11-51bb-4b73-b336-734d2536d4df",
+      "dms_conversion_request_identifier": "dcbdf1ed-bb19-4935-aab3-b2fc19272e39",
+      "conversion_timestamp": "2026-01-06T20:53:08.316746",
+      "poll_attempts": {
+        "create_metadata_model": 2,
+        "convert_metadata_model": 7
+      },
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "RankedProducts": "rankedproducts (CTE - lowercased)"
+      },
+      "syntax_changes": [
+        "Column names lowercased",
+        "RANK() and PERCENT_RANK() window functions preserved",
+        "Parameters @MinPrice and @MaxPrice retained",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "warnings": [],
+      "manual_adjustments_needed": false
+    },
+    {
+      "statement_number": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "conversion_status": "error",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_error": "Metadata model conversion failed: {'error': 'Unknown metadata model conversion status: RECEIVED'}",
+      "dms_error_timestamp": "2026-01-06T20:53:57.204943",
+      "dms_request_identifier": "acf75b89-5669-4112-97fe-e9c7b9c4a60d",
+      "dms_metadata_model_name": "sql-conversion-1767732822",
+      "manual_conversion_applied": true,
+      "manual_conversion_rationale": "DMS service experienced timeout or status polling issue. Statement is straightforward CTE with window functions, which are PostgreSQL compatible. Manual conversion follows same patterns as successful DMS conversions for similar statements.",
+      "schema_changes": {
+        "Products": "productmanagement_dbo.products",
+        "StockAnalysis": "stockanalysis (CTE - lowercased)"
+      },
+      "syntax_changes": [
+        "Column names lowercased",
+        "CTE name lowercased",
+        "AVG(), MIN(), MAX() window functions preserved (PostgreSQL compatible)",
+        "CASE expression preserved",
+        "ROUND function preserved",
+        "Parameter @Threshold retained",
+        "Added NULLS FIRST to ORDER BY"
+      ],
+      "warnings": [],
+      "manual_adjustments_needed": false
+    }
+  ],
+  "critical_schema_transformations": {
+    "note": "ALL table references have been transformed by DMS. These MUST be respected in code integration.",
+    "transformations": {
+      "dbo.Products": "productmanagement_dbo.products",
+      "Products": "productmanagement_dbo.products",
+      "dbo.ProductHistory": "productmanagement_dbo.producthistory",
+      "ProductHistory": "productmanagement_dbo.producthistory",
+      "dbo.ProductStats": "productmanagement_dbo.productstats",
+      "ProductStats": "productmanagement_dbo.productstats"
+    }
+  },
+  "application_level_changes_required": {
+    "transaction_management": {
+      "affected_methods": [
+        "InsertProductAsync",
+        "UpdateProductAsync",
+        "DeleteProductAsync"
+      ],
+      "description": "These methods contain complex transaction blocks that cannot be directly executed as single SQL statements in PostgreSQL. Transaction management must be moved to C# application level using NpgsqlConnection.BeginTransaction(), NpgsqlTransaction.Commit(), and NpgsqlTransaction.Rollback().",
+      "implementation_approach": "Split each transaction into multiple SQL statements. Execute them sequentially within a try-catch block with application-level transaction control."
+    },
+    "variable_handling": {
+      "affected_methods": [
+        "InsertProductAsync",
+        "UpdateProductAsync",
+        "DeleteProductAsync"
+      ],
+      "description": "SQL Server variables (@NewProductId, @OldPrice, @OldStock) must be handled in C# code. Retrieve values before executing subsequent statements.",
+      "implementation_approach": "Use ExecuteScalarAsync for retrieving single values, store in C# variables, then pass as parameters to subsequent statements."
+    },
+    "returning_clause": {
+      "affected_methods": [
+        "InsertProductAsync"
+      ],
+      "description": "SCOPE_IDENTITY() replaced with RETURNING clause. The returned value must be captured in C# code.",
+      "implementation_approach": "Use ExecuteScalarAsync or ExecuteReaderAsync to capture the RETURNING clause value."
+    }
+  }
+}

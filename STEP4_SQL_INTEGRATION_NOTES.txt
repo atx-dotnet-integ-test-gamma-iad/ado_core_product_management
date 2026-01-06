@@ -1,0 +1,1 @@
+Step 4: SQL statements converted and documented in converted_statements.sql - application-level transaction management implemented for Insert/Update/Delete operations respecting schema changes from DMS
