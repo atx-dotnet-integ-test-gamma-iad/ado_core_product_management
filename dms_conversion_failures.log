@@ -1,0 +1,61 @@
+-- =====================================================================
+-- DMS MCP Tool Conversion Failures Log
+-- Project: ADO.NET Core Product Management - SQL Server to PostgreSQL Migration
+-- Date: 2026-01-15
+-- =====================================================================
+
+-- =====================================================================
+-- STATEMENT 3: InsertProductAsync - DMS CONVERSION FAILURE
+-- =====================================================================
+-- DMS Tool Status: ERROR
+-- DMS Error Message: "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+-- Error Timestamp: 2026-01-15T21:50:15.645834
+-- 
+-- Reason for Failure:
+-- The DMS tool cannot process complex transaction blocks with DECLARE/SET/SCOPE_IDENTITY
+-- and SELECT statements that return scalar values within a transaction context.
+-- This is a known limitation when converting procedural T-SQL blocks.
+--
+-- Original SQL Server Statement:
+-- ----------------------------------------------------------------------
+-- DECLARE @NewProductId INT;
+-- 
+-- BEGIN TRANSACTION;
+--     INSERT INTO Products (Name, Description, Price, StockQuantity)
+--     VALUES (@Name, @Description, @Price, @StockQuantity);
+--     
+--     SET @NewProductId = SCOPE_IDENTITY();
+--     
+--     INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+--     VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+--     
+--     UPDATE ProductStats
+--     SET 
+--         TotalProducts = TotalProducts + 1,
+--         AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+--         LastUpdated = GETDATE()
+--     WHERE StatId = 1;
+-- COMMIT;
+-- 
+-- SELECT @NewProductId;
+-- ----------------------------------------------------------------------
+--
+-- Manual Conversion Applied:
+-- This conversion uses PostgreSQL's RETURNING clause to capture the inserted ID,
+-- removes the procedural DECLARE/SET pattern, and converts GETDATE() to CURRENT_TIMESTAMP.
+-- Transaction management will be handled at the ADO.NET connection level in C# code.
+-- The RETURNING clause will be used with ExecuteScalarAsync to get the new product ID.
+--
+-- Conversion Notes:
+-- 1. SCOPE_IDENTITY() replaced with RETURNING ProductId clause on INSERT
+-- 2. GETDATE() replaced with CURRENT_TIMESTAMP
+-- 3. BEGIN TRANSACTION/COMMIT removed (handled at connection level)
+-- 4. DECLARE @NewProductId and SET removed (RETURNING handles this)
+-- 5. Final SELECT @NewProductId removed (RETURNING provides the value)
+-- 6. Parameters remain with @ syntax (will be converted to $1, $2 etc. in code)
+-- 7. Schema qualified as productmanagement_dbo.products (per DMS schema conversion)
+--
+-- PostgreSQL Converted Statement (Manual After DMS Failure):
+-- See converted_statements.sql for the actual converted statement
+--
+-- =====================================================================
