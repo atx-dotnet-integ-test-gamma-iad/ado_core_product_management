@@ -1,0 +1,317 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+================================================================================
+Project: AdoCore - SQL Server to PostgreSQL Migration
+Step: 2 - Extract and Convert SQL Statements Using DMS MCP Tool
+Generated: 2026-01-15
+================================================================================
+
+CONVERSION SUMMARY:
+- Total SQL Statements Identified: 7
+- Statements Passed to DMS MCP Tool: 7 (100%)
+- DMS Successful Conversions: 6
+- DMS Failed Conversions: 1
+- Manual Conversions After DMS Failure: 1
+
+================================================================================
+STATEMENT #1: GetAllProductsAsync (Line 38-66)
+================================================================================
+DMS Tool Invocation: SUCCESS
+Conversion Timestamp: 2026-01-15T12:24:35.980677
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+Database: ProductManagement
+Server: 172.31.83.165
+
+DMS Workflow Steps:
+1. Create Metadata Model: COMPLETED (2 poll attempts)
+   - Request ID: a4f5663f-42ca-4bb4-819f-8b9a5e77793a
+   - Model Name: sql-conversion-1768479878
+   
+2. Convert Metadata Model: COMPLETED (8 poll attempts)
+   - Conversion Request ID: 51331bb5-647f-44b8-b998-794d2f31044f
+   
+3. Extract Converted SQL: COMPLETED
+   - Converted SQL Count: 1
+
+DMS Schema Transformations Applied:
+- Table: Products → productmanagement_dbo.products
+- All column names lowercased
+- CTE name lowercased: ProductStats → productstats
+- Added "NULLS FIRST" to ORDER BY clauses
+
+DMS Output Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+================================================================================
+STATEMENT #2: GetProductByIdAsync (Line 81-104)
+================================================================================
+DMS Tool Invocation: SUCCESS
+Conversion Timestamp: 2026-01-15T12:26:27.401653
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+
+DMS Workflow Steps:
+1. Create Metadata Model: COMPLETED (2 poll attempts)
+   - Request ID: 834471f7-c6af-454f-a5c9-c34e31e74893
+   - Model Name: sql-conversion-1768479989
+   
+2. Convert Metadata Model: COMPLETED (8 poll attempts)
+   - Conversion Request ID: 3494f623-8a24-4ace-a1fb-a43fef3e7300
+   
+3. Extract Converted SQL: COMPLETED
+   - Converted SQL Count: 1
+
+DMS Schema Transformations Applied:
+- Table: Products → productmanagement_dbo.products
+- All column names lowercased
+- CTE name lowercased: ProductHistory → producthistory
+- LAG function lowercased: LAG() → lag()
+- LEFT JOIN → LEFT OUTER JOIN
+- Parameter @ProductId retained
+
+DMS Output Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+================================================================================
+STATEMENT #3: InsertProductAsync (Line 119-142)
+================================================================================
+DMS Tool Invocation: FAILED
+Conversion Timestamp: 2026-01-15T12:28:18.510324
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+
+DMS Workflow Steps:
+1. Create Metadata Model: STARTED
+   - Timestamp: 2026-01-15T12:28:20.717831
+
+DMS Error:
+Status: error
+Error Message: "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+Error Timestamp: 2026-01-15T12:28:33.696235
+
+Root Cause Analysis:
+- DMS cannot process multi-statement procedural T-SQL blocks with:
+  * DECLARE variable statements
+  * BEGIN TRANSACTION/COMMIT blocks with procedural logic
+  * SCOPE_IDENTITY() function call
+  * Multiple DML operations in single batch
+  
+Manual Conversion Applied:
+- Converted SCOPE_IDENTITY() to PostgreSQL RETURNING clause
+- Separated multi-statement transaction into individual statements
+- Transaction management to be handled in C# code layer
+- GETDATE() → CURRENT_TIMESTAMP
+- Table names updated to match DMS schema: productmanagement_dbo.products, 
+  productmanagement_dbo.producthistory, productmanagement_dbo.productstats
+- Column names lowercased to match DMS convention
+
+DMS Output Status: FAILED
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Note: Statement was attempted through DMS first as required
+
+================================================================================
+STATEMENT #4: UpdateProductAsync (Line 157-188)
+================================================================================
+DMS Tool Invocation: SUCCESS WITH WARNING
+Conversion Timestamp: 2026-01-15T12:28:44.729853
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+
+DMS Workflow Steps:
+1. Create Metadata Model: COMPLETED (2 poll attempts)
+   - Request ID: f3dd59a9-29c6-4045-be48-7e1ca9c9bafc
+   - Model Name: sql-conversion-1768480126
+   
+2. Convert Metadata Model: COMPLETED (8 poll attempts)
+   - Conversion Request ID: 754fc0a1-3378-4397-abcc-b71c6faf21bf
+   
+3. Extract Converted SQL: COMPLETED
+   - Converted SQL Count: 1
+
+DMS Warning/Critical Message:
+"[7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction 
+management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your 
+source code manually.]"
+
+DMS Schema Transformations Applied:
+- Tables: Products → productmanagement_dbo.products
+         ProductHistory → productmanagement_dbo.producthistory
+         ProductStats → productmanagement_dbo.productstats
+- All column names lowercased
+- DECLARE @OldPrice → DECLARE var_OldPrice (PostgreSQL variable naming)
+- DECLARE @OldStock → DECLARE var_OldStock
+- GETDATE() → clock_timestamp()
+- Transaction keywords converted to DO block syntax
+
+Note: DMS converted the statement but recommends handling transactions in 
+application code rather than embedded in SQL. For ADO.NET, we will use 
+NpgsqlConnection.BeginTransactionAsync() in C# code.
+
+DMS Output Status: SUCCESS (with manual transaction handling required)
+Conversion Method: DMS_TOOL
+
+================================================================================
+STATEMENT #5: DeleteProductAsync (Line 203-234)
+================================================================================
+DMS Tool Invocation: SUCCESS WITH WARNING
+Conversion Timestamp: 2026-01-15T12:30:35.706027
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+
+DMS Workflow Steps:
+1. Create Metadata Model: COMPLETED (2 poll attempts)
+   - Request ID: c26b8592-fad6-43be-b94d-74cf586fa9ea
+   - Model Name: sql-conversion-1768480237
+   
+2. Convert Metadata Model: COMPLETED (8 poll attempts)
+   - Conversion Request ID: f6768c82-4152-4182-9665-1ab5bc357112
+   
+3. Extract Converted SQL: COMPLETED
+   - Converted SQL Count: 1
+
+DMS Warning/Critical Message:
+"[7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction 
+management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your 
+source code manually.]"
+
+DMS Schema Transformations Applied:
+- Tables: Products → productmanagement_dbo.products
+         ProductHistory → productmanagement_dbo.producthistory
+         ProductStats → productmanagement_dbo.productstats
+- All column names lowercased
+- DECLARE variables converted to PostgreSQL syntax
+- GETDATE() → clock_timestamp()
+- CASE expression preserved (PostgreSQL compatible)
+
+DMS Output Status: SUCCESS (with manual transaction handling required)
+Conversion Method: DMS_TOOL
+
+================================================================================
+STATEMENT #6: GetProductsByPriceRangeAsync (Line 249-270)
+================================================================================
+DMS Tool Invocation: SUCCESS
+Conversion Timestamp: 2026-01-15T12:32:25.892076
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+
+DMS Workflow Steps:
+1. Create Metadata Model: COMPLETED (2 poll attempts)
+   - Request ID: 4eb65cbb-12eb-41b1-bfc2-ef42ed1a445d
+   - Model Name: sql-conversion-1768480348
+   
+2. Convert Metadata Model: COMPLETED (8 poll attempts)
+   - Conversion Request ID: a6214ed0-ee8d-49e7-bc8a-265959b3cc05
+   
+3. Extract Converted SQL: COMPLETED
+   - Converted SQL Count: 1
+
+DMS Schema Transformations Applied:
+- Table: Products → productmanagement_dbo.products
+- All column names lowercased
+- CTE name lowercased: RankedProducts → rankedproducts
+- Window functions preserved: RANK(), percent_rank()
+- Added "NULLS FIRST" to ORDER BY
+- Parameters @MinPrice and @MaxPrice retained
+
+DMS Output Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+================================================================================
+STATEMENT #7: GetLowStockProductsAsync (Line 285-309)
+================================================================================
+DMS Tool Invocation: SUCCESS
+Conversion Timestamp: 2026-01-15T12:34:16.244848
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema Name Provided: public
+
+DMS Workflow Steps:
+1. Create Metadata Model: COMPLETED (2 poll attempts)
+   - Request ID: 7d4999c7-3223-445f-8622-f9152d0ad62c
+   - Model Name: sql-conversion-1768480458
+   
+2. Convert Metadata Model: COMPLETED (8 poll attempts)
+   - Conversion Request ID: 450f2b64-07f7-4a4f-b5da-5df578ae8df3
+   
+3. Extract Converted SQL: COMPLETED
+   - Converted SQL Count: 1
+
+DMS Schema Transformations Applied:
+- Table: Products → productmanagement_dbo.products
+- All column names lowercased
+- CTE name lowercased: StockAnalysis → stockanalysis
+- Window functions preserved: AVG(), MIN(), MAX() with OVER()
+- Added "NULLS FIRST" to ORDER BY
+- Parameter @Threshold retained
+- CASE expression preserved
+
+DMS Output Status: SUCCESS
+Conversion Method: DMS_TOOL
+
+================================================================================
+KEY DMS CONVERSION PATTERNS IDENTIFIED
+================================================================================
+
+1. Schema Naming Convention:
+   - All table names: [database]_[schema].[table]
+   - Example: Products → productmanagement_dbo.products
+
+2. Case Conversion:
+   - All identifiers converted to lowercase (tables, columns, CTEs, aliases)
+   - Function names lowercased (LAG, RANK, percent_rank, etc.)
+   
+3. Null Handling:
+   - "NULLS FIRST" automatically added to ORDER BY clauses
+
+4. Join Syntax:
+   - LEFT JOIN → LEFT OUTER JOIN (explicit OUTER keyword)
+
+5. Date/Time Functions:
+   - GETDATE() → clock_timestamp() (by DMS)
+   - Manual adjustment to CURRENT_TIMESTAMP for consistency
+
+6. Transaction Management:
+   - DMS converts but warns that transactions should be managed in application code
+   - For ADO.NET: Use NpgsqlConnection.BeginTransactionAsync()
+
+7. Window Functions:
+   - Directly compatible, minimal changes
+   - Function names lowercased
+
+8. Common Table Expressions (CTEs):
+   - Directly compatible
+   - CTE names lowercased
+
+9. Parameter Syntax:
+   - @Parameter syntax retained (Npgsql supports this)
+
+10. Variable Declarations:
+    - DECLARE @Variable → DECLARE var_Variable (when in procedural blocks)
+    - For simple queries, variables handled in application code
+
+================================================================================
+COMPLIANCE VERIFICATION
+================================================================================
+
+✓ CRITICAL REQUIREMENT MET: All 7 SQL statements passed through DMS MCP tool
+✓ No statements skipped or converted without DMS attempt
+✓ DMS failure (Statement #3) properly documented with:
+  - Original statement
+  - DMS error output
+  - Manual conversion after DMS attempt
+✓ DMS schema transformations documented and will be applied in code
+✓ All DMS tool outputs captured and cataloged
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Validate all converted statement pairs using SQL Equivalency MCP tool (Step 3)
+2. Re-integrate converted SQL statements into ProductRepository.cs (Step 4)
+3. Apply DMS schema name changes when re-integrating (productmanagement_dbo.*)
+4. Update ADO.NET code to use Npgsql classes (Step 6)
+5. Handle transaction management in C# code layer
+
+================================================================================
+END OF DMS CONVERSION LOG
+================================================================================

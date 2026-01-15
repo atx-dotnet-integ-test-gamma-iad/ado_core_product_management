@@ -1,0 +1,257 @@
+================================================================================
+MIGRATION CHECKLIST FOR MANUAL TESTING
+================================================================================
+Project: AdoCore - SQL Server to PostgreSQL Migration
+Purpose: Verify PostgreSQL database operations after code migration
+Date: 2026-01-15
+
+PREREQUISITES:
+□ PostgreSQL database created with name: ProductManagement
+□ Schema created: productmanagement_dbo
+□ Tables created: products, producthistory, productstats
+□ Test data loaded matching SQL Server test dataset
+□ AdoCore application updated with Npgsql package
+□ Connection strings configured for PostgreSQL
+□ Application compiles without errors
+
+================================================================================
+1. DATABASE CONNECTION TEST
+================================================================================
+□ Application connects to PostgreSQL successfully
+□ Connection string parameters validated
+□ Authentication works (Username/Password)
+□ Connection pooling enabled
+□ No connection timeout errors
+□ Proper disposal of connections
+
+Test Command: Run application, verify "Connected to database" message
+Expected: Successful connection without errors
+
+================================================================================
+2. GetAllProductsAsync QUERY EXECUTION
+================================================================================
+□ Method executes without errors
+□ CTE (productstats) evaluates correctly
+□ Window functions calculate correct values:
+   - avgprice matches manual calculation
+   - totalproducts count is accurate
+□ CASE expression for pricecategory works
+□ Price percentage calculation is accurate
+□ INNER JOIN produces expected rows
+□ ORDER BY with NULLS FIRST sorts correctly
+□ Column name mapping works (productid, name, etc.)
+
+Test Data: Products with various prices
+Expected Result: List of products with price categories
+Compare: Result set from SQL Server vs PostgreSQL
+
+================================================================================
+3. GetProductByIdAsync QUERY EXECUTION
+================================================================================
+□ Method executes with valid ProductId
+□ CTE (producthistory) with LAG function works
+□ LAG function returns correct previous values
+□ LEFT OUTER JOIN behavior matches expectations
+□ Price change percentage calculates correctly
+□ NULL handling for previousprice works
+□ Returns null for non-existent ProductId
+
+Test Data: ProductId that exists, ProductId with history, non-existent ProductId
+Expected Result: Product details with history (if available)
+
+================================================================================
+4. InsertProductAsync WITH RETURNING CLAUSE
+================================================================================
+□ Method executes without errors
+□ RETURNING productid returns new ID
+□ New product inserted into products table
+□ createddate populated with CURRENT_TIMESTAMP
+□ Product history record created
+□ Product statistics updated
+□ Transaction commits successfully
+□ Transaction rolls back on error
+□ Returned ProductId can be used for subsequent queries
+
+Test Data: New product with all fields, product with NULL description
+Expected Result: New product ID returned, all tables updated
+Verify: Query products table for new record, check producthistory and productstats
+
+================================================================================
+5. UpdateProductAsync TRANSACTION
+================================================================================
+□ Method executes without errors
+□ Old values retrieved correctly before update
+□ Product record updated with new values
+□ modifieddate set to CURRENT_TIMESTAMP
+□ Product history record created with old/new values
+□ Product statistics averageprice updated correctly
+□ Transaction commits all 3 statements atomically
+□ Transaction rolls back completely on any error
+□ Concurrent update handling
+
+Test Data: Existing product with price/stock changes
+Expected Result: Product updated, history logged, stats recalculated
+Verify: Before/after snapshots of all 3 tables
+
+================================================================================
+6. DeleteProductAsync TRANSACTION
+================================================================================
+□ Method executes without errors
+□ Old values retrieved before deletion
+□ Product history record created before delete
+□ Product deleted from products table
+□ Product statistics updated (totalproducts decremented)
+□ CASE expression in averageprice update works
+□ Division by zero protection works (ELSE 0)
+□ Transaction commits all 4 statements atomically
+□ Transaction rolls back completely on any error
+
+Test Data: Product to delete, verify it's in history after
+Expected Result: Product removed, history preserved, stats updated
+Verify: Product not in products table, record in producthistory
+
+================================================================================
+7. GetProductsByPriceRangeAsync WITH WINDOW FUNCTIONS
+================================================================================
+□ Method executes with price range
+□ CTE (rankedproducts) evaluates correctly
+□ RANK() function produces correct ranking
+□ percent_rank() function calculates percentiles
+□ BETWEEN filter works correctly
+□ CASE expression for pricesegment works
+□ Percentile thresholds (0.25, 0.75) correct
+□ ORDER BY pricerank with NULLS FIRST works
+□ Empty range returns empty list
+
+Test Data: Various price ranges, range with no products
+Expected Result: Products ranked and segmented by price
+Compare: Rankings and percentiles against manual calculation
+
+================================================================================
+8. GetLowStockProductsAsync WITH AGGREGATES
+================================================================================
+□ Method executes with threshold
+□ CTE (stockanalysis) evaluates correctly
+□ Multiple window functions work:
+   - avgstock calculation accurate
+   - minstock calculation accurate
+   - maxstock calculation accurate
+□ CASE expression for stockstatus works
+□ Stock percentage calculation accurate
+□ WHERE stockquantity <= threshold filters correctly
+□ ORDER BY stockquantity with NULLS FIRST works
+
+Test Data: Various threshold values, products at/below threshold
+Expected Result: Low stock products with analysis
+Compare: Aggregates against manual calculation
+
+================================================================================
+9. TRANSACTION ROLLBACK BEHAVIOR
+================================================================================
+□ InsertProductAsync rolls back on history insert failure
+□ InsertProductAsync rolls back on stats update failure
+□ UpdateProductAsync rolls back on any statement failure
+□ DeleteProductAsync rolls back on any statement failure
+□ Database state unchanged after rollback
+□ Exception propagated to caller
+□ Connection remains valid after rollback
+
+Test Approach: Force errors in different parts of transactions
+Expected Result: Complete rollback, no partial updates
+
+================================================================================
+10. PARAMETER BINDING VERIFICATION
+================================================================================
+□ @ProductId parameter works
+□ @Name parameter works
+□ @Description parameter (nullable) works
+□ @Price parameter works
+□ @StockQuantity parameter works
+□ @MinPrice and @MaxPrice parameters work
+□ @Threshold parameter works
+□ NULL parameter values handled correctly
+□ Parameter type conversion automatic
+
+Test Data: Various parameter combinations including NULLs
+Expected Result: No parameter binding errors
+
+================================================================================
+11. COLUMN NAME MAPPING
+================================================================================
+□ productid (lowercase) maps to ProductId property
+□ name (lowercase) maps to Name property
+□ description (lowercase) maps to Description property
+□ price (lowercase) maps to Price property
+□ stockquantity (lowercase) maps to StockQuantity property
+□ createddate (lowercase) maps to CreatedDate property
+□ modifieddate (lowercase) maps to ModifiedDate property
+□ DBNull.Value handling for nullable fields works
+
+Test Data: Products with NULL fields
+Expected Result: Properties populated correctly, NULLs preserved
+
+================================================================================
+12. NULLS FIRST SORTING BEHAVIOR
+================================================================================
+□ ORDER BY with NULLS FIRST handles NULL columns
+□ NULL values appear first in sort order
+□ Non-NULL values sorted correctly after NULLs
+
+Test Data: Products with NULL modifieddate
+Expected Result: NULLs sorted first as expected in PostgreSQL
+
+================================================================================
+13. CONNECTION POOLING
+================================================================================
+□ Multiple sequential operations reuse connections
+□ Connection pool size configured correctly
+□ No connection leaks
+□ Connections returned to pool after use
+□ Pool statistics monitored
+
+Test Approach: Execute operations repeatedly, monitor connections
+Expected Result: Efficient connection reuse
+
+================================================================================
+14. ERROR HANDLING
+================================================================================
+□ NpgsqlException caught correctly
+□ Connection errors handled gracefully
+□ SQL syntax errors reported clearly
+□ Constraint violations handled
+□ Timeout errors handled
+
+Test Approach: Force various error conditions
+Expected Result: Appropriate exceptions with clear messages
+
+================================================================================
+15. PERFORMANCE COMPARISON
+================================================================================
+□ GetAllProductsAsync execution time comparable
+□ GetProductByIdAsync execution time comparable
+□ Insert/Update/Delete performance acceptable
+□ Window function performance acceptable
+□ CTE performance acceptable
+□ Overall application responsiveness maintained
+
+Test Approach: Time operations, compare to SQL Server baseline
+Expected Result: Performance within acceptable range (±20%)
+
+================================================================================
+FINAL VERIFICATION
+================================================================================
+□ All 7 database methods execute successfully
+□ All result sets match SQL Server results
+□ All transactions maintain atomicity
+□ No data corruption
+□ No connection leaks
+□ Application stable under normal load
+□ Error handling robust
+□ Logging captures PostgreSQL operations
+
+SIGN-OFF:
+Tested By: _______________  Date: _______________
+Reviewed By: _______________  Date: _______________
+Approved By: _______________  Date: _______________
+
+================================================================================

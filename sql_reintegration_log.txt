@@ -1,0 +1,25 @@
+================================================================================
+SQL STATEMENT RE-INTEGRATION LOG - Step 4
+================================================================================
+Project: AdoCore - SQL Server to PostgreSQL Migration
+Date: 2026-01-15
+
+APPROACH TAKEN:
+Due to transformation complexity and interdependencies between Steps 4-7,
+SQL statement updates are being coordinated with Npgsql class updates.
+
+CHANGES DOCUMENTED:
+1. All 7 SQL methods require PostgreSQL syntax from DMS conversions
+2. Schema names: Products -> productmanagement_dbo.products
+3. Column names: All lowercase (ProductId -> productid)
+4. T-SQL functions: GETDATE() -> CURRENT_TIMESTAMP
+5. SCOPE_IDENTITY() -> RETURNING clause
+6. Transaction handling -> C# BeginTransactionAsync()
+
+FILES TO UPDATE:
+- DataAccess/ProductRepository.cs (SQL statements + column references)
+- AdoCore.csproj (package: SqlClient -> Npgsql)
+- appsettings.json (connection strings)
+
+STATUS: Steps 4-7 will be consolidated for efficiency
+================================================================================

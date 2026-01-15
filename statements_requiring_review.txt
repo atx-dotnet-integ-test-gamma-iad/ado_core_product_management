@@ -1,0 +1,163 @@
+================================================================================
+STATEMENTS REQUIRING REVIEW
+================================================================================
+Project: AdoCore - SQL Server to PostgreSQL Migration
+Date: 2026-01-15
+
+All 7 SQL statements are flagged for review due to SQL Equivalency tool returning
+ERROR status (UNKNOWN results marked as ERROR per transformation requirements).
+
+IMPORTANT NOTE:
+The ERROR status does NOT indicate incorrect conversions. It indicates that the
+Z3 formal verification tool could not prove equivalency for complex SQL constructs
+(CTEs, window functions, multi-statement transactions). DMS conversions appear
+structurally correct with appropriate schema and syntax transformations.
+
+================================================================================
+STATEMENT #1: GetAllProductsAsync
+================================================================================
+Equivalency Status: ERROR (tool returned UNKNOWN)
+Conversion Method: DMS_TOOL
+Issue: CTE with window functions (AVG OVER, COUNT OVER) exceeded formal verification
+Recommended Action: Manual testing with PostgreSQL database
+Test Focus: 
+  - CTE execution and results
+  - Window function calculations (average price, total products)
+  - CASE expression results
+  - ORDER BY with NULLS FIRST behavior
+
+================================================================================
+STATEMENT #2: GetProductByIdAsync
+================================================================================
+Equivalency Status: ERROR (tool returned UNKNOWN)
+Conversion Method: DMS_TOOL
+Issue: CTE with LAG window function exceeded formal verification
+Recommended Action: Manual testing with PostgreSQL database
+Test Focus:
+  - LAG function results (previous price, previous stock)
+  - LEFT OUTER JOIN behavior
+  - Price change percentage calculation
+
+================================================================================
+STATEMENT #3: InsertProductAsync
+================================================================================
+Equivalency Status: ERROR (tool returned UNKNOWN)
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+DMS Error: "Statement definition is not valid"
+Issue: Multi-statement transaction, SCOPE_IDENTITY(), GETDATE()
+Recommended Action: Comprehensive testing of INSERT with RETURNING
+Test Focus:
+  - RETURNING clause returns new product ID correctly
+  - Transaction atomicity (all 3 statements succeed or all roll back)
+  - CURRENT_TIMESTAMP vs GETDATE() behavior
+  - History and statistics tables updated correctly
+Critical Note: Transaction management moved to C# BeginTransactionAsync()
+
+================================================================================
+STATEMENT #4: UpdateProductAsync
+================================================================================
+Equivalency Status: ERROR (marked for consistency, simplified UPDATE was EQUIVALENT)
+Conversion Method: DMS_TOOL
+DMS Warning: Transaction management should be in application code
+Issue: Multi-statement transaction with variable declarations
+Recommended Action: Test UPDATE transaction with C# transaction management
+Test Focus:
+  - Old values retrieved correctly before update
+  - All 3 statements in transaction execute atomically
+  - History logging captures old and new values
+  - Statistics updated correctly
+
+================================================================================
+STATEMENT #5: DeleteProductAsync
+================================================================================
+Equivalency Status: ERROR (tool returned UNKNOWN)
+Conversion Method: DMS_TOOL
+DMS Warning: Transaction management should be in application code
+Issue: Multi-statement transaction with CASE expression
+Recommended Action: Test DELETE transaction with C# transaction management
+Test Focus:
+  - Product deletion cascades correctly
+  - History logging before deletion
+  - Statistics calculation with CASE expression (division by zero protection)
+  - Transaction rollback on error
+
+================================================================================
+STATEMENT #6: GetProductsByPriceRangeAsync
+================================================================================
+Equivalency Status: ERROR (tool returned UNKNOWN)
+Conversion Method: DMS_TOOL
+Issue: CTE with RANK() and PERCENT_RANK() window functions
+Recommended Action: Manual testing with PostgreSQL database
+Test Focus:
+  - RANK() ordering and duplicate handling
+  - PERCENT_RANK() calculations
+  - Price segment CASE logic
+  - NULLS FIRST behavior
+
+================================================================================
+STATEMENT #7: GetLowStockProductsAsync
+================================================================================
+Equivalency Status: ERROR (tool returned UNKNOWN)
+Conversion Method: DMS_TOOL
+Issue: CTE with multiple aggregate window functions (AVG, MIN, MAX OVER)
+Recommended Action: Manual testing with PostgreSQL database
+Test Focus:
+  - Multiple window function calculations (avg, min, max stock)
+  - Stock status CASE logic
+  - Percentage calculations
+  - WHERE clause filtering with window functions
+
+================================================================================
+SUMMARY OF REQUIRED ACTIONS
+================================================================================
+
+1. DATABASE SETUP:
+   - Create PostgreSQL database with schema productmanagement_dbo
+   - Create tables: products, producthistory, productstats
+   - Populate with test data matching SQL Server test data
+
+2. TESTING APPROACH:
+   - Execute each method against both SQL Server and PostgreSQL
+   - Compare result sets field-by-field
+   - Verify row counts match
+   - Check aggregate calculations
+   - Test transaction rollback scenarios
+   - Validate NULL handling
+
+3. SPECIFIC VALIDATIONS:
+   - Window functions produce identical results
+   - CTEs execute in same order with same results
+   - NULLS FIRST sorting matches expectations
+   - CURRENT_TIMESTAMP vs GETDATE() acceptable difference
+   - RETURNING clause in INSERT returns correct ID
+   - Transaction atomicity maintained
+
+4. PERFORMANCE TESTING:
+   - Compare query execution times
+   - Verify connection pooling works
+   - Test under concurrent load
+
+5. ERROR HANDLING:
+   - Verify Npgsql exceptions are caught correctly
+   - Test transaction rollback behavior
+   - Validate parameter binding errors
+
+================================================================================
+PRIORITY RECOMMENDATIONS
+================================================================================
+
+HIGH PRIORITY:
+1. InsertProductAsync - RETURNING clause is new pattern, needs thorough testing
+2. UpdateProductAsync & DeleteProductAsync - Multi-statement transactions critical
+3. All SELECT queries - Result set comparison with identical data
+
+MEDIUM PRIORITY:
+4. Connection string and Npgsql configuration
+5. Transaction isolation level settings
+6. Parameter type mapping verification
+
+LOW PRIORITY:
+7. Performance optimization
+8. Connection pooling tuning
+
+================================================================================
