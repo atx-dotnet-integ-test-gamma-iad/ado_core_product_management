@@ -1,0 +1,51 @@
+================================================================================
+PACKAGE DEPENDENCY CHANGES LOG
+Microsoft SQL Server to PostgreSQL Migration
+Date: 2025-01-16
+================================================================================
+
+REMOVED PACKAGE:
+- Package: Microsoft.Data.SqlClient
+- Version: 5.1.4
+- Reason: SQL Server-specific ADO.NET provider, not compatible with PostgreSQL
+
+ADDED PACKAGE:
+- Package: Npgsql
+- Version: 8.0.0
+- Reason: PostgreSQL ADO.NET provider for .NET applications
+- Rationale: 
+  * Npgsql 8.0.0 is the latest stable version
+  * Full compatibility with .NET 9.0
+  * Provides async support matching SqlClient patterns
+  * Compatible with Microsoft.Extensions.* 8.0.0 packages
+  * Maintains API similarity to SqlClient for easier migration
+
+UNCHANGED PACKAGES:
+- Microsoft.Extensions.Configuration: 8.0.0
+- Microsoft.Extensions.Configuration.Json: 8.0.0
+- Microsoft.Extensions.DependencyInjection: 8.0.0
+
+MIGRATION NOTES:
+1. Npgsql provides equivalent ADO.NET classes:
+   - NpgsqlConnection (replaces SqlConnection)
+   - NpgsqlCommand (replaces SqlCommand)
+   - NpgsqlDataReader (replaces SqlDataReader)
+   - NpgsqlParameter (replaces SqlParameter)
+   - NpgsqlTransaction (replaces SqlTransaction)
+
+2. Npgsql 8.0.0 features:
+   - Full async/await support
+   - Connection pooling
+   - Parameter binding with @ prefix (compatible with our code)
+   - PostgreSQL-specific data types support
+   - Transaction management support
+
+3. Next steps:
+   - Update using statements in code files
+   - Replace SqlClient class references with Npgsql equivalents
+   - Update connection strings in appsettings.json
+   - Test compilation and runtime behavior
+
+================================================================================
+END OF PACKAGE CHANGES LOG
+================================================================================

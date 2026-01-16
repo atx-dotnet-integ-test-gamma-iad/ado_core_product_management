@@ -1,0 +1,28 @@
+ADO.NET Class Replacements Log
+===============================
+Date: 2025-01-16
+File: ProductRepository.cs
+
+Using Statement Replacements:
+- Line 5: using Microsoft.Data.SqlClient; → using Npgsql;
+
+Class Field Replacements:
+- Line 14: SqlConnection _connection → NpgsqlConnection _connection
+
+Method Return Type Replacements:
+- Line 25: Task<SqlConnection> → Task<NpgsqlConnection>
+
+Object Instantiation Replacements:
+- Line 29: new SqlConnection → new NpgsqlConnection
+- All SqlCommand instantiations → NpgsqlCommand (7 methods)
+
+Method Parameter Replacements:
+- Line 344: SqlDataReader reader → NpgsqlDataReader reader (MapProductFromReader)
+
+Total Replacements:
+- SqlConnection → NpgsqlConnection: 3 occurrences
+- SqlCommand → NpgsqlCommand: 7 occurrences
+- SqlDataReader → NpgsqlDataReader: 1 occurrence
+- using statement: 1 occurrence
+
+All ADO.NET classes successfully migrated to Npgsql equivalents.

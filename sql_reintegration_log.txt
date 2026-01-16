@@ -1,0 +1,210 @@
+================================================================================
+SQL RE-INTEGRATION LOG
+Microsoft SQL Server to PostgreSQL Migration
+Target File: ProductRepository.cs
+Date: 2025-01-16
+================================================================================
+
+SUMMARY:
+- Total methods modified: 7
+- Schema changes applied: Products → productmanagement_dbo.products
+                          ProductHistory → productmanagement_dbo.producthistory
+                          ProductStats → productmanagement_dbo.productstats
+- Function replacements: GETDATE() → NOW()
+- CTE name changes: Converted to lowercase (productstats, producthistory, etc.)
+- ORDER BY enhancements: Added NULLS FIRST for PostgreSQL consistency
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync
+Lines Modified: 43-72
+================================================================================
+Original SQL (first 100 chars):
+WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProd...
+
+Converted SQL (first 100 chars):
+WITH productstats AS (SELECT productid, AVG(price) OVER () AS avgprice, COUNT(*) OVER () AS totalpro...
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- ProductStats (CTE) → productstats (lowercase)
+- Added NULLS FIRST to ORDER BY
+
+Key Transformations:
+- CTE name lowercase
+- Column names remain uppercase in SQL (will be handled by PostgreSQL)
+- Schema prefix added
+- NULLS FIRST added to ORDER BY clauses
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync
+Lines Modified: 87-116
+================================================================================
+Original SQL (first 100 chars):
+WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,...
+
+Converted SQL (first 100 chars):
+WITH producthistory AS (SELECT productid, LAG(price) OVER (ORDER BY modifieddate) AS previousprice,...
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- ProductHistory (CTE) → producthistory (lowercase)
+
+Key Transformations:
+- CTE name lowercase
+- Schema prefix added
+- LAG function syntax remains same (PostgreSQL compatible)
+- LEFT JOIN → LEFT OUTER JOIN (DMS conversion)
+
+================================================================================
+STATEMENT 3: InsertProductAsync
+Lines Modified: 130-161
+================================================================================
+Original SQL (first 100 chars):
+DECLARE @NewProductId INT; BEGIN TRANSACTION; INSERT INTO Products (Name, Description, Price, Stock...
+
+Converted SQL (first 100 chars):
+NOTE: SCOPE_IDENTITY() replaced with comment for manual handling
+-- TODO: Handle RETURNING clause - requires refactoring to multiple commands
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- ProductHistory → productmanagement_dbo.producthistory
+- ProductStats → productmanagement_dbo.productstats
+- GETDATE() → NOW()
+
+Key Transformations:
+- SCOPE_IDENTITY() flagged for manual handling (requires RETURNING clause)
+- GETDATE() → NOW()
+- Schema prefixes added
+- Transaction management to be handled at ADO.NET level
+
+CRITICAL NOTE:
+This statement requires additional refactoring to use RETURNING clause properly.
+The INSERT operation will need to capture the returned ID and use it in subsequent
+INSERT into ProductHistory. This will be handled in ADO.NET code level, not SQL level.
+
+================================================================================
+STATEMENT 4: UpdateProductAsync
+Lines Modified: 174-202
+================================================================================
+Original SQL (first 100 chars):
+BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = Price...
+
+Converted SQL (first 100 chars):
+BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = price...
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- ProductHistory → productmanagement_dbo.producthistory
+- ProductStats → productmanagement_dbo.productstats
+- GETDATE() → NOW()
+
+Key Transformations:
+- GETDATE() → NOW()
+- Schema prefixes added
+- Transaction block remains (will be removed when ADO.NET updated)
+
+Note: Transaction BEGIN/COMMIT will be handled at ADO.NET level in Step 6
+
+================================================================================
+STATEMENT 5: DeleteProductAsync
+Lines Modified: 215-247
+================================================================================
+Original SQL (first 100 chars):
+BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = Price...
+
+Converted SQL (first 100 chars):
+BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = price...
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- ProductHistory → productmanagement_dbo.producthistory
+- ProductStats → productmanagement_dbo.productstats
+- GETDATE() → NOW()
+
+Key Transformations:
+- GETDATE() → NOW()
+- Schema prefixes added
+- DELETE syntax remains compatible
+- CASE expression in UPDATE remains compatible
+- Transaction block remains (will be removed when ADO.NET updated)
+
+Note: Transaction BEGIN/COMMIT will be handled at ADO.NET level in Step 6
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+Lines Modified: 264-283
+================================================================================
+Original SQL (first 100 chars):
+WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVE...
+
+Converted SQL (first 100 chars):
+WITH rankedproducts AS (SELECT p.*, RANK() OVER (ORDER BY p.price) AS pricerank, PERCENT_RANK() OVE...
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- RankedProducts (CTE) → rankedproducts (lowercase)
+- Added NULLS FIRST to ORDER BY
+
+Key Transformations:
+- CTE name lowercase
+- Schema prefix added
+- RANK() and PERCENT_RANK() syntax compatible with PostgreSQL
+- NULLS FIRST added to ORDER BY
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync
+Lines Modified: 301-326
+================================================================================
+Original SQL (first 100 chars):
+WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER()...
+
+Converted SQL (first 100 chars):
+WITH stockanalysis AS (SELECT p.*, AVG(stockquantity) OVER () AS avgstock, MIN(stockquantity) OVER...
+
+Schema Object Changes:
+- Products → productmanagement_dbo.products
+- StockAnalysis (CTE) → stockanalysis (lowercase)
+- Added NULLS FIRST to ORDER BY
+
+Key Transformations:
+- CTE name lowercase
+- Schema prefix added
+- Multiple window functions (AVG, MIN, MAX) remain compatible
+- NULLS FIRST added to ORDER BY
+
+================================================================================
+ADDITIONAL CHANGES
+================================================================================
+
+MapProductFromReader Method (Lines 356-365):
+- Column name references remain uppercase (e.g., "ProductId", "Name")
+- PostgreSQL will handle case-insensitive matching
+- No changes required at this stage
+
+NOTE: Column name mappings will be verified during runtime testing. PostgreSQL
+handles both uppercase and lowercase column names in queries, but returns
+lowercase by default. The MapProductFromReader uses string indexers which should
+work with either case.
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Step 5: Update package dependencies (Microsoft.Data.SqlClient → Npgsql)
+2. Step 6: Replace ADO.NET classes (SqlConnection → NpgsqlConnection, etc.)
+3. Step 7: Update connection strings in appsettings.json
+4. Step 8: Final validation and testing
+
+TRANSACTION MANAGEMENT NOTE:
+Transaction BEGIN/COMMIT statements in SQL are currently present but will need
+to be removed or commented out when ADO.NET code is updated to use Npgsql
+transaction management (BeginTransactionAsync, CommitAsync, RollbackAsync).
+
+SCOPE_IDENTITY NOTE:
+InsertProductAsync requires special handling to use RETURNING clause. This will
+be addressed in the ADO.NET code update phase.
+
+================================================================================
+END OF RE-INTEGRATION LOG
+================================================================================

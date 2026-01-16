@@ -1,0 +1,82 @@
+================================================================================
+DMS CONVERSION FAILURES LOG
+Microsoft SQL Server to PostgreSQL Migration
+Generated: 2025-01-16
+================================================================================
+
+STATEMENT 3: InsertProductAsync - Multi-Statement Transaction Block
+================================================================================
+
+Original SQL Statement:
+--------------------------------------------------------------------------------
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    -- Insert the new product
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS Tool Output:
+--------------------------------------------------------------------------------
+Status: error
+Error: Metadata model creation failed: {'error': "Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}"}
+Error Timestamp: 2026-01-16T18:18:59.493349
+
+Reason for Failure:
+--------------------------------------------------------------------------------
+The DMS tool failed to process this multi-statement transaction block with 
+variable declaration (DECLARE @NewProductId INT) at the beginning. The tool 
+could not parse the statement structure due to the combination of DECLARE, 
+BEGIN TRANSACTION, and multiple DML operations.
+
+Manual Conversion Applied:
+--------------------------------------------------------------------------------
+Since the DMS tool could not convert this statement, the following manual 
+conversion will be applied based on PostgreSQL best practices:
+
+1. Replace SCOPE_IDENTITY() with RETURNING clause to capture the inserted ID
+2. Replace GETDATE() with NOW() or CURRENT_TIMESTAMP
+3. Transaction management will be handled at the ADO.NET level (BeginTransaction)
+4. Combine INSERT operations to use RETURNING for ID capture
+5. Convert to appropriate schema: productmanagement_dbo.products
+
+Manual PostgreSQL Conversion:
+-- Transaction will be managed by ADO.NET BeginTransactionAsync()
+-- Insert the new product and get the ID
+INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING productid;
+
+-- This will require multiple commands in ADO.NET:
+-- Command 1: INSERT with RETURNING to get new product ID
+-- Command 2: INSERT into ProductHistory with the returned ID
+-- Command 3: UPDATE ProductStats
+
+Rationale:
+--------------------------------------------------------------------------------
+PostgreSQL does not support SCOPE_IDENTITY(). The RETURNING clause is the 
+PostgreSQL-native way to capture inserted IDs. Transaction management should be 
+handled at the application level using NpgsqlTransaction. The statement needs 
+to be split into multiple ADO.NET commands with proper parameter passing.
+
+================================================================================
+END OF FAILURE LOG
+Total Failed Conversions: 1 out of 7 statements
+================================================================================
