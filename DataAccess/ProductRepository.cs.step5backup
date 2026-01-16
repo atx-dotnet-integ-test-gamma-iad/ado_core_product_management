@@ -1,0 +1,371 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Threading.Tasks;
+using Npgsql;
+using Microsoft.Extensions.Configuration;
+using AdoCore.Models;
+
+namespace AdoCore.DataAccess
+{
+    public class ProductRepository : IAsyncDisposable
+    {
+        private readonly string _connectionString;
+        private NpgsqlConnection _connection;
+        private readonly IConfiguration _configuration;
+
+        public ProductRepository(IConfiguration configuration)
+        {
+            _configuration = configuration;
+            var environment = _configuration["Environment"];
+            var connectionname = environment == "Production" ? "ProdConnection" : "DevConnection";
+            _connectionString = _configuration.GetConnectionString(connectionname);
+        }
+
+        private async Task<NpgsqlConnection> GetConnectionAsync()
+        {
+            if (_connection == null)
+            {
+                _connection = new NpgsqlConnection(_connectionString);
+            }
+            if (_connection.State != ConnectionState.Open)
+            {
+                await _connection.OpenAsync();
+            }
+            return _connection;
+        }
+
+        public async Task<List<Product>> GetAllProductsAsync()
+        {
+            var products = new List<Product>();
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                WITH productstats AS (
+                    SELECT 
+                        productid,
+                        AVG(price) OVER() as Avgprice,
+                        COUNT(*) OVER() as totalproducts
+                    FROM Products
+                )
+                SELECT 
+                    p.productid,
+                    p.name,
+                    p.description,
+                    p.price,
+                    p.stockquantity,
+                    p.createddate,
+                    p.modifieddate,
+                    CASE 
+                        WHEN p.price > ps.Avgprice THEN 'Above Average'
+                        WHEN p.price < ps.Avgprice THEN 'Below Average'
+                        ELSE 'Average'
+                    END as priceCategory,
+                    ROUND((p.price / ps.Avgprice) * 100, 2) as pricePercentageOfAverage
+                FROM Products p
+                INNER JOIN productstats ps ON p.productid = ps.productid
+                ORDER BY 
+                    CASE 
+                        WHEN p.price > ps.Avgprice THEN 1
+                        ELSE 2
+                    END,
+                    p.name";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                products.Add(MapProductFromReader(reader));
+            }
+
+            return products;
+        }
+
+        public async Task<Product> GetProductByIdAsync(int productId)
+        {
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                WITH producthistory AS (
+                    SELECT 
+                        productid,
+                        LAG(price) OVER (ORDER BY modifieddate) as Previousprice,
+                        LAG(stockquantity) OVER (ORDER BY modifieddate) as previousstock
+                    FROM Products
+                    WHERE productid = @productid
+                )
+                SELECT 
+                    p.productid,
+                    p.name,
+                    p.description,
+                    p.price,
+                    p.stockquantity,
+                    p.createddate,
+                    p.modifieddate,
+                    ph.Previousprice,
+                    ph.previousstock,
+                    CASE 
+                        WHEN ph.Previousprice IS NOT NULL THEN 
+                            ROUND(((p.price - ph.Previousprice) / ph.Previousprice) * 100, 2)
+                        ELSE NULL
+                    END as priceChangePercentage
+                FROM Products p
+                LEFT OUTER JOIN producthistory ph ON p.productid = ph.productid
+                WHERE p.productid = @productid";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@productid", productId);
+
+            using var reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return MapProductFromReader(reader);
+            }
+
+            return null;
+        }
+
+        public async Task<int> InsertProductAsync(Product product)
+        {
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                DECLARE @Newproductid INT;
+                
+                BEGIN TRANSACTION;
+                    -- Insert the new product
+                    INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+                    VALUES (@name, @description, @price, @stockquantity);
+                    
+                    SET @Newproductid = SCOPE_IDENTITY();
+                    
+                    -- Log the insertion
+                    INSERT INTO productmanagement_dbo.producthistory (productid, Action, Oldprice, Newprice, OldStock, NewStock, ActionDate)
+                    VALUES (@Newproductid, 'INSERT', NULL, @price, NULL, @stockquantity, CURRENT_TIMESTAMP);
+                    
+                    -- Update product statistics
+                    UPDATE productstats
+                    SET 
+                        totalproducts = totalproducts + 1,
+                        Averageprice = (Averageprice * totalproducts + @price) / (totalproducts + 1),
+                        LastUpdated = CURRENT_TIMESTAMP
+                    WHERE StatId = 1;
+                COMMIT;
+                
+                SELECT @Newproductid;";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@name", product.name);
+            command.Parameters.AddWithValue("@description", (object)product.description ?? DBNull.Value);
+            command.Parameters.AddWithValue("@price", product.price);
+            command.Parameters.AddWithValue("@stockquantity", product.stockquantity);
+
+            return Convert.ToInt32(await command.ExecuteScalarAsync());
+        }
+
+        public async Task UpdateProductAsync(Product product)
+        {
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                BEGIN TRANSACTION;
+                    -- Store old values for history
+                    DECLARE @Oldprice DECIMAL(18,2);
+                    DECLARE @OldStock INT;
+                    
+                    SELECT @Oldprice = price, @OldStock = stockquantity
+                    FROM Products
+                    WHERE productid = @productid;
+                    
+                    -- Update the product
+                    UPDATE Products
+                    SET 
+                        name = @name,
+                        description = @description,
+                        price = @price,
+                        stockquantity = @stockquantity,
+                        modifieddate = CURRENT_TIMESTAMP
+                    WHERE productid = @productid;
+                    
+                    -- Log the changes
+                    INSERT INTO productmanagement_dbo.producthistory (productid, Action, Oldprice, Newprice, OldStock, NewStock, ActionDate)
+                    VALUES (@productid, 'UPDATE', @Oldprice, @price, @OldStock, @stockquantity, CURRENT_TIMESTAMP);
+                    
+                    -- Update product statistics
+                    UPDATE productstats
+                    SET 
+                        Averageprice = (Averageprice * totalproducts - @Oldprice + @price) / totalproducts,
+                        LastUpdated = CURRENT_TIMESTAMP
+                    WHERE StatId = 1;
+                COMMIT;";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@productid", product.productid);
+            command.Parameters.AddWithValue("@name", product.name);
+            command.Parameters.AddWithValue("@description", (object)product.description ?? DBNull.Value);
+            command.Parameters.AddWithValue("@price", product.price);
+            command.Parameters.AddWithValue("@stockquantity", product.stockquantity);
+
+            await command.ExecuteNonQueryAsync();
+        }
+
+        public async Task DeleteProductAsync(int productId)
+        {
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                BEGIN TRANSACTION;
+                    -- Store product info for history
+                    DECLARE @Oldprice DECIMAL(18,2);
+                    DECLARE @OldStock INT;
+                    
+                    SELECT @Oldprice = price, @OldStock = stockquantity
+                    FROM Products
+                    WHERE productid = @productid;
+                    
+                    -- Log the deletion
+                    INSERT INTO productmanagement_dbo.producthistory (productid, Action, Oldprice, Newprice, OldStock, NewStock, ActionDate)
+                    VALUES (@productid, 'DELETE', @Oldprice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);
+                    
+                    -- Delete the product
+                    DELETE FROM Products 
+                    WHERE productid = @productid;
+                    
+                    -- Update product statistics
+                    UPDATE productstats
+                    SET 
+                        totalproducts = totalproducts - 1,
+                        Averageprice = CASE 
+                            WHEN totalproducts > 1 
+                            THEN (Averageprice * totalproducts - @Oldprice) / (totalproducts - 1)
+                            ELSE 0
+                        END,
+                        LastUpdated = CURRENT_TIMESTAMP
+                    WHERE StatId = 1;
+                COMMIT;";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@productid", productId);
+
+            await command.ExecuteNonQueryAsync();
+        }
+
+        public async Task<List<Product>> GetProductsBypriceRangeAsync(decimal minprice, decimal maxprice)
+        {
+            var products = new List<Product>();
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                WITH rankedproducts AS (
+                    SELECT 
+                        p.*,
+                        RANK() OVER (ORDER BY p.price) as priceRank,
+                        PERCENT_RANK() OVER (ORDER BY p.price) as pricePercentile
+                    FROM Products p
+                    WHERE p.price BETWEEN @Minprice AND @Maxprice
+                )
+                SELECT 
+                    rp.*,
+                    CASE 
+                        WHEN rp.pricePercentile <= 0.25 THEN 'Budget'
+                        WHEN rp.pricePercentile <= 0.75 THEN 'Mid-Range'
+                        ELSE 'Premium'
+                    END as priceSegment
+                FROM rankedproducts rp
+                ORDER BY rp.priceRank";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Minprice", minprice);
+            command.Parameters.AddWithValue("@Maxprice", maxprice);
+
+            using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                products.Add(MapProductFromReader(reader));
+            }
+
+            return products;
+        }
+
+        public async Task<List<Product>> GetLowStockProductsAsync(int threshold)
+        {
+            var products = new List<Product>();
+            var connection = await GetConnectionAsync();
+
+            const string sql = @"
+                WITH stockanalysis AS (
+                    SELECT 
+                        p.*,
+                        AVG(stockquantity) OVER() as avgstock,
+                        MIN(stockquantity) OVER() as minstock,
+                        MAX(stockquantity) OVER() as maxstock
+                    FROM Products p
+                )
+                SELECT 
+                    sa.*,
+                    CASE 
+                        WHEN stockquantity <= @Threshold THEN 'Critical'
+                        WHEN stockquantity <= avgstock * 0.5 THEN 'Low'
+                        ELSE 'Adequate'
+                    END as stockstatus,
+                    ROUND((stockquantity / avgstock) * 100, 2) as stockpercentageofaverage
+                FROM stockanalysis sa
+                WHERE stockquantity <= @Threshold
+                ORDER BY stockquantity NULLS FIRST";
+
+            using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Threshold", threshold);
+
+            using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                products.Add(MapProductFromReader(reader));
+            }
+
+            return products;
+        }
+
+        public async Task ExecuteInTransactionAsync(Func<Task> action)
+        {
+            var connection = await GetConnectionAsync();
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                await action();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        private static Product MapProductFromReader(NpgsqlDataReader reader)
+        {
+            return new Product
+            {
+                productid = Convert.ToInt32(reader["productid"]),
+                name = reader["name"].ToString(),
+                description = reader["description"] == DBNull.Value ? null : reader["description"].ToString(),
+                price = Convert.ToDecimal(reader["price"]),
+                stockquantity = Convert.ToInt32(reader["stockquantity"]),
+                createddate = Convert.ToDateTime(reader["createddate"]),
+                modifieddate = reader["modifieddate"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(reader["modifieddate"])
+            };
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_connection != null)
+            {
+                if (_connection.State == ConnectionState.Open)
+                {
+                    await _connection.CloseAsync();
+                }
+                await _connection.DisposeAsync();
+                _connection = null;
+            }
+        }
+    }
+} 
