@@ -1,0 +1,82 @@
+==========================================
+ADO.NET CLASS REPLACEMENT LOG
+SQL Server to Npgsql Migration
+==========================================
+Date: 2026-01-17
+Source File: sourceCode/DataAccess/ProductRepository.cs
+==========================================
+
+SUMMARY:
+- Total Class Replacements: 4 main classes
+- Using Statement Updated: Microsoft.Data.SqlClient → Npgsql
+- Method Signatures Updated: 2 (GetConnectionAsync, MapProductFromReader)
+- Build Status: SUCCESS (0 errors, 12 warnings)
+==========================================
+
+CLASS REPLACEMENTS:
+1. SqlConnection → NpgsqlConnection
+   - Field: private SqlConnection _connection → private NpgsqlConnection _connection
+   - Method Return: Task<SqlConnection> GetConnectionAsync() → Task<NpgsqlConnection> GetConnectionAsync()
+   - Variable: SqlConnection connection → NpgsqlConnection connection
+   - Total Replacements: 5 occurrences
+
+2. SqlCommand → NpgsqlCommand
+   - All command object instantiations: new SqlCommand(...) → new NpgsqlCommand(...)
+   - Total Replacements: 13 occurrences
+
+3. SqlDataReader → NpgsqlDataReader
+   - Method Parameter: MapProductFromReader(SqlDataReader reader) → MapProductFromReader(NpgsqlDataReader reader)
+   - Variable declarations: SqlDataReader reader → NpgsqlDataReader reader
+   - Total Replacements: 2 occurrences
+
+4. SqlTransaction → NpgsqlTransaction
+   - Transaction variables in Insert/Update/Delete methods
+   - Total Replacements: 3 occurrences
+
+USING STATEMENT UPDATE:
+BEFORE: using Microsoft.Data.SqlClient;
+AFTER: using Npgsql;
+
+METHOD SIGNATURE UPDATES:
+1. GetConnectionAsync()
+   BEFORE: private async Task<SqlConnection> GetConnectionAsync()
+   AFTER: private async Task<NpgsqlConnection> GetConnectionAsync()
+
+2. MapProductFromReader()
+   BEFORE: private static Product MapProductFromReader(SqlDataReader reader)
+   AFTER: private static Product MapProductFromReader(NpgsqlDataReader reader)
+
+PARAMETER BINDING:
+- No changes required
+- Npgsql uses same AddWithValue pattern as Microsoft.Data.SqlClient
+- Parameter syntax (@param) maintained and fully supported by Npgsql
+
+TRANSACTION HANDLING:
+- Connection.BeginTransactionAsync() - Compatible
+- Transaction.CommitAsync() - Compatible
+- Transaction.RollbackAsync() - Compatible
+- Transaction.DisposeAsync() - Compatible
+
+COMMAND EXECUTION METHODS:
+- ExecuteScalarAsync() - Compatible
+- ExecuteReaderAsync() - Compatible
+- ExecuteNonQueryAsync() - Compatible
+- All methods work identically with Npgsql
+
+COMPATIBILITY NOTES:
+✓ All ADO.NET methods remain compatible
+✓ Connection string handling unchanged
+✓ Parameter binding syntax unchanged
+✓ Transaction patterns unchanged
+✓ Error handling patterns maintained
+✓ Async/await patterns maintained
+
+VERIFICATION:
+✓ No SQL Server classes remain in codebase
+✓ All Npgsql classes properly referenced
+✓ dotnet build completed successfully
+✓ 0 compilation errors, 12 warnings (nullable reference warnings, acceptable)
+
+==========================================
+END OF ADO.NET CLASS REPLACEMENT LOG
+==========================================

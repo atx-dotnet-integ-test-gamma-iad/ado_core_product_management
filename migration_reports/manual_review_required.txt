@@ -1,0 +1,240 @@
+==========================================
+MANUAL REVIEW REQUIRED
+SQL Server to PostgreSQL Migration
+==========================================
+Date: 2026-01-17
+Total Statements Requiring Review: 7
+==========================================
+
+This document lists all SQL statements that require manual review and thorough testing before production deployment.
+
+==========================================
+CATEGORY 1: DMS CONVERSION FAILURES
+==========================================
+
+**Statement 3: InsertProductAsync**
+- **Status:** DMS tool FAILED - Manual conversion applied
+- **Original Issue:** DMS could not process complex transaction with SCOPE_IDENTITY()
+- **Manual Conversion:** Replaced SCOPE_IDENTITY() with RETURNING clause pattern
+- **Critical Testing Required:**
+  1. Verify INSERT operation returns correct product ID
+  2. Validate transaction atomicity (all 3 statements succeed or all fail)
+  3. Test rollback behavior on failure
+  4. Verify ProductHistory and ProductStats are correctly updated
+- **Risk Level:** HIGH
+- **Recommendation:** Extensive integration testing with actual PostgreSQL database
+
+==========================================
+CATEGORY 2: EQUIVALENCY VALIDATION ERRORS
+==========================================
+
+All 7 statements failed SQL Equivalency validation (tool returned UNKNOWN).
+While conversions follow standard patterns, manual validation is required.
+
+**Statement 1: GetAllProductsAsync**
+- **Equivalency Status:** ERROR (UNKNOWN)
+- **Complexity:** High - CTE with AVG/COUNT OVER window functions
+- **Testing Required:**
+  1. Verify result set ordering matches SQL Server behavior
+  2. Validate NULLS FIRST ordering
+  3. Test with empty result sets
+  4. Verify price calculations and rounding
+  5. Compare result counts
+- **Risk Level:** MEDIUM
+
+**Statement 2: GetProductByIdAsync**
+- **Equivalency Status:** ERROR (UNKNOWN)
+- **Complexity:** Medium - LAG window function
+- **Testing Required:**
+  1. Verify LAG function behavior for price history
+  2. Test with products having no modification history
+  3. Validate NULL handling in price change calculations
+  4. Test parameter binding with various product IDs
+- **Risk Level:** MEDIUM
+
+**Statement 4: UpdateProductAsync**
+- **Equivalency Status:** ERROR (UNKNOWN)
+- **Complexity:** High - Multi-statement transaction with DMS warnings
+- **DMS Warning:** Transaction management commands need manual handling
+- **Testing Required:**
+  1. Verify old values are correctly captured before update
+  2. Validate transaction rollback on any statement failure
+  3. Test concurrent updates
+  4. Verify ProductHistory logging accuracy
+  5. Test with NULL descriptions
+- **Risk Level:** HIGH
+
+**Statement 5: DeleteProductAsync**
+- **Equivalency Status:** ERROR (UNKNOWN)
+- **Complexity:** High - Multi-statement transaction with CASE expression
+- **DMS Warning:** Transaction management commands need manual handling
+- **Testing Required:**
+  1. Verify old values captured before deletion
+  2. Validate ProductHistory is logged before deletion
+  3. Test ProductStats calculations (especially edge case when TotalProducts=1)
+  4. Verify transaction atomicity
+  5. Test referential integrity constraints
+- **Risk Level:** HIGH
+
+**Statement 6: GetProductsByPriceRangeAsync**
+- **Equivalency Status:** ERROR (UNKNOWN)
+- **Complexity:** Medium - RANK and PERCENT_RANK window functions
+- **Testing Required:**
+  1. Verify ranking behavior matches SQL Server
+  2. Validate percentile calculations
+  3. Test price segment categorization (Budget/Mid-Range/Premium)
+  4. Test with empty ranges
+  5. Verify NULLS FIRST ordering
+- **Risk Level:** MEDIUM
+
+**Statement 7: GetLowStockProductsAsync**
+- **Equivalency Status:** ERROR (UNKNOWN)
+- **Complexity:** Medium - AVG/MIN/MAX OVER window functions
+- **Testing Required:**
+  1. Verify stock analysis calculations
+  2. Validate StockStatus categorization (Critical/Low/Adequate)
+  3. Test percentage calculations and rounding
+  4. Test with zero or negative thresholds
+  5. Verify result filtering (StockQuantity <= threshold)
+- **Risk Level:** MEDIUM
+
+==========================================
+CATEGORY 3: COMPLEX LOGIC REQUIRING TESTING
+==========================================
+
+**All Transaction-Based Operations (Statements 3, 4, 5)**
+- **Common Concerns:**
+  - Transaction isolation levels
+  - Deadlock behavior
+  - Concurrent access patterns
+  - Error handling and rollback
+- **Required Testing:**
+  1. Concurrent transaction testing
+  2. Deadlock detection and recovery
+  3. Transaction timeout behavior
+  4. Error propagation to application layer
+
+**All Window Function Queries (Statements 1, 2, 6, 7)**
+- **Common Concerns:**
+  - Result ordering with NULLS FIRST
+  - Window function semantics differences
+  - Performance with large datasets
+- **Required Testing:**
+  1. Result set ordering validation
+  2. NULL handling in window partitions
+  3. Performance benchmarking
+  4. Large dataset testing
+
+==========================================
+SCHEMA OBJECT NAME CHANGES
+==========================================
+
+All table references changed from simple names to schema-qualified names:
+- Products → productmanagement_dbo.products
+- ProductHistory → productmanagement_dbo.producthistory
+- ProductStats → productmanagement_dbo.productstats
+
+**Required Validation:**
+1. Verify schema exists in target PostgreSQL database
+2. Confirm all tables are accessible with new schema prefix
+3. Validate permissions on schema and tables
+4. Test with different connection users/roles
+
+==========================================
+COLUMN NAME CASE SENSITIVITY
+==========================================
+
+All column names converted to lowercase (PostgreSQL convention):
+- ProductId → productid
+- Name → name  
+- Price → price
+- StockQuantity → stockquantity
+- CreatedDate → createddate
+- ModifiedDate → modifieddate
+
+**Required Validation:**
+1. Verify MapProductFromReader correctly reads lowercase columns
+2. Test with actual PostgreSQL result sets
+3. Validate that all computed columns work correctly
+
+==========================================
+PRIORITY TESTING MATRIX
+==========================================
+
+| Statement | Risk | Priority | Testing Effort |
+|-----------|------|----------|----------------|
+| Statement 3 (Insert) | HIGH | 1 | High |
+| Statement 4 (Update) | HIGH | 2 | High |
+| Statement 5 (Delete) | HIGH | 3 | High |
+| Statement 1 (GetAll) | MEDIUM | 4 | Medium |
+| Statement 6 (PriceRange) | MEDIUM | 5 | Medium |
+| Statement 7 (LowStock) | MEDIUM | 6 | Medium |
+| Statement 2 (GetById) | MEDIUM | 7 | Medium |
+
+==========================================
+RECOMMENDED TESTING APPROACH
+==========================================
+
+**Phase 1: Unit Testing (High Priority Items)**
+1. Test Statement 3 (InsertProductAsync) - RETURNING clause
+2. Test Statement 4 (UpdateProductAsync) - Transaction handling
+3. Test Statement 5 (DeleteProductAsync) - Transaction + CASE logic
+
+**Phase 2: Integration Testing**
+1. End-to-end CRUD workflow testing
+2. Concurrent transaction testing
+3. Referential integrity validation
+
+**Phase 3: Query Validation (Medium Priority Items)**
+1. Compare Statement 1 results with SQL Server baseline
+2. Validate Statement 2 LAG function behavior
+3. Test Statement 6 ranking logic
+4. Verify Statement 7 stock analysis
+
+**Phase 4: Performance & Load Testing**
+1. Query performance benchmarking
+2. Connection pool testing
+3. High-load concurrent access
+4. Memory and resource utilization
+
+==========================================
+TEST DATA REQUIREMENTS
+==========================================
+
+Prepare test datasets covering:
+- Empty tables
+- Single record
+- Multiple records with various price ranges
+- Products with NULL descriptions
+- Products with and without modification history
+- Edge cases for stock quantities (0, negative if allowed)
+- Large datasets for performance testing
+
+==========================================
+ACCEPTANCE CRITERIA
+==========================================
+
+Before production deployment, verify:
+✓ All 7 statements execute successfully against PostgreSQL
+✓ Result sets match SQL Server behavior (validated with test data)
+✓ Transaction atomicity maintained
+✓ Performance meets requirements
+✓ Error handling works correctly
+✓ Connection pooling functions properly
+✓ No data corruption or loss
+✓ Concurrent access behaves correctly
+
+==========================================
+ESCALATION CONTACT
+==========================================
+
+If issues are encountered during testing:
+1. Review DMS conversion log for specific statement
+2. Check SQL equivalency report for known differences
+3. Review transformation definition for guidance
+4. Consult PostgreSQL documentation for function differences
+5. Consider adjusting query if semantic difference found
+
+==========================================
+END OF MANUAL REVIEW REQUIRED DOCUMENT
+==========================================

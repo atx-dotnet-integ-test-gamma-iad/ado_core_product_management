@@ -1,0 +1,46 @@
+==========================================
+CONNECTION STRING MIGRATION LOG
+SQL Server to PostgreSQL Format
+==========================================
+Date: 2026-01-17
+File: sourceCode/appsettings.json
+==========================================
+
+TRANSFORMATIONS APPLIED:
+
+1. DevConnection:
+   BEFORE (SQL Server):
+   "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+   
+   AFTER (PostgreSQL):
+   "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true;Timeout=30"
+
+2. ProdConnection:
+   BEFORE (SQL Server):
+   "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+   
+   AFTER (PostgreSQL):
+   "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true;Timeout=30"
+
+KEY PARAMETER CHANGES:
+- Server → Host: Changed from SQL Server parameter to PostgreSQL parameter
+- Removed: Trusted_Connection=True (Windows authentication not applicable to PostgreSQL)
+- Added: Port=5432 (PostgreSQL default port)
+- Added: Username=postgres (PostgreSQL authentication)
+- Added: Password=postgres (PostgreSQL authentication - use secure config in production)
+- Removed: MultipleActiveResultSets=true (SQL Server specific, PostgreSQL handles differently)
+- Removed: TrustServerCertificate=True (SQL Server specific)
+- Added: Pooling=true (Connection pooling for PostgreSQL)
+- Added: Timeout=30 (Connection timeout)
+
+SECURITY NOTE:
+In production environments, credentials should be stored in:
+- Environment variables
+- Azure Key Vault
+- AWS Secrets Manager
+- Other secure configuration providers
+NOT hardcoded in appsettings.json
+
+==========================================
+END OF CONNECTION STRING MIGRATION LOG
+==========================================
