@@ -1,0 +1,79 @@
+-- ================================================================
+-- DMS Conversion Failures and Manual Conversions Log
+-- ADO.NET SQL Server to PostgreSQL Migration
+-- ================================================================
+
+-- ================================================================
+-- Statement ID: 3
+-- Method: InsertProductAsync(Product product)
+-- Original Statement Type: INSERT (Multi-statement Transaction)
+-- DMS Conversion Status: FAILED
+-- ================================================================
+
+[DMS ERROR]
+Conversion timestamp: 2026-01-17T00:22:49.370886
+Error: Metadata model creation failed: {'error': "Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}"}
+Error timestamp: 2026-01-17T00:23:02.965231
+
+[ORIGINAL SQL SERVER STATEMENT]
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    -- Insert the new product
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+[MANUAL CONVERSION - POSTGRESQL]
+Reasoning: DMS tool cannot process complex multi-statement transaction blocks with variable declarations and SCOPE_IDENTITY().
+The conversion requires:
+1. Removing explicit transaction management (handled by C# code via BeginTransactionAsync)
+2. Converting SCOPE_IDENTITY() to RETURNING clause pattern
+3. Converting GETDATE() to CURRENT_TIMESTAMP
+4. Converting table names to schema-qualified lowercase (productmanagement_dbo.products based on DMS pattern from other statements)
+5. Handling the return value through RETURNING clause
+
+INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING productid;
+
+-- Note: The history logging and statistics update will need to be handled as separate statements in the transaction
+-- This is a structural change that requires modifications to the C# code to handle multiple statements
+
+-- Full transaction sequence (to be executed as separate commands within C# transaction):
+-- Statement 1: INSERT with RETURNING
+INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING productid;
+
+-- Statement 2: Log the insertion (use returned productid)
+INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);
+
+-- Statement 3: Update product statistics
+UPDATE productmanagement_dbo.productstats
+SET 
+    totalproducts = totalproducts + 1,
+    averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1),
+    lastupdated = CURRENT_TIMESTAMP
+WHERE statid = 1;
+
+-- ================================================================
+-- END OF DMS CONVERSION FAILURES LOG
+-- ================================================================
