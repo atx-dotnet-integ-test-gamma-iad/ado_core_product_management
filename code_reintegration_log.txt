@@ -1,0 +1,282 @@
+================================================================
+CODE REINTEGRATION LOG
+SQL Server to PostgreSQL Migration - ProductRepository.cs
+================================================================
+
+DATE: 2026-01-18
+MIGRATION TYPE: ADO.NET SQL Server to Npgsql PostgreSQL
+
+================================================================
+CHANGES REQUIRED IN ProductRepository.cs
+================================================================
+
+1. USING STATEMENTS
+-------------------
+BEFORE: using Microsoft.Data.SqlClient;
+AFTER:  using Npgsql;
+
+2. CLASS TYPE REPLACEMENTS
+---------------------------
+- SqlConnection → NpgsqlConnection (10 occurrences)
+  * Line 14: private SqlConnection _connection;
+  * Line 25: private async Task<SqlConnection> GetConnectionAsync()
+  * Line 29: _connection = new SqlConnection(_connectionString);
+  * All other method usages
+
+- SqlCommand → NpgsqlCommand (11 occurrences)
+  * Line 74: using var command = new SqlCommand(sql, connection);
+  * All other SQL command instantiations
+
+- SqlDataReader → NpgsqlDataReader (3 occurrences)
+  * Line 367: private static Product MapProductFromReader(SqlDataReader reader)
+  * All reader type declarations
+
+3. SQL STATEMENT REPLACEMENTS
+------------------------------
+
+A. GetAllProductsAsync (Lines 38-82)
+--------------------------------------
+ORIGINAL SQL:
+  FROM Products
+
+CONVERTED SQL:
+  FROM productmanagement_dbo.products
+
+CHANGES:
+- Replace "FROM Products" with "FROM productmanagement_dbo.products"
+- Schema qualification added per DMS conversion
+
+B. GetProductByIdAsync (Lines 84-124)
+---------------------------------------
+ORIGINAL SQL:
+  FROM Products WHERE ProductId = @ProductId
+  FROM Products p LEFT JOIN ProductHistory ph
+
+CONVERTED SQL:
+  FROM productmanagement_dbo.products WHERE ProductId = @ProductId
+  FROM productmanagement_dbo.products p LEFT JOIN ProductHistory ph
+
+CHANGES:
+- Schema qualification added
+- Parameter syntax preserved (@ProductId)
+- LAG window function preserved
+
+C. InsertProductAsync (Lines 126-172)
+---------------------------------------
+ORIGINAL SQL:
+  DECLARE @NewProductId INT;
+  BEGIN TRANSACTION;
+  INSERT INTO Products (Name, Description, Price, StockQuantity)
+  VALUES (@Name, @Description, @Price, @StockQuantity);
+  SET @NewProductId = SCOPE_IDENTITY();
+  INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+  VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+  UPDATE ProductStats SET ... WHERE StatId = 1;
+  COMMIT;
+  SELECT @NewProductId;
+
+CONVERTED SQL (Simplified for ADO.NET):
+  INSERT INTO productmanagement_dbo.products (Name, Description, Price, StockQuantity)
+  VALUES (@Name, @Description, @Price, @StockQuantity)
+  RETURNING ProductId;
+
+CHANGES:
+- SCOPE_IDENTITY() → RETURNING ProductId clause
+- GETDATE() → CURRENT_TIMESTAMP
+- Transaction management handled at application level (BeginTransactionAsync/CommitAsync)
+- Split into 3 separate statements executed within transaction:
+  1. INSERT with RETURNING
+  2. INSERT into producthistory
+  3. UPDATE productst ats
+
+METHOD IMPLEMENTATION CHANGE:
+The method needs to be restructured to:
+1. Begin transaction
+2. Execute INSERT with RETURNING to get new ProductId
+3. Execute history INSERT using returned ProductId
+4. Execute stats UPDATE
+5. Commit transaction
+
+D. UpdateProductAsync (Lines 174-218)
+---------------------------------------
+ORIGINAL SQL:
+  BEGIN TRANSACTION;
+  DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT;
+  SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;
+  UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId;
+  INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+  VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+  UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1;
+  COMMIT;
+
+CONVERTED SQL:
+  -- Transaction handled at application level
+  -- Query 1: Get old values
+  SELECT Price, StockQuantity FROM productmanagement_dbo.products WHERE ProductId = @ProductId;
+  
+  -- Query 2: Update product
+  UPDATE productmanagement_dbo.products
+  SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = CURRENT_TIMESTAMP
+  WHERE ProductId = @ProductId;
+  
+  -- Query 3: Log history
+  INSERT INTO productmanagement_dbo.producthistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+  VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);
+  
+  -- Query 4: Update stats
+  UPDATE productmanagement_dbo.productstats
+  SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = CURRENT_TIMESTAMP
+  WHERE StatId = 1;
+
+CHANGES:
+- GETDATE() → CURRENT_TIMESTAMP
+- Schema qualification added
+- Transaction managed at application level
+- Split into multiple statements
+
+E. DeleteProductAsync (Lines 220-264)
+---------------------------------------
+ORIGINAL SQL:
+  BEGIN TRANSACTION;
+  DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT;
+  SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;
+  INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+  VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+  DELETE FROM Products WHERE ProductId = @ProductId;
+  UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1;
+  COMMIT;
+
+CONVERTED SQL:
+  -- Transaction handled at application level
+  -- Similar split to UpdateProductAsync
+  SELECT Price, StockQuantity FROM productmanagement_dbo.products WHERE ProductId = @ProductId;
+  INSERT INTO productmanagement_dbo.producthistory ... ;
+  DELETE FROM productmanagement_dbo.products WHERE ProductId = @ProductId;
+  UPDATE productmanagement_dbo.productstats ... ;
+
+CHANGES:
+- GETDATE() → CURRENT_TIMESTAMP
+- Schema qualification added
+- CASE expression preserved
+- Transaction managed at application level
+
+F. GetProductsByPriceRangeAsync (Lines 266-301)
+-------------------------------------------------
+ORIGINAL SQL:
+  FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+
+CONVERTED SQL:
+  FROM productmanagement_dbo.products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+
+CHANGES:
+- Schema qualification added
+- RANK() and PERCENT_RANK() window functions preserved
+- BETWEEN clause preserved
+
+G. GetLowStockProductsAsync (Lines 303-341)
+---------------------------------------------
+ORIGINAL SQL:
+  FROM Products p
+
+CONVERTED SQL:
+  FROM productmanagement_dbo.products p
+
+CHANGES:
+- Schema qualification added
+- AVG(), MIN(), MAX() window functions preserved
+- CASE expressions preserved
+
+4. PARAMETER HANDLING
+----------------------
+NO CHANGES REQUIRED:
+- Npgsql supports named parameters (@ParameterName) syntax
+- AddWithValue method compatible with Npgsql
+- Parameter types compatible
+
+5. TRANSACTION HANDLING
+------------------------
+EXISTING CODE:
+  public async Task ExecuteInTransactionAsync(Func<Task> action)
+  {
+      var connection = await GetConnectionAsync();
+      using var transaction = await connection.BeginTransactionAsync();
+      try
+      {
+          await action();
+          await transaction.CommitAsync();
+      }
+      catch
+      {
+          await transaction.RollbackAsync();
+          throw;
+      }
+  }
+
+STATUS: Compatible with Npgsql - NO CHANGES REQUIRED
+
+6. READER MAPPING
+------------------
+METHOD: MapProductFromReader
+PARAMETER TYPE CHANGE: SqlDataReader → NpgsqlDataReader
+LOGIC: NO CHANGES REQUIRED (column access patterns identical)
+
+================================================================
+SCHEMA OBJECT NAME CHANGES (FROM DMS CONVERSION)
+================================================================
+
+DMS Tool Schema Transformations:
+- Products → productmanagement_dbo.products
+- ProductHistory → productmanagement_dbo.producthistory
+- ProductStats → productmanagement_dbo.productstats
+
+These transformations MUST be applied to all SQL statements to match
+the converted PostgreSQL schema.
+
+================================================================
+FUNCTION REPLACEMENTS
+================================================================
+
+SQL Server → PostgreSQL:
+- GETDATE() → CURRENT_TIMESTAMP
+- SCOPE_IDENTITY() → RETURNING clause
+- Variable declarations work differently (DECLARE in PL/pgSQL vs T-SQL)
+
+================================================================
+VERIFICATION CHECKLIST
+================================================================
+
+After reintegration, verify:
+☐ No occurrences of "Microsoft.Data.SqlClient" in file
+☐ "using Npgsql;" present
+☐ No occurrences of "SqlConnection" (should be NpgsqlConnection)
+☐ No occurrences of "SqlCommand" (should be NpgsqlCommand)
+☐ No occurrences of "SqlDataReader" (should be NpgsqlDataReader)
+☐ All 7 SQL statements updated with schema qualifications
+☐ All "GETDATE()" replaced with "CURRENT_TIMESTAMP"
+☐ "SCOPE_IDENTITY()" replaced with RETURNING clause
+☐ File compiles without errors
+☐ All async patterns preserved
+☐ Connection management logic intact
+
+================================================================
+IMPLEMENTATION NOTES
+================================================================
+
+The conversion requires careful attention to:
+
+1. Multi-statement transactions need to be split and managed
+   at application level using BeginTransactionAsync/CommitAsync
+
+2. SCOPE_IDENTITY() pattern in InsertProductAsync requires
+   restructuring to use RETURNING clause and multiple statements
+
+3. Schema qualifications (productmanagement_dbo.) must be added
+   to all table references per DMS conversion output
+
+4. Parameter syntax (@ParameterName) is preserved - Npgsql supports this
+
+5. Async/await patterns remain unchanged - fully compatible
+
+================================================================
+END OF CODE REINTEGRATION LOG
+================================================================
