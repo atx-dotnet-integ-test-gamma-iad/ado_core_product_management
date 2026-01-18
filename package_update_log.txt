@@ -1,0 +1,120 @@
+================================================================================
+PACKAGE DEPENDENCY UPDATE LOG
+Microsoft SQL Server to PostgreSQL Migration
+Project: AdoCore.csproj
+Date: 2026-01-18
+================================================================================
+
+OBJECTIVE:
+----------
+Replace SQL Server client library (Microsoft.Data.SqlClient) with PostgreSQL 
+client library (Npgsql) and update to a secure version.
+
+INITIAL STATE ANALYSIS:
+-----------------------
+Project File: sourceCode/AdoCore.csproj
+Framework: .NET 9.0 (net9.0)
+
+Existing Package References:
+1. Npgsql 8.0.0 - PostgreSQL client library (PRESENT - needs update)
+2. Microsoft.Extensions.Configuration 8.0.0
+3. Microsoft.Extensions.Configuration.Json 8.0.0
+4. Microsoft.Extensions.DependencyInjection 8.0.0
+
+SQL Server Packages:
+- Microsoft.Data.SqlClient: NOT FOUND (good - already removed or never present)
+- System.Data.SqlClient: NOT FOUND (good - legacy package not referenced)
+
+SECURITY ANALYSIS:
+------------------
+Npgsql 8.0.0 Security Status:
+- Identified as potentially vulnerable version
+- Recommendation: Update to 8.0.5 or later
+- Reason: Security patches and bug fixes in later versions
+
+CHANGES APPLIED:
+----------------
+
+1. Npgsql Version Update:
+   BEFORE: <PackageReference Include="Npgsql" Version="8.0.0" />
+   AFTER:  <PackageReference Include="Npgsql" Version="8.0.5" />
+   
+   Change Type: Version bump
+   Reason: Security update to address potential vulnerabilities
+   Impact: Bug fixes, security patches, improved PostgreSQL compatibility
+
+2. SQL Server Package Removal:
+   Status: NOT REQUIRED
+   Reason: No Microsoft.Data.SqlClient or System.Data.SqlClient packages found
+   Note: Project appears to have been pre-configured for PostgreSQL
+
+FINAL PACKAGE CONFIGURATION:
+-----------------------------
+After updates, AdoCore.csproj contains:
+
+<ItemGroup>
+  <PackageReference Include="Npgsql" Version="8.0.5" />
+  <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+  <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+  <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+</ItemGroup>
+
+PACKAGE COMPATIBILITY:
+----------------------
+Npgsql 8.0.5:
+- Compatible with: .NET 9.0, .NET 8.0, .NET 7.0, .NET 6.0
+- PostgreSQL versions: 11+ (including PostgreSQL 16)
+- Features: Full async support, connection pooling, advanced data types
+- ADO.NET compliance: Full
+- License: PostgreSQL License (permissive)
+
+Microsoft.Extensions.* 8.0.0:
+- All compatible with .NET 9.0
+- No conflicts with Npgsql 8.0.5
+- Maintained versions
+
+MIGRATION NOTES:
+----------------
+1. No breaking API changes between Npgsql 8.0.0 and 8.0.5
+2. Connection string format remains the same
+3. All NpgsqlConnection, NpgsqlCommand, NpgsqlDataReader APIs compatible
+4. No code changes required for version update
+5. Improved stability and security with 8.0.5
+
+VERIFICATION STEPS:
+-------------------
+1. ✓ Verify no Microsoft.Data.SqlClient references
+2. ✓ Verify no System.Data.SqlClient references
+3. ✓ Verify Npgsql version is 8.0.5 or later
+4. ✓ Check for package conflicts (none found)
+5. PENDING: Run dotnet restore to download updated package
+6. PENDING: Verify successful package restoration
+
+NEXT STEPS:
+-----------
+1. Run 'dotnet restore' in sourceCode directory to restore Npgsql 8.0.5
+2. Verify no package restoration errors
+3. Proceed to Step 6: Replace ADO.NET classes (SqlConnection -> NpgsqlConnection, etc.)
+
+ROLLBACK PROCEDURE (if needed):
+--------------------------------
+If issues arise with Npgsql 8.0.5:
+1. Revert AdoCore.csproj to use Npgsql 8.0.0
+2. Run 'dotnet restore' to revert packages
+3. Document specific issue encountered
+
+Note: Rollback not anticipated as 8.0.5 is a patch release with no breaking changes.
+
+DEPENDENCIES SUMMARY:
+---------------------
+Removed: 0 packages (none present)
+Updated: 1 package (Npgsql 8.0.0 -> 8.0.5)
+Added: 0 packages (Npgsql already present)
+
+Total Package References: 4
+PostgreSQL Driver: Npgsql 8.0.5
+SQL Server Drivers: 0 (none)
+
+Migration Status: Package dependencies successfully configured for PostgreSQL
+
+================================================================================
