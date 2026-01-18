@@ -1,0 +1,248 @@
+{
+  "extraction_metadata": {
+    "total_statements": 7,
+    "extraction_date": "2026-01-18",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "statements": [
+      {
+        "statement_id": 1,
+        "method_name": "GetAllProductsAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 39,
+        "end_line": 66,
+        "sql_type": "SELECT",
+        "description": "CTE with window functions (AVG OVER, COUNT OVER) for product statistics and price categorization",
+        "parameters": [],
+        "features": [
+          "CTE (Common Table Expression)",
+          "Window Functions (AVG OVER, COUNT OVER)",
+          "INNER JOIN",
+          "CASE expression",
+          "ROUND function",
+          "Complex ORDER BY"
+        ],
+        "tables_accessed": [
+          "Products"
+        ],
+        "transaction_block": false
+      },
+      {
+        "statement_id": 2,
+        "method_name": "GetProductByIdAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 81,
+        "end_line": 110,
+        "sql_type": "SELECT",
+        "description": "CTE with LAG window function for analyzing product price and stock history",
+        "parameters": [
+          {
+            "name": "@ProductId",
+            "type": "int",
+            "description": "Product identifier for filtering"
+          }
+        ],
+        "features": [
+          "CTE (Common Table Expression)",
+          "LAG Window Function",
+          "LEFT JOIN",
+          "CASE expression",
+          "ROUND function",
+          "Parameterized query"
+        ],
+        "tables_accessed": [
+          "Products"
+        ],
+        "transaction_block": false
+      },
+      {
+        "statement_id": 3,
+        "method_name": "InsertProductAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 121,
+        "end_line": 144,
+        "sql_type": "INSERT/UPDATE",
+        "description": "Transaction block for inserting new product with history logging and statistics update",
+        "parameters": [
+          {
+            "name": "@Name",
+            "type": "string",
+            "description": "Product name"
+          },
+          {
+            "name": "@Description",
+            "type": "string",
+            "description": "Product description (nullable)"
+          },
+          {
+            "name": "@Price",
+            "type": "decimal",
+            "description": "Product price"
+          },
+          {
+            "name": "@StockQuantity",
+            "type": "int",
+            "description": "Initial stock quantity"
+          }
+        ],
+        "features": [
+          "BEGIN TRANSACTION/COMMIT",
+          "DECLARE variable",
+          "INSERT statement",
+          "SCOPE_IDENTITY() - SQL Server specific",
+          "GETDATE() - SQL Server specific",
+          "UPDATE statement",
+          "SELECT for return value"
+        ],
+        "tables_accessed": [
+          "Products",
+          "ProductHistory",
+          "ProductStats"
+        ],
+        "transaction_block": true
+      },
+      {
+        "statement_id": 4,
+        "method_name": "UpdateProductAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 157,
+        "end_line": 186,
+        "sql_type": "UPDATE",
+        "description": "Transaction block for updating product with old value preservation and history logging",
+        "parameters": [
+          {
+            "name": "@ProductId",
+            "type": "int",
+            "description": "Product identifier"
+          },
+          {
+            "name": "@Name",
+            "type": "string",
+            "description": "Updated product name"
+          },
+          {
+            "name": "@Description",
+            "type": "string",
+            "description": "Updated product description (nullable)"
+          },
+          {
+            "name": "@Price",
+            "type": "decimal",
+            "description": "Updated product price"
+          },
+          {
+            "name": "@StockQuantity",
+            "type": "int",
+            "description": "Updated stock quantity"
+          }
+        ],
+        "features": [
+          "BEGIN TRANSACTION/COMMIT",
+          "DECLARE variables",
+          "SELECT for capturing old values",
+          "UPDATE statement",
+          "INSERT for history logging",
+          "GETDATE() - SQL Server specific"
+        ],
+        "tables_accessed": [
+          "Products",
+          "ProductHistory",
+          "ProductStats"
+        ],
+        "transaction_block": true
+      },
+      {
+        "statement_id": 5,
+        "method_name": "DeleteProductAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 199,
+        "end_line": 224,
+        "sql_type": "DELETE",
+        "description": "Transaction block for deleting product with history logging and statistics update",
+        "parameters": [
+          {
+            "name": "@ProductId",
+            "type": "int",
+            "description": "Product identifier for deletion"
+          }
+        ],
+        "features": [
+          "BEGIN TRANSACTION/COMMIT",
+          "DECLARE variables",
+          "SELECT for capturing values before deletion",
+          "INSERT for history logging",
+          "DELETE statement",
+          "UPDATE with complex CASE",
+          "GETDATE() - SQL Server specific"
+        ],
+        "tables_accessed": [
+          "Products",
+          "ProductHistory",
+          "ProductStats"
+        ],
+        "transaction_block": true
+      },
+      {
+        "statement_id": 6,
+        "method_name": "GetProductsByPriceRangeAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 236,
+        "end_line": 258,
+        "sql_type": "SELECT",
+        "description": "CTE with RANK and PERCENT_RANK window functions for price segmentation analysis",
+        "parameters": [
+          {
+            "name": "@MinPrice",
+            "type": "decimal",
+            "description": "Minimum price for range filter"
+          },
+          {
+            "name": "@MaxPrice",
+            "type": "decimal",
+            "description": "Maximum price for range filter"
+          }
+        ],
+        "features": [
+          "CTE (Common Table Expression)",
+          "RANK() Window Function",
+          "PERCENT_RANK() Window Function",
+          "BETWEEN clause",
+          "CASE expression",
+          "Parameterized query"
+        ],
+        "tables_accessed": [
+          "Products"
+        ],
+        "transaction_block": false
+      },
+      {
+        "statement_id": 7,
+        "method_name": "GetLowStockProductsAsync",
+        "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+        "start_line": 271,
+        "end_line": 293,
+        "sql_type": "SELECT",
+        "description": "CTE with multiple window functions (AVG, MIN, MAX OVER) for stock level analysis",
+        "parameters": [
+          {
+            "name": "@Threshold",
+            "type": "int",
+            "description": "Stock quantity threshold for filtering low stock items"
+          }
+        ],
+        "features": [
+          "CTE (Common Table Expression)",
+          "Window Functions (AVG OVER, MIN OVER, MAX OVER)",
+          "CASE expression",
+          "ROUND function",
+          "WHERE clause filtering",
+          "Parameterized query"
+        ],
+        "tables_accessed": [
+          "Products"
+        ],
+        "transaction_block": false
+      }
+    ]
+  }
+}

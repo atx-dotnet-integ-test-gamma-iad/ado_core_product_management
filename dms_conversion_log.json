@@ -1,0 +1,232 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "successfully_converted_by_dms": 5,
+    "manually_converted_after_dms_failure": 2,
+    "conversion_date": "2026-01-18",
+    "dms_tool": "dms-mcp____statement_conversion_tool",
+    "migration_project": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "source_database": "ProductManagement (SQL Server)",
+    "target_schema": "productmanagement_dbo (PostgreSQL)"
+  },
+  "schema_transformations": {
+    "tables": {
+      "Products": "productmanagement_dbo.products",
+      "ProductHistory": "productmanagement_dbo.producthistory",
+      "ProductStats": "productmanagement_dbo.productstats"
+    },
+    "identifier_casing": "All identifiers lowercased by DMS",
+    "tsql_function_mappings": {
+      "GETDATE()": "clock_timestamp()",
+      "SCOPE_IDENTITY()": "RETURNING clause"
+    },
+    "transaction_handling": "BEGIN TRANSACTION/COMMIT removed, replaced with PostgreSQL BEGIN/END blocks or application-level transaction management"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_timestamp": "2026-01-18T10:12:39.084434",
+      "dms_metadata_model": "sql-conversion-1768731161",
+      "workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "status": "completed",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "status": "completed",
+          "poll_attempts": 13
+        },
+        {
+          "step": "extract_converted_sql",
+          "status": "completed"
+        }
+      ],
+      "notes": "CTE with window functions (AVG OVER, COUNT OVER) converted successfully. Added NULLS FIRST to ORDER BY clauses.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products"
+      ]
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_timestamp": "2026-01-18T10:15:24.397981",
+      "dms_metadata_model": "sql-conversion-1768731326",
+      "workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "status": "completed",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "status": "completed",
+          "poll_attempts": 13
+        },
+        {
+          "step": "extract_converted_sql",
+          "status": "completed"
+        }
+      ],
+      "notes": "CTE with LAG window function converted successfully. LEFT JOIN changed to LEFT OUTER JOIN. Parameter @ProductId preserved.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products"
+      ]
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "conversion_status": "PARTIAL_SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_timestamp": "2026-01-18T10:18:10.901053",
+      "dms_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+      "dms_error_timestamp": "2026-01-18T10:18:26.067674",
+      "retry_with_modified_input": true,
+      "modified_input_timestamp": "2026-01-18T10:18:35.600620",
+      "modified_dms_metadata_model": "sql-conversion-1768731517",
+      "workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "status": "completed",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "status": "completed",
+          "poll_attempts": 13
+        },
+        {
+          "step": "extract_converted_sql",
+          "status": "completed"
+        }
+      ],
+      "notes": "Full transaction block with DECLARE/BEGIN TRANSACTION/COMMIT/SELECT failed. Successfully converted core DML statements (INSERT/INSERT/UPDATE) without transaction wrapper. GETDATE() → clock_timestamp(). SCOPE_IDENTITY() requires RETURNING clause. Transaction management must be handled at application code level.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats"
+      ],
+      "manual_adjustments": [
+        "Added RETURNING clause to first INSERT for getting new product ID",
+        "Transaction wrapper (BEGIN TRANSACTION/COMMIT) must be implemented in C# code using NpgsqlTransaction"
+      ]
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_timestamp": "2026-01-18T10:21:21.218471",
+      "dms_metadata_model": "sql-conversion-1768731683",
+      "workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "status": "completed",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "status": "completed",
+          "poll_attempts": 13
+        },
+        {
+          "step": "extract_converted_sql",
+          "status": "completed"
+        }
+      ],
+      "notes": "Transaction block converted to PostgreSQL BEGIN/END block. DECLARE variables renamed with var_ prefix. GETDATE() → clock_timestamp(). BEGIN TRANSACTION/COMMIT removed.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats"
+      ]
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "conversion_status": "SUCCESS",
+      "conversion_method": "DMS_TOOL",
+      "dms_timestamp": "2026-01-18T10:24:12.198467",
+      "dms_metadata_model": "sql-conversion-1768731854",
+      "workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "status": "completed",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "status": "completed",
+          "poll_attempts": 13
+        },
+        {
+          "step": "extract_converted_sql",
+          "status": "completed"
+        }
+      ],
+      "notes": "Transaction block converted to PostgreSQL BEGIN/END block. DECLARE variables renamed with var_ prefix. GETDATE() → clock_timestamp(). Complex CASE expression preserved. BEGIN TRANSACTION/COMMIT removed.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products",
+        "ProductHistory → productmanagement_dbo.producthistory",
+        "ProductStats → productmanagement_dbo.productstats"
+      ]
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "conversion_status": "FAILED",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_timestamp": "2026-01-18T10:26:58.208448",
+      "dms_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_error_timestamp": "2026-01-18T10:29:46.132614",
+      "dms_metadata_model": "sql-conversion-1768732020",
+      "workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "status": "completed",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "status": "started",
+          "error": "Conversion timeout after 15 polling attempts"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_rationale": "DMS tool timed out during conversion polling. CTE with RANK() and PERCENT_RANK() window functions are PostgreSQL native and require minimal changes. Applied schema naming pattern from successful DMS conversions (productmanagement_dbo.products) and lowercased all identifiers. Added NULLS FIRST to ORDER BY following DMS pattern.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products (manual, following DMS pattern)"
+      ],
+      "notes": "Window functions RANK() and PERCENT_RANK() are PostgreSQL compatible. Only schema and identifier casing changes needed."
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "conversion_status": "FAILED",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_timestamp": "2026-01-18T10:29:46+",
+      "dms_error": "Command execution timed out after 300 seconds",
+      "manual_conversion_applied": true,
+      "manual_conversion_rationale": "DMS tool timed out completely (300 seconds). CTE with AVG/MIN/MAX window functions are PostgreSQL native and require minimal changes. Applied schema naming pattern from successful DMS conversions (productmanagement_dbo.products) and lowercased all identifiers. Added NULLS FIRST to ORDER BY following DMS pattern.",
+      "schema_changes": [
+        "Products → productmanagement_dbo.products (manual, following DMS pattern)"
+      ],
+      "notes": "Window functions AVG/MIN/MAX OVER() are PostgreSQL compatible. Only schema and identifier casing changes needed."
+    }
+  ],
+  "critical_conversion_notes": {
+    "transaction_handling": "SQL Server BEGIN TRANSACTION/COMMIT blocks converted to PostgreSQL BEGIN/END blocks by DMS, or require application-level transaction management using NpgsqlTransaction in C# code",
+    "scope_identity": "SCOPE_IDENTITY() must be replaced with RETURNING clause in INSERT statements",
+    "getdate_function": "GETDATE() consistently converted to clock_timestamp() by DMS tool",
+    "parameter_syntax": "Parameters remain as @ParameterName format (will need conversion to $1, $2, etc. in C# code when using Npgsql)",
+    "schema_qualification": "All table references now require schema qualification: productmanagement_dbo.tablename",
+    "identifier_casing": "All identifiers (tables, columns, aliases) lowercased by DMS tool",
+    "order_by_nulls": "DMS adds NULLS FIRST to ORDER BY clauses for PostgreSQL compatibility"
+  }
+}
