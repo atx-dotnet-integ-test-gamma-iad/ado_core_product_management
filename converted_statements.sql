@@ -1,0 +1,203 @@
+-- ============================================================================
+-- CONVERTED SQL STATEMENTS - PostgreSQL Syntax
+-- Source: Microsoft SQL Server to PostgreSQL Migration
+-- Conversion Date: 2026-01-19
+-- Conversion Method: Manual conversion after DMS tool timeout
+-- ============================================================================
+
+-- ============================================================================
+-- STATEMENT 1 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: GetAllProductsAsync
+-- Line Range: 40-69
+-- Description: CTE query with window functions for product statistics
+-- Parameters: None
+-- Conversion Notes: No changes needed - PostgreSQL supports same syntax
+-- ============================================================================
+
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name;
+
+-- ============================================================================
+-- STATEMENT 2 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: GetProductByIdAsync
+-- Line Range: 83-110
+-- Description: CTE query with LAG window function for product history
+-- Parameters: @ProductId (int)
+-- Conversion Notes: No changes needed - PostgreSQL supports same syntax
+-- ============================================================================
+
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId;
+
+-- ============================================================================
+-- STATEMENT 3 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: InsertProductAsync
+-- Line Range: 126-153
+-- Description: Multi-statement transaction block with INSERT, logging, and statistics update
+-- Parameters: @Name (string), @Description (string), @Price (decimal), @StockQuantity (int)
+-- Conversion Notes:
+--   - SCOPE_IDENTITY() → RETURNING clause on INSERT (returns ProductId directly)
+--   - GETDATE() → NOW() or CURRENT_TIMESTAMP
+--   - Transaction managed by ADO.NET connection, not in SQL
+--   - Multiple statements executed sequentially through command execution
+-- ============================================================================
+
+INSERT INTO Products (Name, Description, Price, StockQuantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING ProductId;
+
+-- ============================================================================
+-- STATEMENT 4 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: UpdateProductAsync
+-- Line Range: 170-202
+-- Description: Transaction block for updating product with history logging
+-- Parameters: @ProductId (int), @Name (string), @Description (string), @Price (decimal), @StockQuantity (int)
+-- Conversion Notes:
+--   - GETDATE() → NOW()
+--   - Transaction managed by ADO.NET connection
+--   - Multiple statements executed sequentially
+-- ============================================================================
+
+UPDATE Products
+SET 
+    Name = @Name,
+    Description = @Description,
+    Price = @Price,
+    StockQuantity = @StockQuantity,
+    ModifiedDate = NOW()
+WHERE ProductId = @ProductId;
+
+-- ============================================================================
+-- STATEMENT 5 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: DeleteProductAsync
+-- Line Range: 219-249
+-- Description: Transaction block for deleting product with history logging
+-- Parameters: @ProductId (int)
+-- Conversion Notes:
+--   - GETDATE() → NOW()
+--   - Transaction managed by ADO.NET connection
+--   - Multiple statements executed sequentially
+-- ============================================================================
+
+DELETE FROM Products 
+WHERE ProductId = @ProductId;
+
+-- ============================================================================
+-- STATEMENT 6 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: GetProductsByPriceRangeAsync
+-- Line Range: 263-282
+-- Description: CTE query with RANK and PERCENT_RANK window functions
+-- Parameters: @MinPrice (decimal), @MaxPrice (decimal)
+-- Conversion Notes: No changes needed - PostgreSQL supports same syntax
+-- ============================================================================
+
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank;
+
+-- ============================================================================
+-- STATEMENT 7 OF 7
+-- Source File: DataAccess/ProductRepository.cs
+-- Method Name: GetLowStockProductsAsync
+-- Line Range: 299-321
+-- Description: CTE query with aggregation window functions for stock analysis
+-- Parameters: @Threshold (int)
+-- Conversion Notes: No changes needed - PostgreSQL supports same syntax
+-- ============================================================================
+
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity;
+
+-- ============================================================================
+-- END OF CONVERTED STATEMENTS
+-- Total Statements Converted: 7
+-- Conversion Method: Manual after DMS tool timeout
+-- ============================================================================
