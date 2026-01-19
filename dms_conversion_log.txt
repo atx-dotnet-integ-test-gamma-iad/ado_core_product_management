@@ -1,0 +1,257 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+Conversion Date: 2026-01-19
+Total Statements Processed: 7
+DMS Tool Status: All conversions failed - Manual conversion required
+================================================================================
+
+--------------------------------------------------------------------------------
+STATEMENT 1: GetAllProductsAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 40-69
+Method: GetAllProductsAsync()
+
+DMS TOOL INPUT:
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS TOOL OUTPUT:
+Status: error
+Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Timestamp: 2026-01-19T10:57:14.646270
+Request Identifier: 42669d1e-2151-4618-9cc0-c6d244f60618
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool metadata model conversion timeout
+
+--------------------------------------------------------------------------------
+STATEMENT 2: GetProductByIdAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 84-111
+Method: GetProductByIdAsync(int productId)
+
+DMS TOOL INPUT:
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS TOOL OUTPUT:
+Status: error
+Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Timestamp: 2026-01-19T11:00:23.643899
+Request Identifier: be9485d7-8dd0-41e2-9a61-ec1d7f4e4618
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool metadata model conversion timeout
+
+--------------------------------------------------------------------------------
+STATEMENT 3: InsertProductAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 126-148
+Method: InsertProductAsync(Product product)
+
+DMS TOOL INPUT:
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    -- Insert the new product
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS TOOL OUTPUT:
+Status: error
+Error: Metadata model creation failed: {'error': "Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}"}
+Timestamp: 2026-01-19T11:00:59.851002
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool rejected multi-statement transaction as invalid
+
+--------------------------------------------------------------------------------
+STATEMENT 4: UpdateProductAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 163-189
+Method: UpdateProductAsync(Product product)
+
+DMS TOOL INPUT:
+BEGIN TRANSACTION;
+    -- Store old values for history
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    -- Update the product
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    -- Log the changes
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS TOOL OUTPUT:
+Status: error
+Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Timestamp: 2026-01-19T11:03:58.192891
+Request Identifier: 9a498797-cd64-46bf-925b-621776b97cd5
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool metadata model conversion timeout
+
+--------------------------------------------------------------------------------
+STATEMENT 5: DeleteProductAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 204-231
+Method: DeleteProductAsync(int productId)
+
+DMS TOOL STATUS: NOT ATTEMPTED (skipped due to consistent failures)
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool consistently failing on all previous statements
+
+--------------------------------------------------------------------------------
+STATEMENT 6: GetProductsByPriceRangeAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 246-267
+Method: GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+
+DMS TOOL INPUT:
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS TOOL OUTPUT:
+Status: error
+Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Timestamp: 2026-01-19T11:07:07.333545
+Request Identifier: db9a0386-9d34-476f-a6c7-d58d1fa8880c
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool metadata model conversion timeout
+
+--------------------------------------------------------------------------------
+STATEMENT 7: GetLowStockProductsAsync
+--------------------------------------------------------------------------------
+Source: DataAccess/ProductRepository.cs, Line 284-306
+Method: GetLowStockProductsAsync(int threshold)
+
+DMS TOOL STATUS: NOT ATTEMPTED (skipped due to consistent failures)
+
+CONVERSION METHOD: MANUAL_AFTER_DMS_FAILURE
+REASON: DMS tool consistently failing on all previous statements
+
+================================================================================
+DMS CONVERSION SUMMARY
+================================================================================
+Total Statements: 7
+DMS Tool Attempts: 5 (Statements 1, 2, 3, 4, 6)
+DMS Successful Conversions: 0
+DMS Failed Conversions: 5
+Manual Conversions Required: 7
+
+DMS Tool Issues Identified:
+1. Metadata model conversion timeouts (Statements 1, 2, 4, 6)
+2. Invalid statement definition error (Statement 3)
+3. All attempted conversions exceeded 15 polling attempts
+
+Next Steps:
+- Proceed with manual SQL Server to PostgreSQL conversion
+- Apply standard PostgreSQL syntax transformations
+- Document all manual conversions with reasoning
+================================================================================
