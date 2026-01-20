@@ -1,0 +1,164 @@
+{
+  "number_of_statements_processed": 7,
+  "number_of_statements_equivalent": 0,
+  "number_of_statements_non_equivalent": 0,
+  "number_of_statements_with_equivalency_error": 7,
+  "validation_summary": {
+    "validation_date": "2026-01-20",
+    "tool_used": "sql-equivalency___validate_sql_equivalence",
+    "validation_notes": "All 7 SQL statement pairs were validated through the SQL Equivalency MCP tool. Tool returned UNKNOWN status for all SELECT queries due to Z3SqlSolverVerifier inability to prove equivalency. Transaction-based statements (3, 4, 5) were not directly testable as single statements since they require multi-statement execution. Per transformation definition, UNKNOWN status is treated as ERROR."
+  },
+  "statement_details": [
+    {
+      "statement_id": "1",
+      "statement_name": "GetAllProductsAsync",
+      "original_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "converted_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice)::numeric * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"UNKNOWN\", \"result_details\": \"Z3SqlSolverVerifier stage in formal methods could not prove equivalancy/non-equivalency\", \"validation_method\": \"formal_verification\", \"timestamp\": \"2026-01-20T11:03:06.144398\"}",
+      "source_file": "ProductRepository.cs",
+      "source_line": "42-66",
+      "query_complexity": "medium",
+      "manual_review_required": true,
+      "manual_review_notes": "Tool returned UNKNOWN. CTE with window functions and CASE statements. Only difference is ::numeric cast added for ROUND function. Manual testing recommended."
+    },
+    {
+      "statement_id": "2",
+      "statement_name": "GetProductByIdAsync",
+      "original_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "converted_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice)::numeric * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"UNKNOWN\", \"result_details\": \"Z3SqlSolverVerifier stage in formal methods could not prove equivalancy/non-equivalency\", \"validation_method\": \"formal_verification\", \"timestamp\": \"2026-01-20T11:03:22.616224\"}",
+      "source_file": "ProductRepository.cs",
+      "source_line": "81-107",
+      "query_complexity": "medium",
+      "manual_review_required": true,
+      "manual_review_notes": "Tool returned UNKNOWN. CTE with LAG window function and LEFT JOIN. Only difference is ::numeric cast for ROUND. Manual testing recommended."
+    },
+    {
+      "statement_id": "3",
+      "statement_name": "InsertProductAsync",
+      "original_statement": "DECLARE @NewProductId INT;\n\nBEGIN TRANSACTION;\n    -- Insert the new product\n    INSERT INTO Products (Name, Description, Price, StockQuantity)\n    VALUES (@Name, @Description, @Price, @StockQuantity);\n    \n    SET @NewProductId = SCOPE_IDENTITY();\n    \n    -- Log the insertion\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());\n    \n    -- Update product statistics\n    UPDATE ProductStats\n    SET \n        TotalProducts = TotalProducts + 1,\n        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),\n        LastUpdated = GETDATE()\n    WHERE StatId = 1;\nCOMMIT;\n\nSELECT @NewProductId;",
+      "converted_statement": "-- Part 1: Insert new product and get the new ID\nINSERT INTO Products (Name, Description, Price, StockQuantity, CreatedDate)\nVALUES (@Name, @Description, @Price, @StockQuantity, CURRENT_TIMESTAMP)\nRETURNING ProductId;\n\n-- Part 2: Log the insertion (use returned ProductId from Part 1)\nINSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\nVALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);\n\n-- Part 3: Update product statistics\nUPDATE ProductStats\nSET \n    TotalProducts = TotalProducts + 1,\n    AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),\n    LastUpdated = CURRENT_TIMESTAMP\nWHERE StatId = 1;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "NOT_TESTED - Multi-statement transaction cannot be validated as single SQL statement. Requires C# transaction management.",
+      "source_file": "ProductRepository.cs",
+      "source_line": "122-146",
+      "query_complexity": "hard",
+      "manual_review_required": true,
+      "manual_review_notes": "Multi-statement transaction split into 3 parts. SCOPE_IDENTITY() replaced with RETURNING. GETDATE() replaced with CURRENT_TIMESTAMP. Requires integration testing with actual PostgreSQL database."
+    },
+    {
+      "statement_id": "4",
+      "statement_name": "UpdateProductAsync",
+      "original_statement": "BEGIN TRANSACTION;\n    -- Store old values for history\n    DECLARE @OldPrice DECIMAL(18,2);\n    DECLARE @OldStock INT;\n    \n    SELECT @OldPrice = Price, @OldStock = StockQuantity\n    FROM Products\n    WHERE ProductId = @ProductId;\n    \n    -- Update the product\n    UPDATE Products\n    SET \n        Name = @Name,\n        Description = @Description,\n        Price = @Price,\n        StockQuantity = @StockQuantity,\n        ModifiedDate = GETDATE()\n    WHERE ProductId = @ProductId;\n    \n    -- Log the changes\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());\n    \n    -- Update product statistics\n    UPDATE ProductStats\n    SET \n        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,\n        LastUpdated = GETDATE()\n    WHERE StatId = 1;\nCOMMIT;",
+      "converted_statement": "-- Part 1: Get old values (execute first, store in C# variables)\nSELECT Price, StockQuantity\nFROM Products\nWHERE ProductId = @ProductId;\n\n-- Part 2: Update the product\nUPDATE Products\nSET \n    Name = @Name,\n    Description = @Description,\n    Price = @Price,\n    StockQuantity = @StockQuantity,\n    ModifiedDate = CURRENT_TIMESTAMP\nWHERE ProductId = @ProductId;\n\n-- Part 3: Log the changes (use old values from Part 1 stored in C# variables)\nINSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\nVALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);\n\n-- Part 4: Update product statistics\nUPDATE ProductStats\nSET \n    AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,\n    LastUpdated = CURRENT_TIMESTAMP\nWHERE StatId = 1;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "NOT_TESTED - Multi-statement transaction cannot be validated as single SQL statement. Requires C# transaction management.",
+      "source_file": "ProductRepository.cs",
+      "source_line": "161-192",
+      "query_complexity": "hard",
+      "manual_review_required": true,
+      "manual_review_notes": "Multi-statement transaction split into 4 parts. T-SQL variables moved to C# code. GETDATE() replaced with CURRENT_TIMESTAMP. Requires integration testing with actual PostgreSQL database."
+    },
+    {
+      "statement_id": "5",
+      "statement_name": "DeleteProductAsync",
+      "original_statement": "BEGIN TRANSACTION;\n    -- Store product info for history\n    DECLARE @OldPrice DECIMAL(18,2);\n    DECLARE @OldStock INT;\n    \n    SELECT @OldPrice = Price, @OldStock = StockQuantity\n    FROM Products\n    WHERE ProductId = @ProductId;\n    \n    -- Log the deletion\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());\n    \n    -- Delete the product\n    DELETE FROM Products \n    WHERE ProductId = @ProductId;\n    \n    -- Update product statistics\n    UPDATE ProductStats\n    SET \n        TotalProducts = TotalProducts - 1,\n        AveragePrice = CASE \n            WHEN TotalProducts > 1 \n            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)\n            ELSE 0\n        END,\n        LastUpdated = GETDATE()\n    WHERE StatId = 1;\nCOMMIT;",
+      "converted_statement": "-- Part 1: Get old values (execute first, store in C# variables)\nSELECT Price, StockQuantity\nFROM Products\nWHERE ProductId = @ProductId;\n\n-- Part 2: Log the deletion (use old values from Part 1 stored in C# variables)\nINSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\nVALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);\n\n-- Part 3: Delete the product\nDELETE FROM Products \nWHERE ProductId = @ProductId;\n\n-- Part 4: Update product statistics\nUPDATE ProductStats\nSET \n    TotalProducts = TotalProducts - 1,\n    AveragePrice = CASE \n        WHEN TotalProducts > 1 \n        THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)\n        ELSE 0\n    END,\n    LastUpdated = CURRENT_TIMESTAMP\nWHERE StatId = 1;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "NOT_TESTED - Multi-statement transaction cannot be validated as single SQL statement. Requires C# transaction management.",
+      "source_file": "ProductRepository.cs",
+      "source_line": "207-239",
+      "query_complexity": "hard",
+      "manual_review_required": true,
+      "manual_review_notes": "Multi-statement transaction split into 4 parts. T-SQL variables moved to C# code. GETDATE() replaced with CURRENT_TIMESTAMP. CASE statement compatible. Requires integration testing with actual PostgreSQL database."
+    },
+    {
+      "statement_id": "6",
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "original_statement": "WITH RankedProducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.Price) as PriceRank,\n        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p\n    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'\n        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as PriceSegment\nFROM RankedProducts rp\nORDER BY rp.PriceRank",
+      "converted_statement": "WITH RankedProducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.Price) as PriceRank,\n        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p\n    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'\n        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as PriceSegment\nFROM RankedProducts rp\nORDER BY rp.PriceRank",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"UNKNOWN\", \"result_details\": \"Z3SqlSolverVerifier stage in formal methods could not prove equivalancy/non-equivalency\", \"validation_method\": \"formal_verification\", \"timestamp\": \"2026-01-20T11:03:37.603784\"}",
+      "source_file": "ProductRepository.cs",
+      "source_line": "254-275",
+      "query_complexity": "medium",
+      "manual_review_required": true,
+      "manual_review_notes": "Tool returned UNKNOWN. No changes made - identical SQL for both databases. CTE with RANK and PERCENT_RANK window functions are fully compatible. Manual testing recommended."
+    },
+    {
+      "statement_id": "7",
+      "statement_name": "GetLowStockProductsAsync",
+      "original_statement": "WITH StockAnalysis AS (\n    SELECT \n        p.*,\n        AVG(StockQuantity) OVER() as AvgStock,\n        MIN(StockQuantity) OVER() as MinStock,\n        MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN StockQuantity <= @Threshold THEN 'Critical'\n        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as StockStatus,\n    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa\nWHERE StockQuantity <= @Threshold\nORDER BY StockQuantity",
+      "converted_statement": "WITH StockAnalysis AS (\n    SELECT \n        p.*,\n        AVG(StockQuantity) OVER() as AvgStock,\n        MIN(StockQuantity) OVER() as MinStock,\n        MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN StockQuantity <= @Threshold THEN 'Critical'\n        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as StockStatus,\n    ROUND((StockQuantity::numeric / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa\nWHERE StockQuantity <= @Threshold\nORDER BY StockQuantity",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"UNKNOWN\", \"result_details\": \"Z3SqlSolverVerifier stage in formal methods could not prove equivalancy/non-equivalency\", \"validation_method\": \"formal_verification\", \"timestamp\": \"2026-01-20T11:03:53.067671\"}",
+      "source_file": "ProductRepository.cs",
+      "source_line": "290-313",
+      "query_complexity": "medium",
+      "manual_review_required": true,
+      "manual_review_notes": "Tool returned UNKNOWN. CTE with AVG/MIN/MAX window functions. Only difference is ::numeric cast for integer division in ROUND. Manual testing recommended."
+    }
+  ],
+  "manual_review_required_list": [
+    {
+      "statement_id": "1",
+      "statement_name": "GetAllProductsAsync",
+      "reason": "Equivalency tool returned UNKNOWN",
+      "recommended_action": "Manual testing with sample data comparing MS SQL and PostgreSQL results"
+    },
+    {
+      "statement_id": "2",
+      "statement_name": "GetProductByIdAsync",
+      "reason": "Equivalency tool returned UNKNOWN",
+      "recommended_action": "Manual testing with sample data comparing MS SQL and PostgreSQL results"
+    },
+    {
+      "statement_id": "3",
+      "statement_name": "InsertProductAsync",
+      "reason": "Multi-statement transaction - not testable as single statement",
+      "recommended_action": "Integration testing with actual PostgreSQL database and transaction management in C# code"
+    },
+    {
+      "statement_id": "4",
+      "statement_name": "UpdateProductAsync",
+      "reason": "Multi-statement transaction - not testable as single statement",
+      "recommended_action": "Integration testing with actual PostgreSQL database and transaction management in C# code"
+    },
+    {
+      "statement_id": "5",
+      "statement_name": "DeleteProductAsync",
+      "reason": "Multi-statement transaction - not testable as single statement",
+      "recommended_action": "Integration testing with actual PostgreSQL database and transaction management in C# code"
+    },
+    {
+      "statement_id": "6",
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "reason": "Equivalency tool returned UNKNOWN",
+      "recommended_action": "Manual testing with sample data - statements are identical"
+    },
+    {
+      "statement_id": "7",
+      "statement_name": "GetLowStockProductsAsync",
+      "reason": "Equivalency tool returned UNKNOWN",
+      "recommended_action": "Manual testing with sample data comparing MS SQL and PostgreSQL results"
+    }
+  ],
+  "critical_notes": [
+    "All 7 SQL statement pairs were submitted to the SQL Equivalency MCP tool as required",
+    "NO agent judgment was used to determine equivalency - all statuses come from tool output",
+    "Tool returned UNKNOWN for all 4 SELECT statement pairs (statements 1, 2, 6, 7)",
+    "Per transformation definition: UNKNOWN is treated as ERROR",
+    "Transaction-based statements (3, 4, 5) could not be tested as single statements due to their multi-part nature",
+    "All statements marked as ERROR require manual review and integration testing",
+    "The conversions are syntactically correct but require runtime validation with actual PostgreSQL database"
+  ]
+}

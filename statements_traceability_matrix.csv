@@ -1,0 +1,8 @@
+Statement ID,Method Name,Original Statement (Summary),Converted Statement (Summary),Conversion Method,Equivalency Status,Source File,Source Lines,Integration Status
+1,GetAllProductsAsync,CTE with AVG/COUNT OVER + ROUND + CASE,CTE with AVG/COUNT OVER + ROUND(::numeric) + CASE,MANUAL_AFTER_DMS_FAILURE,ERROR (UNKNOWN from tool),ProductRepository.cs,42-66,INTEGRATED
+2,GetProductByIdAsync,CTE with LAG OVER + LEFT JOIN + ROUND + CASE,CTE with LAG OVER + LEFT JOIN + ROUND(::numeric) + CASE,MANUAL_AFTER_DMS_FAILURE,ERROR (UNKNOWN from tool),ProductRepository.cs,81-107,INTEGRATED
+3,InsertProductAsync,Transaction with SCOPE_IDENTITY() + GETDATE(),Transaction with RETURNING + CURRENT_TIMESTAMP (3 parts),MANUAL_AFTER_DMS_FAILURE,ERROR (NOT_TESTED - multi-statement),ProductRepository.cs,122-146,INTEGRATED AND REFACTORED
+4,UpdateProductAsync,Transaction with T-SQL variables + GETDATE(),C# variables + Transaction with CURRENT_TIMESTAMP (4 parts),MANUAL_AFTER_DMS_FAILURE,ERROR (NOT_TESTED - multi-statement),ProductRepository.cs,161-192,INTEGRATED AND REFACTORED
+5,DeleteProductAsync,Transaction with T-SQL variables + DELETE + CASE,C# variables + Transaction with DELETE + CASE (4 parts),MANUAL_AFTER_DMS_FAILURE,ERROR (NOT_TESTED - multi-statement),ProductRepository.cs,207-239,INTEGRATED AND REFACTORED
+6,GetProductsByPriceRangeAsync,CTE with RANK/PERCENT_RANK + CASE,CTE with RANK/PERCENT_RANK + CASE (NO CHANGES),MANUAL_AFTER_DMS_FAILURE,ERROR (UNKNOWN from tool),ProductRepository.cs,254-275,INTEGRATED
+7,GetLowStockProductsAsync,CTE with AVG/MIN/MAX OVER + ROUND + CASE,CTE with AVG/MIN/MAX OVER + ROUND(::numeric cast) + CASE,MANUAL_AFTER_DMS_FAILURE,ERROR (UNKNOWN from tool),ProductRepository.cs,290-313,INTEGRATED
