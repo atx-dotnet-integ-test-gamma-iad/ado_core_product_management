@@ -1,0 +1,236 @@
+================================================================================
+ADO.NET to PostgreSQL Migration - Validation Support Artifacts
+================================================================================
+
+This document lists all artifacts created to support runtime validation of 
+the migration. These artifacts were created because 4 out of 16 exit criteria
+require runtime testing with a live PostgreSQL database.
+
+================================================================================
+CRITICAL ARTIFACTS FOR RUNTIME VALIDATION
+================================================================================
+
+1. PostgreSQL Database Schema Initialization Script
+   Location: Database/Scripts/01_PostgreSQL_InitialSetup.sql
+   Purpose:  Complete PostgreSQL schema with tables, indexes, functions, 
+             triggers, and sample data
+   Size:     Approximately 15 KB
+   Usage:    psql -U postgres -d ProductManagement -f Database/Scripts/01_PostgreSQL_InitialSetup.sql
+
+2. Runtime Validation Guide - Comprehensive
+   Location: RUNTIME_VALIDATION_GUIDE.md
+   Purpose:  Complete step-by-step guide for validating all 4 unmet criteria
+   Size:     Approximately 25 KB
+   Contents: - Environment setup instructions
+             - Test procedures for criteria 12-15
+             - Validation checklists
+             - Troubleshooting guide
+             - Success criteria definitions
+
+3. Runtime Validation Quick Start Guide
+   Location: RUNTIME_VALIDATION_QUICK_START.md
+   Purpose:  Quick reference for rapid validation
+   Size:     Approximately 10 KB
+   Contents: - Quick start procedures (20 minutes)
+             - Critical test notes
+             - Validation checklist
+             - Common troubleshooting
+
+4. Connection Test Utility - Automated Testing
+   Location: Testing/ConnectionTestUtility.cs
+   Purpose:  Automated connection validation and diagnostics
+   Size:     Approximately 10 KB
+   Features: - Tests connection string parsing
+             - Tests database connectivity
+             - Verifies schema exists
+             - Checks sample data
+             - Tests connection pooling
+             - Exports results to JSON
+   Usage:    Integrate into Program.cs or create test console app
+
+5. Complete Validation Summary
+   Location: ~/.aws/atx/custom/20260121_062320_2fc063fd/artifacts/validation_summary.md
+   Purpose:  Comprehensive validation results for all 16 exit criteria
+   Size:     Approximately 29 KB
+   Contents: - Executive summary
+             - Detailed results for all criteria (12 passed, 4 pending)
+             - SQL statement conversion analysis
+             - DMS and equivalency tool analysis
+             - Recommendations
+             - Complete artifact inventory
+
+================================================================================
+EXISTING TRANSFORMATION ARTIFACTS (Pre-existing)
+================================================================================
+
+1. extracted_statements.sql (274 lines)
+   - Original SQL Server statements
+
+2. converted_statements.sql (245 lines)
+   - Converted PostgreSQL statements
+
+3. dms_conversion_log.json (375 lines)
+   - Complete DMS tool conversion log with errors
+
+4. sql_equivalency_validation_report.json
+   - SQL equivalency validation results for all 7 statement pairs
+
+5. migration_final_report.json
+   - Final migration summary
+
+6. build.log
+   - Compilation results (0 errors, 12 warnings)
+
+================================================================================
+VALIDATION STATUS SUMMARY
+================================================================================
+
+OVERALL STATUS: PARTIAL (12 of 16 exit criteria passed)
+
+PASSED (12/16):
+- Criterion 1:  SQL Server packages replaced
+- Criterion 2:  ADO.NET classes replaced
+- Criterion 3:  All SQL statements processed through DMS MCP tool (CRITICAL)
+- Criterion 4:  Comprehensive catalog of statements (CRITICAL)
+- Criterion 5:  All statement pairs validated through SQL Equivalency tool (CRITICAL)
+- Criterion 6:  Comprehensive equivalency report (CRITICAL)
+- Criterion 7:  No agent judgment for equivalency (CRITICAL)
+- Criterion 8:  DMS failures documented (CRITICAL)
+- Criterion 9:  Connection strings updated
+- Criterion 10: Transaction handling updated
+- Criterion 11: Application compiles without errors
+- Criterion 16: Final report with equivalency status from tool (CRITICAL)
+
+PENDING (4/16) - REQUIRES USER ACTION WITH LIVE POSTGRESQL DATABASE:
+- Criterion 12: Application connects to PostgreSQL
+- Criterion 13: All database operations execute successfully
+- Criterion 14: Transaction atomicity maintained
+- Criterion 15: Application passes all tests
+
+================================================================================
+NEXT STEPS FOR USER
+================================================================================
+
+1. Set up PostgreSQL database instance
+   - Install PostgreSQL 12+ if not already installed
+   - Start PostgreSQL service
+
+2. Initialize database schema
+   - Run: createdb -U postgres ProductManagement
+   - Run: psql -U postgres -d ProductManagement -f Database/Scripts/01_PostgreSQL_InitialSetup.sql
+
+3. Update connection string (if needed)
+   - Edit appsettings.json with correct credentials
+
+4. Follow validation procedures
+   - Open RUNTIME_VALIDATION_GUIDE.md
+   - OR use RUNTIME_VALIDATION_QUICK_START.md for rapid testing
+   - Execute all test procedures
+   - Document results
+
+5. Update validation summary
+   - Document test results in validation_summary.md
+   - Change OVERALL STATUS from PARTIAL to PASS (if all tests pass)
+
+================================================================================
+CRITICAL TESTING NOTES
+================================================================================
+
+WARNING: 5 out of 7 SQL statements have ERROR equivalency status
+         (tool returned UNKNOWN, not a failure indication)
+    - Statement 1: GetAllProductsAsync
+    - Statement 2: GetProductByIdAsync
+    - Statement 3: InsertProductAsync (MOST CRITICAL - test RETURNING clause)
+    - Statement 6: GetProductsByPriceRangeAsync
+    - Statement 7: GetLowStockProductsAsync
+
+SUCCESS: 2 out of 7 SQL statements have EQUIVALENT status
+         (formally verified by equivalency tool)
+    - Statement 4: UpdateProductAsync
+    - Statement 5: DeleteProductAsync
+
+FOCUS: MOST CRITICAL TEST: InsertProductAsync
+    - Uses PostgreSQL RETURNING clause (replaces SCOPE_IDENTITY)
+    - Must verify ProductId is captured correctly
+    - Three-statement transaction must commit atomically
+
+================================================================================
+ESTIMATED VALIDATION TIME
+================================================================================
+
+Database Setup:        10 minutes
+Connection Testing:     5 minutes (Criterion 12)
+Operations Testing:    15 minutes (Criterion 13 - all 7 operations)
+Transaction Testing:   10 minutes (Criterion 14)
+Test Suite Execution:   5 minutes (Criterion 15 - if tests exist)
+Documentation:         10 minutes
+                      -----------
+TOTAL:                 55 minutes
+
+Quick Start Option:    20 minutes (basic validation only)
+
+================================================================================
+SUPPORT AND TROUBLESHOOTING
+================================================================================
+
+For detailed troubleshooting:
+- See RUNTIME_VALIDATION_GUIDE.md section "Troubleshooting"
+- See RUNTIME_VALIDATION_QUICK_START.md section "Troubleshooting"
+
+Common Issues:
+1. "Connection refused" - Ensure PostgreSQL is running
+2. "Authentication failed" - Check credentials in appsettings.json
+3. "database does not exist" - Run createdb command
+4. "relation does not exist" - Run initialization script
+5. RETURNING clause issues - Verify ExecuteScalarAsync is used
+
+================================================================================
+RECOMMENDATIONS
+================================================================================
+
+Immediate (Required for Production):
+1. Upgrade Npgsql from 8.0.0 to latest (addresses NU1903 security warning)
+2. Secure connection strings (use environment variables or vault)
+3. Complete all runtime validation tests
+
+Future Enhancements:
+1. Create unit and integration test suite (if none exists)
+2. Implement structured logging
+3. Add performance monitoring
+4. Create production deployment runbook
+
+================================================================================
+COMPLIANCE VERIFICATION
+================================================================================
+
+All CRITICAL requirements from transformation definition met:
+   - Every SQL statement processed through DMS MCP tool
+   - Comprehensive catalog maintained
+   - Every statement pair validated through SQL Equivalency tool
+   - No agent judgment used for equivalency determination
+   - All DMS failures documented with details
+   - Final report with complete listing created
+
+All guardrail rules complied with:
+   - No tests removed or disabled
+   - No security controls weakened
+   - No license headers modified
+   - Public API names preserved
+
+================================================================================
+CONTACT AND SUPPORT
+================================================================================
+
+Generated by: AWS Transform CLI General Purpose Agent
+Date:         2026-01-21
+Version:      1.1
+
+For questions or issues:
+1. Review RUNTIME_VALIDATION_GUIDE.md (comprehensive)
+2. Review RUNTIME_VALIDATION_QUICK_START.md (quick reference)
+3. Review validation_summary.md (complete analysis)
+4. Use Testing/ConnectionTestUtility.cs for automated diagnostics
+
+================================================================================
+END OF DOCUMENT
+================================================================================
