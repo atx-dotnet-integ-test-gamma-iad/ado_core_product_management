@@ -1,0 +1,307 @@
+===============================================================================
+DMS MCP TOOL CONVERSION LOG
+Conversion Date: 2026-01-22
+Total Statements Processed: 7
+Successful DMS Conversions: 0
+Failed DMS Conversions: 7
+Manual Conversions Required: 7
+===============================================================================
+
+===============================================================================
+STATEMENT 1: GetAllProductsAsync() - CTE with Window Functions
+===============================================================================
+Original SQL Server Statement:
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:34:32.692366",
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-22T02:37:21.100277"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool timeout - metadata model conversion did not complete
+
+===============================================================================
+STATEMENT 2: GetProductByIdAsync() - CTE with LAG Window Function
+===============================================================================
+Original SQL Server Statement:
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:37:32.452658",
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-22T02:41:03.688612"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool timeout - metadata model conversion did not complete
+
+===============================================================================
+STATEMENT 3: InsertProductAsync() - Multi-statement Transaction
+===============================================================================
+Original SQL Server Statement:
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:44:47.146851",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+  "error_timestamp": "2026-01-22T02:45:45.715244"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool rejected statement - "Statement definition is not valid"
+
+===============================================================================
+STATEMENT 4: UpdateProductAsync() - Multi-statement Transaction
+===============================================================================
+Original SQL Server Statement:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:45:57.067684",
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-22T02:48:56.666370"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool timeout - metadata model conversion did not complete
+
+===============================================================================
+STATEMENT 5: DeleteProductAsync() - Multi-statement Transaction
+===============================================================================
+Original SQL Server Statement:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:49:06.496903",
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-22T02:52:38.206930"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool timeout - metadata model conversion did not complete
+
+===============================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync() - CTE with RANK Functions
+===============================================================================
+Original SQL Server Statement:
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:41:13.007741",
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-22T02:44:33.885119"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool timeout - metadata model conversion did not complete
+
+===============================================================================
+STATEMENT 7: GetLowStockProductsAsync() - CTE with Multiple Window Functions
+===============================================================================
+Original SQL Server Statement:
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-01-22T02:52:48.410721",
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-22T02:56:19.313722"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool timeout - metadata model conversion did not complete
+
+===============================================================================
+SUMMARY OF DMS TOOL ATTEMPTS
+===============================================================================
+Total Statements: 7
+DMS Tool Invocations: 7
+Successful Conversions: 0
+Failed Conversions: 7
+  - Timeout errors: 6
+  - Invalid statement errors: 1
+
+All statements require manual conversion to PostgreSQL syntax.
+
+Key SQL Server to PostgreSQL conversions needed:
+1. GETDATE() → NOW() or CURRENT_TIMESTAMP
+2. SCOPE_IDENTITY() → RETURNING clause
+3. @ParameterName → Keep named parameters (Npgsql supports them)
+4. DECIMAL(18,2) → NUMERIC(18,2)
+5. BEGIN TRANSACTION/COMMIT → PostgreSQL transaction syntax (compatible)
+6. Window functions → Keep as-is (PostgreSQL supports same syntax)
+7. CTEs → Keep as-is (PostgreSQL supports same syntax)
+
+===============================================================================
+END OF DMS CONVERSION LOG
+===============================================================================
