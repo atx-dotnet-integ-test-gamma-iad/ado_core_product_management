@@ -1,0 +1,457 @@
+================================================================================
+POSTGRESQL RUNTIME VALIDATION GUIDE
+================================================================================
+Date: 2026-01-24
+Purpose: Guide for validating Exit Criteria 12, 13, and 14
+Project: AdoCore - Microsoft SQL Server to PostgreSQL Migration
+
+================================================================================
+OVERVIEW
+================================================================================
+This guide provides step-by-step instructions for validating the migrated application
+against a live PostgreSQL database. These validations cannot be performed without an
+actual PostgreSQL database instance.
+
+Exit Criteria Requiring Runtime Validation:
+- Criterion 12: Application successfully connects to PostgreSQL database
+- Criterion 13: All database operations execute successfully
+- Criterion 14: Transaction blocks maintain atomicity
+
+================================================================================
+PREREQUISITES
+================================================================================
+
+1. PostgreSQL Database Setup:
+   - PostgreSQL version: 12.0 or higher recommended
+   - Database name: ProductManagement (per appsettings.json)
+   - Default port: 5432
+
+2. Database Schema:
+   Required tables:
+   - Products (ProductId, Name, Description, Price, StockQuantity, CreatedDate, ModifiedDate)
+   - ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+   - ProductStats (StatId, TotalProducts, AveragePrice, LastUpdated)
+
+3. Connection Configuration:
+   File: appsettings.json
+   
+   Current configuration:
+   {
+     "ConnectionStrings": {
+       "DevConnection": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres",
+       "ProdConnection": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres"
+     }
+   }
+
+   Adjust as needed for your environment.
+
+================================================================================
+STEP 1: DATABASE SETUP
+================================================================================
+
+1.1 Install PostgreSQL (if not already installed):
+    - Download from: https://www.postgresql.org/download/
+    - Follow installation instructions for your OS
+    - Note the superuser password you set during installation
+
+1.2 Create Database:
+    ```sql
+    CREATE DATABASE "ProductManagement";
+    ```
+
+1.3 Create Schema (execute in ProductManagement database):
+    ```sql
+    -- Products table
+    CREATE TABLE Products (
+        ProductId SERIAL PRIMARY KEY,
+        Name VARCHAR(255) NOT NULL,
+        Description TEXT,
+        Price DECIMAL(18,2) NOT NULL,
+        StockQuantity INTEGER NOT NULL,
+        CreatedDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        ModifiedDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- ProductHistory table
+    CREATE TABLE ProductHistory (
+        HistoryId SERIAL PRIMARY KEY,
+        ProductId INTEGER NOT NULL,
+        Action VARCHAR(50) NOT NULL,
+        OldPrice DECIMAL(18,2),
+        NewPrice DECIMAL(18,2),
+        OldStock INTEGER,
+        NewStock INTEGER,
+        ActionDate TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (ProductId) REFERENCES Products(ProductId)
+    );
+
+    -- ProductStats table
+    CREATE TABLE ProductStats (
+        StatId INTEGER PRIMARY KEY,
+        TotalProducts INTEGER NOT NULL DEFAULT 0,
+        AveragePrice DECIMAL(18,2) NOT NULL DEFAULT 0,
+        LastUpdated TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Initialize ProductStats
+    INSERT INTO ProductStats (StatId, TotalProducts, AveragePrice, LastUpdated)
+    VALUES (1, 0, 0, CURRENT_TIMESTAMP);
+    ```
+
+1.4 Create Test Data (optional):
+    ```sql
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES 
+        ('Test Product 1', 'Description 1', 99.99, 100),
+        ('Test Product 2', 'Description 2', 149.99, 50),
+        ('Test Product 3', 'Description 3', 199.99, 25);
+
+    -- Update stats
+    UPDATE ProductStats
+    SET TotalProducts = 3,
+        AveragePrice = (99.99 + 149.99 + 199.99) / 3,
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+    ```
+
+================================================================================
+STEP 2: VALIDATE CONNECTION (EXIT CRITERION 12)
+================================================================================
+
+2.1 Update Connection String (if needed):
+    Edit: appsettings.json
+    Update: Host, Port, Username, Password as appropriate
+
+2.2 Build Application:
+    ```bash
+    cd /QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode
+    dotnet build
+    ```
+
+2.3 Run Application:
+    ```bash
+    dotnet run
+    ```
+
+2.4 Test Connection:
+    From the application menu, select option to list all products or any database operation.
+
+2.5 Expected Result:
+    - Application starts without connection errors
+    - Menu displays properly
+    - No NpgsqlException thrown during startup
+
+2.6 Validation Evidence:
+    - Screenshot or log showing successful application startup
+    - Database operation completes without connection errors
+    - Connection string properly formatted for PostgreSQL
+
+2.7 Common Issues:
+    - "could not connect to server": Check PostgreSQL is running
+    - "password authentication failed": Verify username/password in connection string
+    - "database does not exist": Create ProductManagement database
+    - "relation does not exist": Run schema creation scripts
+
+================================================================================
+STEP 3: VALIDATE DATABASE OPERATIONS (EXIT CRITERION 13)
+================================================================================
+
+3.1 Test SELECT Operations:
+
+    a) GetAllProductsAsync:
+       Menu option: List all products (or equivalent)
+       Expected: Returns list of products with calculated fields (PriceCategory, PricePercentageOfAverage)
+       SQL Features Tested: CTE, Window functions (AVG OVER, COUNT OVER), CASE statements
+
+    b) GetProductByIdAsync:
+       Menu option: Search product by ID
+       Expected: Returns product with previous price/stock information
+       SQL Features Tested: CTE, LAG window function, parameterized query
+
+    c) GetProductsByPriceRangeAsync:
+       Menu option: Search by price range (or equivalent)
+       Expected: Returns products within range with price ranking
+       SQL Features Tested: CTE, RANK(), PERCENT_RANK() window functions
+
+    d) GetLowStockProductsAsync:
+       Menu option: List low stock products
+       Expected: Returns products below threshold with stock analysis
+       SQL Features Tested: CTE, aggregate window functions (AVG, MIN, MAX OVER)
+
+3.2 Test INSERT Operations:
+
+    InsertProductAsync:
+    Menu option: Add new product
+    Steps:
+    1. Add a new product with name, description, price, stock quantity
+    2. Verify new product ID is returned
+    3. Query Products table to confirm insert
+    4. Query ProductHistory table to confirm history log
+    5. Query ProductStats table to confirm stats update
+
+    Expected:
+    - New product created with auto-generated ID
+    - Product ID returned via RETURNING clause
+    - History entry created with Action='INSERT'
+    - ProductStats updated (TotalProducts +1, AveragePrice recalculated)
+
+    SQL Features Tested: INSERT with RETURNING, CURRENT_TIMESTAMP, transaction handling
+
+3.3 Test UPDATE Operations:
+
+    UpdateProductAsync:
+    Menu option: Update product
+    Steps:
+    1. Update an existing product (change price and/or stock)
+    2. Verify update confirmation
+    3. Query Products table to confirm changes
+    4. Query ProductHistory table to confirm history log with old/new values
+    5. Query ProductStats table to confirm stats update
+
+    Expected:
+    - Product fields updated correctly
+    - ModifiedDate updated to current timestamp
+    - History entry created with Action='UPDATE', old and new values
+    - ProductStats updated (AveragePrice recalculated)
+
+    SQL Features Tested: UPDATE, CURRENT_TIMESTAMP, transaction handling, multi-statement operations
+
+3.4 Test DELETE Operations:
+
+    DeleteProductAsync:
+    Menu option: Delete product
+    Steps:
+    1. Delete an existing product
+    2. Verify delete confirmation
+    3. Query Products table to confirm deletion
+    4. Query ProductHistory table to confirm history log
+    5. Query ProductStats table to confirm stats update
+
+    Expected:
+    - Product removed from Products table
+    - History entry created with Action='DELETE' and old values
+    - ProductStats updated (TotalProducts -1, AveragePrice recalculated)
+
+    SQL Features Tested: DELETE, transaction handling, CASE in UPDATE
+
+3.5 Validation Evidence:
+    For each operation, document:
+    - Menu option selected
+    - Input values
+    - Output/result
+    - Database state before and after
+    - Any errors encountered
+
+================================================================================
+STEP 4: VALIDATE TRANSACTION ATOMICITY (EXIT CRITERION 14)
+================================================================================
+
+4.1 Test Transaction Commit (Success Path):
+
+    Operation: InsertProductAsync
+    Steps:
+    1. Add a new product
+    2. Verify all three operations completed:
+       - Product inserted into Products
+       - History entry created in ProductHistory
+       - Stats updated in ProductStats
+    3. All changes should be committed together
+
+    Expected:
+    - All three tables updated atomically
+    - If any query succeeds, all queries succeed
+    - No partial state (e.g., Product exists but History doesn't)
+
+4.2 Test Transaction Rollback (Failure Path):
+
+    This requires simulating an error condition. Options:
+
+    Option A: Database Constraint Violation
+    Steps:
+    1. Temporarily modify ProductRepository to add invalid data in one of the transaction steps
+    2. Attempt to insert/update/delete
+    3. Verify transaction rolls back
+    4. Confirm no partial changes in any table
+
+    Option B: Explicit Rollback Test
+    Steps:
+    1. Modify code temporarily to throw exception after first operation
+    2. Attempt transaction
+    3. Verify all operations rolled back
+    4. Confirm database state unchanged
+
+    Expected:
+    - Exception caught and transaction rolled back
+    - No changes persisted to any table
+    - Database returns to pre-transaction state
+    - No orphaned records in any table
+
+4.3 Test Concurrent Transactions (Optional):
+
+    Steps:
+    1. Open two application instances
+    2. Simultaneously update different products
+    3. Verify both transactions complete successfully
+    4. Verify no data corruption or deadlocks
+
+4.4 Validation Evidence:
+    - Screenshots or logs showing successful transaction commit
+    - Evidence of rollback on failure (no partial updates)
+    - Database queries showing consistent state before/after operations
+
+================================================================================
+STEP 5: PERFORMANCE AND COMPATIBILITY VALIDATION
+================================================================================
+
+5.1 Window Function Performance:
+    - Execute GetAllProductsAsync with large dataset (1000+ products)
+    - Verify acceptable performance (< 2 seconds for reasonable dataset)
+
+5.2 Parameter Binding:
+    - Test all parameterized queries with various input values
+    - Verify Npgsql parameter syntax (@param) works correctly
+    - Test NULL parameters, special characters, boundary values
+
+5.3 Date/Time Handling:
+    - Verify CURRENT_TIMESTAMP produces correct timestamps
+    - Compare with SQL Server GETDATE() behavior
+    - Test timezone handling if relevant
+
+5.4 Numeric Precision:
+    - Verify DECIMAL(18,2) maintains precision
+    - Test calculations (averages, percentages) match expected values
+    - Compare with SQL Server numeric behavior
+
+================================================================================
+STEP 6: DOCUMENTATION OF RESULTS
+================================================================================
+
+Create a runtime validation report with:
+
+1. Environment Details:
+   - PostgreSQL version
+   - OS and .NET version
+   - Database schema version
+
+2. Test Results:
+   For each exit criterion:
+   - Status (PASS/FAIL)
+   - Evidence (screenshots, logs, query results)
+   - Any issues encountered and resolutions
+
+3. SQL Statement Validation:
+   For each of the 7 converted statements:
+   - Statement name
+   - Execution status
+   - Sample output
+   - Performance observations
+
+4. Transaction Testing Results:
+   - Commit scenarios tested
+   - Rollback scenarios tested
+   - Atomicity confirmed
+
+5. Issues and Resolutions:
+   - Any bugs found
+   - Performance issues
+   - Compatibility concerns
+
+================================================================================
+AUTOMATED TESTING OPTION
+================================================================================
+
+For repeatable validation, consider creating automated tests:
+
+```csharp
+// Example xUnit integration test
+public class PostgreSQLIntegrationTests
+{
+    private readonly ProductRepository _repository;
+
+    public PostgreSQLIntegrationTests()
+    {
+        var connectionString = "Host=localhost;Port=5432;Database=ProductManagement_Test;Username=postgres;Password=postgres";
+        _repository = new ProductRepository(connectionString);
+    }
+
+    [Fact]
+    public async Task GetAllProductsAsync_ShouldReturnProducts()
+    {
+        // Arrange - setup test data
+        
+        // Act
+        var products = await _repository.GetAllProductsAsync();
+        
+        // Assert
+        Assert.NotNull(products);
+        Assert.True(products.Any());
+    }
+
+    [Fact]
+    public async Task InsertProductAsync_ShouldReturnNewId()
+    {
+        // Arrange
+        var product = new Product { Name = "Test", Price = 99.99m, StockQuantity = 10 };
+        
+        // Act
+        var newId = await _repository.InsertProductAsync(product);
+        
+        // Assert
+        Assert.True(newId > 0);
+        
+        // Cleanup
+        await _repository.DeleteProductAsync(newId);
+    }
+
+    [Fact]
+    public async Task Transaction_ShouldRollbackOnError()
+    {
+        // Test transaction atomicity
+        // Verify rollback behavior
+    }
+}
+```
+
+================================================================================
+SUPPORT AND TROUBLESHOOTING
+================================================================================
+
+Connection Issues:
+- Check PostgreSQL service: sudo systemctl status postgresql (Linux)
+- Verify pg_hba.conf allows connections from your application
+- Test connection with psql: psql -h localhost -U postgres -d ProductManagement
+
+Query Issues:
+- Enable PostgreSQL query logging: ALTER DATABASE ProductManagement SET log_statement = 'all';
+- Review logs: typically in /var/log/postgresql/
+- Use pgAdmin or DataGrip to test queries directly
+
+Application Issues:
+- Enable detailed logging in appsettings.json
+- Check Npgsql error messages for specific issues
+- Verify .csproj has correct Npgsql version (8.0.8)
+
+================================================================================
+COMPLETION CHECKLIST
+================================================================================
+
+☐ PostgreSQL database created and configured
+☐ Database schema created (Products, ProductHistory, ProductStats)
+☐ Test data populated
+☐ Connection string updated in appsettings.json
+☐ Application builds successfully
+☐ Application connects to PostgreSQL (Criterion 12)
+☐ All SELECT operations tested (GetAll, GetById, GetByPriceRange, GetLowStock)
+☐ INSERT operation tested (InsertProductAsync)
+☐ UPDATE operation tested (UpdateProductAsync)
+☐ DELETE operation tested (DeleteProductAsync)
+☐ All operations execute successfully (Criterion 13)
+☐ Transaction commit tested and verified
+☐ Transaction rollback tested and verified
+☐ Transaction atomicity confirmed (Criterion 14)
+☐ Runtime validation report created
+☐ All issues documented and resolved
+
+================================================================================
+END OF RUNTIME VALIDATION GUIDE
+================================================================================

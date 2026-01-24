@@ -1,0 +1,289 @@
+{
+  "extraction_metadata": {
+    "extraction_date": "2026-01-24",
+    "source_application": "AdoCore - ADO.NET Product Management System",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "total_files_analyzed": 1,
+    "total_statements_extracted": 7
+  },
+  "files_analyzed": [
+    {
+      "file_path": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/DataAccess/ProductRepository.cs",
+      "contains_sql": true,
+      "sql_statement_count": 7,
+      "uses_transactions": true,
+      "uses_parameters": true,
+      "uses_window_functions": true
+    }
+  ],
+  "extracted_statements": [
+    {
+      "statement_id": 1,
+      "statement_name": "GetAllProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetAllProductsAsync()",
+      "line_start": 38,
+      "line_end": 67,
+      "statement_type": "SELECT",
+      "complexity": "HIGH",
+      "features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (AVG OVER, COUNT OVER)",
+        "CASE statements",
+        "ROUND function",
+        "INNER JOIN",
+        "Complex ORDER BY"
+      ],
+      "tables_referenced": [
+        "Products"
+      ],
+      "parameters": [],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "Window function syntax compatibility",
+        "CTE syntax verification",
+        "ROUND function compatibility"
+      ]
+    },
+    {
+      "statement_id": 2,
+      "statement_name": "GetProductByIdAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetProductByIdAsync(int productId)",
+      "line_start": 82,
+      "line_end": 110,
+      "statement_type": "SELECT",
+      "complexity": "HIGH",
+      "features": [
+        "CTE (Common Table Expression)",
+        "LAG window function",
+        "CASE statement with calculations",
+        "ROUND function",
+        "LEFT JOIN",
+        "Parameterized query"
+      ],
+      "tables_referenced": [
+        "Products",
+        "ProductHistory (CTE)"
+      ],
+      "parameters": [
+        "@ProductId"
+      ],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "LAG window function syntax",
+        "Parameter binding compatibility",
+        "CTE with WHERE clause"
+      ]
+    },
+    {
+      "statement_id": 3,
+      "statement_name": "InsertProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "InsertProductAsync(Product product)",
+      "line_start": 125,
+      "line_end": 150,
+      "statement_type": "TRANSACTION (INSERT + UPDATE + SELECT)",
+      "complexity": "VERY HIGH",
+      "features": [
+        "Transaction block (BEGIN TRANSACTION/COMMIT)",
+        "Variable declaration (DECLARE)",
+        "SCOPE_IDENTITY() for last inserted ID",
+        "GETDATE() function calls",
+        "Multiple DML operations",
+        "Parameterized inserts",
+        "Scalar SELECT for return value"
+      ],
+      "tables_referenced": [
+        "Products",
+        "ProductHistory",
+        "ProductStats"
+      ],
+      "parameters": [
+        "@Name",
+        "@Description",
+        "@Price",
+        "@StockQuantity"
+      ],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "SCOPE_IDENTITY() → PostgreSQL RETURNING clause or CURRVAL",
+        "GETDATE() → CURRENT_TIMESTAMP or NOW()",
+        "Transaction syntax compatibility",
+        "Variable declaration syntax",
+        "Multi-statement transaction handling"
+      ]
+    },
+    {
+      "statement_id": 4,
+      "statement_name": "UpdateProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "UpdateProductAsync(Product product)",
+      "line_start": 165,
+      "line_end": 196,
+      "statement_type": "TRANSACTION (SELECT + UPDATE + INSERT)",
+      "complexity": "VERY HIGH",
+      "features": [
+        "Transaction block (BEGIN TRANSACTION/COMMIT)",
+        "Multiple variable declarations (DECLARE)",
+        "GETDATE() function calls",
+        "Multiple DML operations",
+        "Parameterized operations",
+        "SELECT into variables"
+      ],
+      "tables_referenced": [
+        "Products",
+        "ProductHistory",
+        "ProductStats"
+      ],
+      "parameters": [
+        "@ProductId",
+        "@Name",
+        "@Description",
+        "@Price",
+        "@StockQuantity"
+      ],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "GETDATE() → CURRENT_TIMESTAMP or NOW()",
+        "Transaction syntax compatibility",
+        "Variable declaration and assignment syntax",
+        "Multi-statement transaction handling"
+      ]
+    },
+    {
+      "statement_id": 5,
+      "statement_name": "DeleteProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "DeleteProductAsync(int productId)",
+      "line_start": 211,
+      "line_end": 239,
+      "statement_type": "TRANSACTION (SELECT + INSERT + DELETE + UPDATE)",
+      "complexity": "VERY HIGH",
+      "features": [
+        "Transaction block (BEGIN TRANSACTION/COMMIT)",
+        "Multiple variable declarations (DECLARE)",
+        "GETDATE() function calls",
+        "Multiple DML operations including DELETE",
+        "CASE statement in UPDATE",
+        "Parameterized operations",
+        "SELECT into variables"
+      ],
+      "tables_referenced": [
+        "Products",
+        "ProductHistory",
+        "ProductStats"
+      ],
+      "parameters": [
+        "@ProductId"
+      ],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "GETDATE() → CURRENT_TIMESTAMP or NOW()",
+        "Transaction syntax compatibility",
+        "Variable declaration and assignment syntax",
+        "Multi-statement transaction handling",
+        "CASE statement in UPDATE"
+      ]
+    },
+    {
+      "statement_id": 6,
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)",
+      "line_start": 254,
+      "line_end": 279,
+      "statement_type": "SELECT",
+      "complexity": "HIGH",
+      "features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (RANK, PERCENT_RANK)",
+        "CASE statement",
+        "BETWEEN operator",
+        "Parameterized query",
+        "Wildcard select (p.*)"
+      ],
+      "tables_referenced": [
+        "Products"
+      ],
+      "parameters": [
+        "@MinPrice",
+        "@MaxPrice"
+      ],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "RANK window function syntax",
+        "PERCENT_RANK window function syntax",
+        "CTE syntax verification",
+        "Parameter binding compatibility"
+      ]
+    },
+    {
+      "statement_id": 7,
+      "statement_name": "GetLowStockProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetLowStockProductsAsync(int threshold)",
+      "line_start": 294,
+      "line_end": 318,
+      "statement_type": "SELECT",
+      "complexity": "HIGH",
+      "features": [
+        "CTE (Common Table Expression)",
+        "Multiple aggregate window functions (AVG, MIN, MAX OVER)",
+        "CASE statement with calculations",
+        "ROUND function",
+        "Parameterized query",
+        "Wildcard select (p.*)"
+      ],
+      "tables_referenced": [
+        "Products"
+      ],
+      "parameters": [
+        "@Threshold"
+      ],
+      "requires_dms_conversion": true,
+      "conversion_challenges": [
+        "Multiple window functions syntax",
+        "CTE syntax verification",
+        "ROUND function compatibility",
+        "Parameter binding compatibility"
+      ]
+    }
+  ],
+  "extraction_statistics": {
+    "statements_by_type": {
+      "SELECT": 4,
+      "TRANSACTION": 3
+    },
+    "statements_by_complexity": {
+      "HIGH": 4,
+      "VERY HIGH": 3
+    },
+    "features_summary": {
+      "uses_cte": 6,
+      "uses_window_functions": 6,
+      "uses_transactions": 3,
+      "uses_scope_identity": 1,
+      "uses_getdate": 3,
+      "uses_case_statements": 7,
+      "uses_parameters": 6,
+      "uses_multiple_dml": 3
+    },
+    "tables_involved": [
+      "Products",
+      "ProductHistory",
+      "ProductStats"
+    ]
+  },
+  "conversion_notes": [
+    "All 7 statements require DMS MCP tool conversion",
+    "Statements 3, 4, and 5 are complex multi-statement transactions requiring special attention",
+    "SCOPE_IDENTITY() in statement 3 must be converted to PostgreSQL equivalent (RETURNING clause or CURRVAL)",
+    "All GETDATE() functions must be converted to PostgreSQL CURRENT_TIMESTAMP or NOW()",
+    "Window functions are heavily used and require syntax verification",
+    "Transaction block syntax (BEGIN TRANSACTION/COMMIT) must be converted to PostgreSQL syntax (BEGIN/COMMIT)",
+    "Variable declaration syntax (DECLARE @var) must be converted to PostgreSQL DO block or function syntax",
+    "Parameter names using @param are compatible with Npgsql provider"
+  ]
+}
