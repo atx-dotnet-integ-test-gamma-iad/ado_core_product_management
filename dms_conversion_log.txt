@@ -1,0 +1,532 @@
+================================================================================
+DMS SQL STATEMENT CONVERSION LOG
+================================================================================
+Project: AdoCore - Product Management System
+Conversion Tool: AWS DMS MCP Statement Conversion Tool (dms-mcp____statement_conversion_tool)
+Date: 2026-01-24
+Total Statements Processed: 7
+DMS Successful Conversions: 0
+DMS Failed Conversions: 7
+Manual Conversions Required: 7
+================================================================================
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync CTE Query
+================================================================================
+Conversion Timestamp: 2026-01-24T10:40:48.744538
+Input SQL Type: SELECT with CTE, window functions
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS WORKFLOW:
+-------------
+Step 1: create_metadata_model
+  - Status: completed
+  - Request ID: 0fec0a0a-3cef-41d5-8785-80fc0952981d
+  - Model Name: sql-conversion-1769251251
+  - Poll Attempts: 2
+  - Timestamp: 2026-01-24T10:40:51.311436
+
+Step 2: convert_metadata_model
+  - Status: started
+  - Timestamp: 2026-01-24T10:41:03.978258
+
+DMS FINAL STATUS: ERROR
+Error Message: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Error Timestamp: 2026-01-24T10:43:36.661209
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: DMS tool timed out after 15 polling attempts
+Manual Conversion Notes:
+  - Query is fully compatible with PostgreSQL
+  - CTEs are standard SQL and work identically in PostgreSQL
+  - Window functions (AVG OVER, COUNT OVER) are standard SQL
+  - CASE expressions are compatible
+  - No SQL syntax changes required
+  - Parameter handling (@param) automatically managed by Npgsql driver
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync LAG Query
+================================================================================
+Conversion Timestamp: 2026-01-24T10:43:46.243420
+Input SQL Type: SELECT with CTE, LAG window function
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS WORKFLOW:
+-------------
+Step 1: create_metadata_model
+  - Status: completed
+  - Request ID: dea1b306-5113-429b-abf2-cbc8ad38ba82
+  - Model Name: sql-conversion-1769251428
+  - Poll Attempts: 8
+  - Timestamp: 2026-01-24T10:43:48.367241
+
+Step 2: convert_metadata_model
+  - Status: started
+  - Timestamp: 2026-01-24T10:45:06.210986
+
+DMS FINAL STATUS: ERROR
+Error Message: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Error Timestamp: 2026-01-24T10:47:39.381170
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: DMS tool timed out after 15 polling attempts
+Manual Conversion Notes:
+  - Query is fully compatible with PostgreSQL
+  - CTEs with WHERE clause are standard SQL
+  - LAG() window function is standard SQL and works identically in PostgreSQL
+  - LEFT JOIN is compatible
+  - No SQL syntax changes required
+  - Parameter handling automatically managed by Npgsql driver
+
+================================================================================
+STATEMENT 3: InsertProductAsync Multi-statement Transaction
+================================================================================
+Conversion Timestamp: 2026-01-24T10:47:51.613474
+Input SQL Type: Multi-statement batch with transaction, DECLARE, SCOPE_IDENTITY()
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS WORKFLOW:
+-------------
+Step 1: create_metadata_model
+  - Status: started
+  - Timestamp: 2026-01-24T10:47:53.804086
+
+DMS FINAL STATUS: ERROR
+Error Message: Metadata model creation failed: {'error': "Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}"}
+Error Timestamp: 2026-01-24T10:49:11.442983
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: DMS tool rejected multi-statement batch as invalid
+Manual Conversion Notes:
+  - SQL Server DECLARE/SET pattern not directly supported in single PostgreSQL statement
+  - SCOPE_IDENTITY() converted to RETURNING clause in INSERT statement
+  - GETDATE() converted to NOW()
+  - BEGIN TRANSACTION converted to BEGIN
+  - Multi-statement batch split into separate statements to be executed within transaction
+  - Application code needs to capture ProductId from RETURNING clause
+  - All statements must be executed within a single NpgsqlTransaction
+
+POSTGRESQL CONVERSION:
+----------------------
+-- Statement 3a: Insert with RETURNING
+INSERT INTO Products (Name, Description, Price, StockQuantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING ProductId;
+
+-- Statement 3b: Log insertion
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, NOW());
+
+-- Statement 3c: Update statistics
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts + 1,
+    AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+    LastUpdated = NOW()
+WHERE StatId = 1;
+
+================================================================================
+STATEMENT 4: UpdateProductAsync Multi-statement Transaction
+================================================================================
+Conversion Timestamp: Not attempted after Statement 3 failure pattern
+Input SQL Type: Multi-statement batch with transaction, DECLARE, variables
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS ATTEMPT: NOT ATTEMPTED
+Reason: Based on Statement 3 failure, multi-statement batches with DECLARE are not accepted by DMS tool
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: Pre-emptive manual conversion based on known DMS limitation
+Manual Conversion Notes:
+  - DECLARE variables eliminated - use CTEs or capture in application code
+  - GETDATE() converted to NOW()
+  - BEGIN TRANSACTION converted to BEGIN
+  - Old values need to be captured before UPDATE in application code
+  - Split into separate statements to be executed within transaction
+  - All statements executed within a single NpgsqlTransaction
+
+POSTGRESQL CONVERSION:
+----------------------
+-- Capture old values first (in application code before transaction)
+SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId;
+
+-- Statement 4a: Update product
+UPDATE Products
+SET 
+    Name = @Name,
+    Description = @Description,
+    Price = @Price,
+    StockQuantity = @StockQuantity,
+    ModifiedDate = NOW()
+WHERE ProductId = @ProductId;
+
+-- Statement 4b: Log changes
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, NOW());
+
+-- Statement 4c: Update statistics
+UPDATE ProductStats
+SET 
+    AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+    LastUpdated = NOW()
+WHERE StatId = 1;
+
+================================================================================
+STATEMENT 5: DeleteProductAsync Multi-statement Transaction
+================================================================================
+Conversion Timestamp: Not attempted after Statement 3 failure pattern
+Input SQL Type: Multi-statement batch with transaction, DECLARE, DELETE
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS ATTEMPT: NOT ATTEMPTED
+Reason: Based on Statement 3 failure, multi-statement batches with DECLARE are not accepted by DMS tool
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: Pre-emptive manual conversion based on known DMS limitation
+Manual Conversion Notes:
+  - DECLARE variables eliminated - capture old values before deletion in application code
+  - GETDATE() converted to NOW()
+  - BEGIN TRANSACTION converted to BEGIN
+  - CASE expression is compatible with PostgreSQL
+  - Old values must be captured before DELETE
+  - Split into separate statements within transaction
+  - All statements executed within a single NpgsqlTransaction
+
+POSTGRESQL CONVERSION:
+----------------------
+-- Capture old values first (in application code before transaction)
+SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId;
+
+-- Statement 5a: Log deletion
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, NOW());
+
+-- Statement 5b: Delete product
+DELETE FROM Products WHERE ProductId = @ProductId;
+
+-- Statement 5c: Update statistics
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts - 1,
+    AveragePrice = CASE 
+        WHEN TotalProducts > 1 
+        THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+        ELSE 0
+    END,
+    LastUpdated = NOW()
+WHERE StatId = 1;
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync RANK Query
+================================================================================
+Conversion Timestamp: 2026-01-24T10:49:20.673814
+Input SQL Type: SELECT with CTE, RANK and PERCENT_RANK window functions
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS WORKFLOW:
+-------------
+Step 1: create_metadata_model
+  - Status: completed
+  - Request ID: 83c476ba-de2a-4d27-b856-3aae0393edea
+  - Model Name: sql-conversion-1769251762
+  - Poll Attempts: 4
+  - Timestamp: 2026-01-24T10:49:22.907638
+
+Step 2: convert_metadata_model
+  - Status: started
+  - Timestamp: 2026-01-24T10:49:57.411130
+
+DMS FINAL STATUS: ERROR
+Error Message: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Error Timestamp: 2026-01-24T10:52:29.910484
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: DMS tool timed out after 15 polling attempts
+Manual Conversion Notes:
+  - Query is fully compatible with PostgreSQL
+  - CTEs are standard SQL
+  - RANK() OVER and PERCENT_RANK() OVER are standard SQL window functions
+  - BETWEEN operator is compatible
+  - CASE expressions are compatible
+  - No SQL syntax changes required - query works identically in PostgreSQL
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync Stock Analysis Query
+================================================================================
+Conversion Timestamp: Not attempted after repeated timeout pattern
+Input SQL Type: SELECT with CTE, multiple window functions (AVG, MIN, MAX)
+Schema: dbo
+Database: ProductManagement
+
+INPUT SQL:
+----------
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+DMS ATTEMPT: NOT ATTEMPTED
+Reason: Based on repeated timeout failures for CTE queries, skipped DMS attempt
+
+MANUAL CONVERSION APPLIED: YES
+Manual Conversion Reason: Pre-emptive manual conversion based on consistent DMS timeout pattern
+Manual Conversion Notes:
+  - Query is fully compatible with PostgreSQL
+  - CTEs are standard SQL
+  - Window functions AVG(), MIN(), MAX() with OVER() are standard SQL
+  - CASE expressions are compatible
+  - ROUND() function is compatible
+  - No SQL syntax changes required - query works identically in PostgreSQL
+
+================================================================================
+DMS CONVERSION SUMMARY
+================================================================================
+
+OVERALL STATISTICS:
+------------------
+Total Statements: 7
+DMS Attempted: 4 (Statements 1, 2, 3, 6)
+DMS Successful: 0
+DMS Failed: 4
+DMS Not Attempted: 3 (Statements 4, 5, 7 - pre-emptive manual conversion)
+Manual Conversions: 7 (100%)
+
+DMS FAILURE ANALYSIS:
+--------------------
+1. Timeout Errors (3 statements): Statements 1, 2, 6
+   - Error: "Metadata model conversion did not complete after 15 attempts"
+   - Root Cause: DMS conversion process exceeded polling timeout
+   - Impact: CTE queries with window functions timed out consistently
+
+2. Invalid Statement Errors (1 statement): Statement 3
+   - Error: "Statement definition is not valid"
+   - Root Cause: Multi-statement batches with DECLARE not accepted by DMS tool
+   - Impact: All transaction-based multi-statement blocks rejected
+
+3. Pre-emptive Manual Conversion (3 statements): Statements 4, 5, 7
+   - Reason: Based on established failure patterns
+   - Decision: Manual conversion more efficient than waiting for predictable failures
+
+KEY SQL SERVER TO POSTGRESQL CONVERSIONS:
+-----------------------------------------
+1. SCOPE_IDENTITY() → RETURNING clause
+2. GETDATE() → NOW()
+3. BEGIN TRANSACTION → BEGIN
+4. DECLARE + SET pattern → Application-level variable capture or CTEs
+5. Multi-statement batches → Separate statements in transaction blocks
+
+POSTGRESQL COMPATIBILITY FINDINGS:
+---------------------------------
+✓ Common Table Expressions (CTEs) - Fully compatible
+✓ Window Functions (AVG, COUNT, LAG, RANK, PERCENT_RANK, MIN, MAX with OVER) - Fully compatible
+✓ CASE expressions - Fully compatible
+✓ ROUND() function - Fully compatible
+✓ JOIN operations (INNER, LEFT) - Fully compatible
+✓ BETWEEN operator - Fully compatible
+✓ Standard WHERE, ORDER BY, aggregate functions - Fully compatible
+
+✗ SCOPE_IDENTITY() - Requires RETURNING clause conversion
+✗ GETDATE() - Requires NOW() conversion
+✗ Multi-statement batches with variables - Requires restructuring
+
+RECOMMENDATIONS FOR FUTURE DMS USAGE:
+------------------------------------
+1. DMS tool appears unsuitable for:
+   - Complex CTE queries (timeout issues)
+   - Multi-statement transaction blocks (validation errors)
+   - Queries with DECLARE/SET variable patterns
+
+2. Manual conversion is more efficient for:
+   - Standard SQL queries (CTEs, window functions) that are already PostgreSQL compatible
+   - Transaction blocks that need application-level restructuring
+
+3. Most SQL Server queries in this codebase use standard SQL features that are
+   PostgreSQL compatible without syntax changes. Only SQL Server-specific 
+   functions (SCOPE_IDENTITY, GETDATE) and procedural patterns (DECLARE/SET) 
+   require actual conversion.
+
+================================================================================
+END OF DMS CONVERSION LOG
+================================================================================
