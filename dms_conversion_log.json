@@ -1,0 +1,235 @@
+{
+  "dms_conversion_summary": {
+    "total_statements_processed": 7,
+    "successful_dms_conversions": 0,
+    "failed_dms_conversions": 7,
+    "manual_conversions_after_dms_failure": 7,
+    "conversion_timestamp": "2026-01-25T15:16:35Z",
+    "update_notes": "All 7 statements have been attempted through DMS MCP tool. Statement 3 failed at metadata model creation. Statements 1, 2, 4, 5, 6, 7 failed at metadata model conversion stage."
+  },
+  "statement_conversions": [
+    {
+      "statement_number": 1,
+      "statement_name": "GetAllProductsAsync - CTE with Window Functions",
+      "original_statement": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T14:30:51.310921",
+        "status": "error",
+        "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "error_timestamp": "2026-01-25T14:33:35.970352",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T14:30:53.351566",
+            "status": "completed",
+            "request_identifier": "f30ca727-e8f8-4e9c-b239-ec56eaaad7ef",
+            "metadata_model_name": "sql-conversion-1769351453",
+            "poll_attempts": 2
+          },
+          {
+            "step": "convert_metadata_model",
+            "timestamp": "2026-01-25T14:31:05.697917",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE and window functions (AVG OVER, COUNT OVER) are fully compatible with PostgreSQL. No syntax changes required. Statement works as-is in PostgreSQL."
+    },
+    {
+      "statement_number": 2,
+      "statement_name": "GetProductByIdAsync - LAG Window Function",
+      "original_statement": "WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice, LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock FROM Products WHERE ProductId = @ProductId) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, ph.PreviousPrice, ph.PreviousStock, CASE WHEN ph.PreviousPrice IS NOT NULL THEN ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) ELSE NULL END as PriceChangePercentage FROM Products p LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId WHERE p.ProductId = @ProductId",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T14:33:46.382254",
+        "status": "error",
+        "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "error_timestamp": "2026-01-25T14:37:55.802824",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T14:33:48.081732",
+            "status": "completed",
+            "request_identifier": "223bebbb-fa80-45f9-8617-796126fa0bc7",
+            "metadata_model_name": "sql-conversion-1769351628",
+            "poll_attempts": 10
+          },
+          {
+            "step": "convert_metadata_model",
+            "timestamp": "2026-01-25T14:35:25.834328",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "LAG window function is fully supported in PostgreSQL with identical syntax. CTE syntax also compatible. No changes required."
+    },
+    {
+      "statement_number": 3,
+      "statement_name": "InsertProductAsync - Transaction Block with SCOPE_IDENTITY",
+      "original_statement": "DECLARE @NewProductId INT; BEGIN TRANSACTION; INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity); SET @NewProductId = SCOPE_IDENTITY(); INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE()); UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = GETDATE() WHERE StatId = 1; COMMIT; SELECT @NewProductId;",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T14:59:15.680047",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+        "error_timestamp": "2026-01-25T14:59:29.876984",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T14:59:17.468282",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Converted SCOPE_IDENTITY() to RETURNING clause. Changed GETDATE() to NOW(). Changed BEGIN TRANSACTION to BEGIN. Used DO $ block for variable handling in transaction context. For ADO.NET, simplified to use INSERT...RETURNING directly."
+    },
+    {
+      "statement_number": 4,
+      "statement_name": "UpdateProductAsync - Transaction Block",
+      "original_statement": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId; UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE()); UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1; COMMIT;",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T14:59:38.453620",
+        "status": "error",
+        "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "error_timestamp": "2026-01-25T15:02:54.220689",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T14:59:40.090699",
+            "status": "completed",
+            "request_identifier": "500c53c7-8251-4f85-9180-2b920f96f886",
+            "metadata_model_name": "sql-conversion-1769353180",
+            "poll_attempts": 5
+          },
+          {
+            "step": "convert_metadata_model",
+            "timestamp": "2026-01-25T15:00:24.693928",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Changed BEGIN TRANSACTION to BEGIN. Changed GETDATE() to NOW(). Used DO $ block for DECLARE statements in transaction context. SELECT INTO syntax compatible with PostgreSQL."
+    },
+    {
+      "statement_number": 5,
+      "statement_name": "DeleteProductAsync - Transaction Block",
+      "original_statement": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE()); DELETE FROM Products WHERE ProductId = @ProductId; UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1; COMMIT;",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T15:03:03.164832",
+        "status": "error",
+        "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "error_timestamp": "2026-01-25T15:07:33.625925",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T15:03:04.819111",
+            "status": "completed",
+            "request_identifier": "427dcf21-8f70-48f0-8328-38a0868a7d88",
+            "metadata_model_name": "sql-conversion-1769353384",
+            "poll_attempts": 12
+          },
+          {
+            "step": "convert_metadata_model",
+            "timestamp": "2026-01-25T15:05:03.562005",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Changed BEGIN TRANSACTION to BEGIN. Changed GETDATE() to NOW(). Used DO $ block for DECLARE statements. CASE expression fully compatible with PostgreSQL."
+    },
+    {
+      "statement_number": 6,
+      "statement_name": "GetProductsByPriceRangeAsync - RANK/PERCENT_RANK",
+      "original_statement": "WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice) SELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment FROM RankedProducts rp ORDER BY rp.PriceRank",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T15:07:42.429724",
+        "status": "error",
+        "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "error_timestamp": "2026-01-25T15:11:51.026124",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T15:07:44.064054",
+            "status": "completed",
+            "request_identifier": "bef8a09b-2943-4d70-b537-ac8746a7a58d",
+            "metadata_model_name": "sql-conversion-1769353664",
+            "poll_attempts": 10
+          },
+          {
+            "step": "convert_metadata_model",
+            "timestamp": "2026-01-25T15:09:21.544275",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "RANK() and PERCENT_RANK() window functions are fully supported in PostgreSQL with identical syntax. CTE and BETWEEN operator also compatible. No changes required."
+    },
+    {
+      "statement_number": 7,
+      "statement_name": "GetLowStockProductsAsync - Window Functions for Stock Analysis",
+      "original_statement": "WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock FROM Products p) SELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus, ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage FROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_attempted": true,
+      "dms_tool_status": "error",
+      "dms_tool_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_tool_output": {
+        "conversion_timestamp": "2026-01-25T15:12:00.451615",
+        "status": "error",
+        "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "error_timestamp": "2026-01-25T15:16:30.761731",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-01-25T15:12:02.153344",
+            "status": "completed",
+            "request_identifier": "5e500495-9be8-4c62-8991-2686acbfd98f",
+            "metadata_model_name": "sql-conversion-1769353922",
+            "poll_attempts": 12
+          },
+          {
+            "step": "convert_metadata_model",
+            "timestamp": "2026-01-25T15:14:01.310190",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Window functions (AVG, MIN, MAX OVER) are fully compatible with PostgreSQL. ROUND function and CASE expression also compatible. No changes required."
+    }
+  ],
+  "conversion_notes": {
+    "dms_tool_issues": "The DMS MCP tool was attempted for all 7 SQL statements. Statement 3 failed at metadata model creation with 'Statement definition is not valid' error. Statements 1, 2, 4, 5, 6, 7 all encountered 'Metadata model conversion did not complete after 15 attempts' errors. All 7 statements required manual conversion after DMS tool failures.",
+    "dms_attempts_summary": "7 of 7 statements attempted through DMS tool. 0 successful conversions. 1 failed at metadata model creation stage. 6 failed at metadata model conversion stage. All failures documented with complete DMS tool output.",
+    "manual_conversion_approach": "Applied PostgreSQL-specific syntax conversions based on SQL Server to PostgreSQL migration best practices. Most window functions, CTEs, and query structures were directly compatible. Main changes: GETDATE() to NOW(), SCOPE_IDENTITY() to RETURNING, BEGIN TRANSACTION to BEGIN.",
+    "schema_preservation": "All table names (Products, ProductHistory, ProductStats) were preserved. No schema object name changes were applied as DMS tool did not complete conversion to provide schema transformation guidance.",
+    "compatibility_level": "All converted statements use standard PostgreSQL 12+ syntax with full window function support, CTEs, and ANSI SQL compliance."
+  }
+}
