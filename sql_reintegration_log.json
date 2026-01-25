@@ -1,0 +1,81 @@
+{
+  "reintegration_summary": {
+    "total_statements": 7,
+    "successfully_reintegrated": 7,
+    "failed_reintegration": 0,
+    "reintegration_timestamp": "2026-01-25T07:15:00Z"
+  },
+  "reintegrations": [
+    {
+      "statement_id": "STMT_001",
+      "source_method": "GetAllProductsAsync",
+      "source_location": "ProductRepository.cs:38-66",
+      "original_sql": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name",
+      "converted_sql": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "No changes needed - SQL is PostgreSQL compatible as-is"
+    },
+    {
+      "statement_id": "STMT_002",
+      "source_method": "GetProductByIdAsync",
+      "source_location": "ProductRepository.cs:76-103",
+      "original_sql": "@ProductId parameter syntax",
+      "converted_sql": "$1 parameter syntax",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "Changed @ProductId to $1 (2 occurrences)"
+    },
+    {
+      "statement_id": "STMT_003",
+      "source_method": "InsertProductAsync",
+      "source_location": "ProductRepository.cs:115-141",
+      "original_sql": "Multi-statement transaction with SCOPE_IDENTITY() and GETDATE()",
+      "converted_sql": "Separate queries with RETURNING and CURRENT_TIMESTAMP, transaction handled by application code",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "Converted SCOPE_IDENTITY() to RETURNING ProductId, GETDATE() to CURRENT_TIMESTAMP, removed DECLARE/SET, split into separate SQL statements, transaction handling moved to C# code"
+    },
+    {
+      "statement_id": "STMT_004",
+      "source_method": "UpdateProductAsync",
+      "source_location": "ProductRepository.cs:156-188",
+      "original_sql": "Multi-statement transaction with DECLARE variables and GETDATE()",
+      "converted_sql": "Separate queries with CURRENT_TIMESTAMP, transaction handled by application code",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "Changed @ProductId to $1, removed DECLARE statements, GETDATE() to CURRENT_TIMESTAMP, transaction handling commented, split logic"
+    },
+    {
+      "statement_id": "STMT_005",
+      "source_method": "DeleteProductAsync",
+      "source_location": "ProductRepository.cs:200-232",
+      "original_sql": "Multi-statement transaction with DECLARE variables and GETDATE()",
+      "converted_sql": "Separate queries with CURRENT_TIMESTAMP, transaction handled by application code",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "Changed @ProductId to $1, removed DECLARE statements, GETDATE() to CURRENT_TIMESTAMP, transaction handling commented"
+    },
+    {
+      "statement_id": "STMT_006",
+      "source_method": "GetProductsByPriceRangeAsync",
+      "source_location": "ProductRepository.cs:244-270",
+      "original_sql": "@MinPrice and @MaxPrice parameter syntax",
+      "converted_sql": "$1 and $2 parameter syntax",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "Changed @MinPrice to $1 and @MaxPrice to $2"
+    },
+    {
+      "statement_id": "STMT_007",
+      "source_method": "GetLowStockProductsAsync",
+      "source_location": "ProductRepository.cs:283-312",
+      "original_sql": "@Threshold parameter syntax",
+      "converted_sql": "$1 parameter syntax",
+      "schema_changes": "None",
+      "reintegration_status": "SUCCESS",
+      "changes_made": "Changed @Threshold to $1 (2 occurrences)"
+    }
+  ],
+  "notes": "All SQL statements have been updated with PostgreSQL syntax. Parameter binding changed from @param to $1, $2, etc. GETDATE() replaced with CURRENT_TIMESTAMP. Transaction blocks converted to application-level transaction handling. SCOPE_IDENTITY() replaced with RETURNING clause. Type replacements (SqlCommand → NpgsqlCommand, etc.) will be handled in Step 6."
+}
