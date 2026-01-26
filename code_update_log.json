@@ -1,0 +1,1 @@
+{"ado_net_replacements": {"using_statements": "Microsoft.Data.SqlClient → Npgsql", "SqlConnection": "NpgsqlConnection", "SqlCommand": "NpgsqlCommand", "SqlDataReader": "NpgsqlDataReader", "total_replacements": "~18"}}

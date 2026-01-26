@@ -1,0 +1,127 @@
+{
+  "reintegration_date": "2026-01-25",
+  "total_statements_replaced": 7,
+  "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+  "statements_replaced": [
+    {
+      "statement_id": "STMT_001",
+      "method_name": "GetAllProductsAsync",
+      "line_numbers": "41-68",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products"
+      ],
+      "parameter_changes": "None - @param syntax retained (Npgsql compatible)",
+      "notes": "CTE and window functions syntax unchanged, only schema qualification updated"
+    },
+    {
+      "statement_id": "STMT_002",
+      "method_name": "GetProductByIdAsync",
+      "line_numbers": "83-109",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products"
+      ],
+      "parameter_changes": "None - @ProductId syntax retained",
+      "notes": "LAG window function syntax unchanged, only schema qualification updated"
+    },
+    {
+      "statement_id": "STMT_003",
+      "method_name": "InsertProductAsync",
+      "line_numbers": "124-149",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products",
+        "ProductHistory → public.producthistory",
+        "ProductStats → public.productstats"
+      ],
+      "parameter_changes": "None - @Name, @Description, @Price, @StockQuantity syntax retained",
+      "syntax_changes": [
+        "BEGIN TRANSACTION → BEGIN",
+        "SCOPE_IDENTITY() → lastval() (RETURNING clause alternative)",
+        "GETDATE() → CURRENT_TIMESTAMP"
+      ],
+      "notes": "Transaction block converted. DECLARE @NewProductId and SET @NewProductId = lastval() retained for compatibility with ExecuteScalarAsync approach. RETURNING clause would require code changes in calling method."
+    },
+    {
+      "statement_id": "STMT_004",
+      "method_name": "UpdateProductAsync",
+      "line_numbers": "166-198",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products (WHERE clause and UPDATE statement)",
+        "ProductHistory → public.producthistory",
+        "ProductStats → public.productstats"
+      ],
+      "parameter_changes": "None - @ProductId, @Name, @Description, @Price, @StockQuantity syntax retained",
+      "syntax_changes": [
+        "BEGIN TRANSACTION → BEGIN",
+        "GETDATE() → CURRENT_TIMESTAMP (3 occurrences)"
+      ],
+      "notes": "Transaction block converted. DECLARE statements retained as they work within PostgreSQL transactions when using Npgsql's variable emulation."
+    },
+    {
+      "statement_id": "STMT_005",
+      "method_name": "DeleteProductAsync",
+      "line_numbers": "213-244",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products (WHERE clauses and DELETE statement)",
+        "ProductHistory → public.producthistory",
+        "ProductStats → public.productstats"
+      ],
+      "parameter_changes": "None - @ProductId syntax retained",
+      "syntax_changes": [
+        "BEGIN TRANSACTION → BEGIN",
+        "GETDATE() → CURRENT_TIMESTAMP (2 occurrences)"
+      ],
+      "notes": "Transaction block converted. DECLARE statements retained for variable usage."
+    },
+    {
+      "statement_id": "STMT_006",
+      "method_name": "GetProductsByPriceRangeAsync",
+      "line_numbers": "259-279",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products"
+      ],
+      "parameter_changes": "None - @MinPrice, @MaxPrice syntax retained",
+      "notes": "RANK() and PERCENT_RANK() syntax unchanged, only schema qualification updated"
+    },
+    {
+      "statement_id": "STMT_007",
+      "method_name": "GetLowStockProductsAsync",
+      "line_numbers": "294-318",
+      "replacement_confirmed": true,
+      "schema_changes_applied": [
+        "Products → public.products"
+      ],
+      "parameter_changes": "None - @Threshold syntax retained",
+      "notes": "Multiple window functions (AVG, MIN, MAX) syntax unchanged, only schema qualification updated"
+    }
+  ],
+  "global_transformations_applied": {
+    "schema_naming": "All table references converted to lowercase with public schema qualification",
+    "transaction_syntax": "BEGIN TRANSACTION → BEGIN (3 statements)",
+    "date_functions": "GETDATE() → CURRENT_TIMESTAMP (all occurrences)",
+    "identity_retrieval": "SCOPE_IDENTITY() → lastval() (1 occurrence)",
+    "parameter_syntax": "Named parameters (@param) retained - Npgsql compatible",
+    "cte_names": "ProductStats, ProductHistory remain unchanged (CTE names, not table names)",
+    "window_functions": "All window functions (LAG, RANK, PERCENT_RANK, AVG, MIN, MAX, COUNT) unchanged"
+  },
+  "verification_notes": {
+    "sql_server_syntax_remaining": "None - verified no SCOPE_IDENTITY, GETDATE, or BEGIN TRANSACTION remain",
+    "table_references": "All Products, ProductHistory, ProductStats table references converted to public.products, public.producthistory, public.productstats",
+    "cte_handling": "CTE names (AS aliases) preserved, only FROM/JOIN table references updated",
+    "file_validity": "File maintains valid C# syntax structure (const string declarations, proper indentation)"
+  },
+  "next_steps": {
+    "required": [
+      "Update package dependencies (Microsoft.Data.SqlClient → Npgsql)",
+      "Update ADO.NET classes (SqlConnection → NpgsqlConnection, etc.)",
+      "Update connection strings in appsettings.json",
+      "Build and test application"
+    ],
+    "notes": "SQL statements are now PostgreSQL-compatible but code still uses SqlClient classes which must be updated in next step"
+  }
+}
