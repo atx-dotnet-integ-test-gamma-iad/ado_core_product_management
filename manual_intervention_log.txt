@@ -1,0 +1,296 @@
+===============================================================================
+MANUAL INTERVENTION LOG
+SQL Server to PostgreSQL Migration - AdoCore Application
+Generated: Step 2 - Convert All SQL Statements Using DMS MCP Tool
+===============================================================================
+
+OVERVIEW:
+All 7 SQL statements were attempted through the DMS MCP tool as required by the
+transformation definition. All attempts resulted in metadata model conversion 
+timeouts. Manual conversions were performed for all statements after DMS 
+failures were documented.
+
+DMS Tool Configuration Used:
+- Schema Name: public
+- Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+- Database Name: ProductManagement
+- Region: us-east-1
+
+===============================================================================
+STATEMENT 1: GetAllProductsAsync
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: GetAllProductsAsync()
+LINES: 37-73
+
+DMS TOOL OUTPUT:
+{
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-26T19:56:10.582188",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "status": "completed",
+      "metadata_model_name": "sql-conversion-1769457205",
+      "poll_attempts": 2
+    },
+    {
+      "step": "convert_metadata_model",
+      "timestamp": "2026-01-26T19:53:38.118108",
+      "status": "started"
+    }
+  ]
+}
+
+MANUAL CONVERSION REASONING:
+The statement uses standard SQL features that are fully compatible with PostgreSQL:
+- Common Table Expressions (CTEs)
+- Window functions (AVG OVER, COUNT OVER)
+- CASE statements
+- ROUND function
+- INNER JOIN
+- ORDER BY with CASE expression
+
+No modifications needed. The statement is already PostgreSQL compatible.
+
+CHANGES APPLIED:
+None - statement is identical in PostgreSQL.
+
+===============================================================================
+STATEMENT 2: GetProductByIdAsync
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: GetProductByIdAsync(int productId)
+LINES: 79-110
+
+DMS TOOL OUTPUT:
+{
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-26T20:00:58.684422",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "status": "completed",
+      "metadata_model_name": "sql-conversion-1769457385",
+      "poll_attempts": 12
+    },
+    {
+      "step": "convert_metadata_model",
+      "timestamp": "2026-01-26T19:58:26.456489",
+      "status": "started"
+    }
+  ]
+}
+
+MANUAL CONVERSION REASONING:
+The statement uses standard SQL features compatible with PostgreSQL:
+- Common Table Expressions (CTEs)
+- LAG window function
+- Parameterized queries with @parameter syntax (supported by Npgsql)
+- CASE statements
+- LEFT JOIN
+
+No modifications needed. The statement is already PostgreSQL compatible.
+
+CHANGES APPLIED:
+None - statement is identical in PostgreSQL.
+
+===============================================================================
+STATEMENT 3: InsertProductAsync - Transaction Block
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: InsertProductAsync(Product product)
+LINES: 120-149
+
+DMS TOOL OUTPUT:
+{
+  "status": "error",
+  "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+  "error_timestamp": "2026-01-26T20:05:44.669859",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "status": "completed",
+      "metadata_model_name": "sql-conversion-1769457670",
+      "poll_attempts": 12
+    },
+    {
+      "step": "convert_metadata_model",
+      "timestamp": "2026-01-26T20:03:12.140811",
+      "status": "started"
+    }
+  ]
+}
+
+MANUAL CONVERSION REASONING:
+This transaction block requires significant changes for PostgreSQL:
+
+1. SCOPE_IDENTITY() → RETURNING clause
+   SQL Server's SCOPE_IDENTITY() returns the last inserted identity value.
+   PostgreSQL uses RETURNING clause in INSERT statements.
+
+2. GETDATE() → CURRENT_TIMESTAMP
+   SQL Server's GETDATE() function is replaced with PostgreSQL's CURRENT_TIMESTAMP.
+
+3. Transaction handling
+   BEGIN TRANSACTION/COMMIT will be handled by NpgsqlTransaction in C# code.
+   The SQL statement will be simplified to just the INSERT with RETURNING.
+
+4. Multi-statement transaction logic
+   The original SQL Server version performs INSERT, then uses SCOPE_IDENTITY, then
+   additional INSERT and UPDATE in one transaction block. In PostgreSQL with Npgsql,
+   this will be handled as:
+   - Single INSERT with RETURNING to get new ID
+   - Subsequent statements executed separately within same NpgsqlTransaction
+
+CHANGES APPLIED:
+Simplified to: INSERT INTO Products (...) VALUES (...) RETURNING ProductId;
+The history logging and statistics update will be handled as separate statements
+within the NpgsqlTransaction in C# code.
+
+===============================================================================
+STATEMENT 4: UpdateProductAsync - Transaction Block
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: UpdateProductAsync(Product product)
+LINES: 162-195
+
+DMS TOOL OUTPUT:
+Same pattern as Statement 3 - DMS metadata model conversion timeout.
+
+MANUAL CONVERSION REASONING:
+This transaction block requires changes for PostgreSQL:
+
+1. GETDATE() → CURRENT_TIMESTAMP (3 occurrences)
+
+2. Variable handling
+   SQL Server uses DECLARE @var and SELECT @var = value.
+   In PostgreSQL with Npgsql, we'll need to:
+   - First query to get old values (SELECT Price, StockQuantity)
+   - Store in C# variables
+   - Execute UPDATE with new values
+   - Execute history INSERT with old and new values
+   - Execute statistics UPDATE
+
+3. Transaction handling
+   BEGIN TRANSACTION/COMMIT will be handled by NpgsqlTransaction in C# code.
+
+CHANGES APPLIED:
+- GETDATE() → CURRENT_TIMESTAMP
+- Multi-statement transaction split into separate statements to be executed
+  within NpgsqlTransaction in C# code
+- Variable capture moved to C# code
+
+===============================================================================
+STATEMENT 5: DeleteProductAsync - Transaction Block
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: DeleteProductAsync(int productId)
+LINES: 209-240
+
+DMS TOOL OUTPUT:
+Same pattern as Statements 3 & 4 - DMS metadata model conversion timeout.
+
+MANUAL CONVERSION REASONING:
+Similar to Statement 4, requires changes for PostgreSQL:
+
+1. GETDATE() → CURRENT_TIMESTAMP (3 occurrences)
+
+2. Variable handling
+   Need to capture old values before deletion, then use in subsequent statements.
+
+3. Transaction handling
+   BEGIN TRANSACTION/COMMIT will be handled by NpgsqlTransaction in C# code.
+
+CHANGES APPLIED:
+- GETDATE() → CURRENT_TIMESTAMP
+- Multi-statement transaction split into separate statements
+- Old value capture moved to C# code before deletion
+
+===============================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+LINES: 256-278
+
+DMS TOOL OUTPUT:
+Same pattern - DMS metadata model conversion timeout.
+
+MANUAL CONVERSION REASONING:
+The statement uses standard SQL features compatible with PostgreSQL:
+- Common Table Expressions (CTEs)
+- RANK() and PERCENT_RANK() window functions (identical in PostgreSQL)
+- BETWEEN clause
+- CASE statements
+- Parameters (@MinPrice, @MaxPrice)
+
+No modifications needed. The statement is already PostgreSQL compatible.
+
+CHANGES APPLIED:
+None - statement is identical in PostgreSQL.
+
+===============================================================================
+STATEMENT 7: GetLowStockProductsAsync
+===============================================================================
+
+SOURCE FILE: DataAccess/ProductRepository.cs
+METHOD: GetLowStockProductsAsync(int threshold)
+LINES: 290-318
+
+DMS TOOL OUTPUT:
+Same pattern - DMS metadata model conversion timeout.
+
+MANUAL CONVERSION REASONING:
+The statement uses standard SQL features compatible with PostgreSQL:
+- Common Table Expressions (CTEs)
+- Window functions (AVG, MIN, MAX OVER)
+- CASE statements
+- ROUND function
+- Parameter (@Threshold)
+
+No modifications needed. The statement is already PostgreSQL compatible.
+
+CHANGES APPLIED:
+None - statement is identical in PostgreSQL.
+
+===============================================================================
+SUMMARY
+===============================================================================
+
+Total Statements Processed: 7
+DMS Tool Attempts: 7
+DMS Tool Successes: 0
+DMS Tool Failures: 7 (all failed with metadata model conversion timeout)
+Manual Conversions Required: 7
+
+Statements Requiring Modifications: 3
+- Statement 3 (InsertProductAsync): Major changes for SCOPE_IDENTITY → RETURNING
+- Statement 4 (UpdateProductAsync): GETDATE conversion and transaction handling
+- Statement 5 (DeleteProductAsync): GETDATE conversion and transaction handling
+
+Statements Already PostgreSQL Compatible: 4
+- Statement 1 (GetAllProductsAsync): No changes needed
+- Statement 2 (GetProductByIdAsync): No changes needed
+- Statement 6 (GetProductsByPriceRangeAsync): No changes needed
+- Statement 7 (GetLowStockProductsAsync): No changes needed
+
+Key Transformation Patterns:
+1. SCOPE_IDENTITY() → INSERT ... RETURNING column_name
+2. GETDATE() → CURRENT_TIMESTAMP
+3. BEGIN TRANSACTION/COMMIT → Removed from SQL, handled by NpgsqlTransaction in C#
+4. Multi-statement transaction blocks → Split into separate statements with transaction handling in C#
+5. Variable declarations and assignments → Moved to C# code
+
+All statements have been successfully converted following PostgreSQL best practices
+and are ready for integration into the C# code.
+
+===============================================================================
