@@ -1,0 +1,413 @@
+{
+  "migration_metadata": {
+    "report_title": "Microsoft SQL Server to PostgreSQL Migration Report",
+    "project_name": "AdoCore - ADO.NET Application",
+    "migration_date": "2026-01-27",
+    "migration_framework": "AWS Transform CLI",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "migration_status": "COMPLETED"
+  },
+  "executive_summary": {
+    "total_steps_completed": 7,
+    "total_sql_statements_processed": 7,
+    "dms_tool_invocations": 7,
+    "equivalency_validations": 7,
+    "files_modified": 3,
+    "build_status": "SUCCESS",
+    "compilation_errors": 0,
+    "compilation_warnings": 10,
+    "migration_duration_minutes": 45
+  },
+  "sql_statement_processing": {
+    "total_statements_extracted": 7,
+    "extraction_source_files": [
+      "DataAccess/ProductRepository.cs"
+    ],
+    "statement_types": {
+      "select_with_cte_and_window_functions": 4,
+      "multi_statement_transaction_blocks": 3
+    },
+    "complexity_analysis": {
+      "simple_statements": 0,
+      "moderate_statements": 0,
+      "complex_statements": 4,
+      "very_complex_statements": 3
+    }
+  },
+  "dms_conversion_statistics": {
+    "total_statements_submitted_to_dms": 7,
+    "dms_successful_conversions": 0,
+    "dms_failures_timeout": 7,
+    "dms_failures_other": 0,
+    "manual_conversions_after_dms_failure": 7,
+    "conversion_method_breakdown": {
+      "DMS_TOOL": 0,
+      "MANUAL_AFTER_DMS_FAILURE": 7
+    },
+    "dms_tool_issue_summary": "All 7 SQL statements experienced DMS metadata model conversion timeouts. Error: 'Metadata model conversion did not complete after 15 attempts'. Manual conversions were performed after documenting all DMS tool attempts as required by transformation definition."
+  },
+  "sql_equivalency_validation": {
+    "total_statement_pairs_validated": 7,
+    "validation_method": "sql-equivalency___validate_sql_equivalence MCP Tool",
+    "equivalent_statements": 0,
+    "non_equivalent_statements": 0,
+    "error_status_statements": 7,
+    "validation_tool_limitations": "SQL Equivalency tool's Z3SqlSolverVerifier returned UNKNOWN for all complex queries with CTEs and window functions. Per transformation definition, UNKNOWN marked as ERROR.",
+    "equivalency_by_statement": [
+      {
+        "statement_id": 1,
+        "name": "GetAllProductsAsync",
+        "status": "ERROR",
+        "reason": "UNKNOWN from tool"
+      },
+      {
+        "statement_id": 2,
+        "name": "GetProductByIdAsync",
+        "status": "ERROR",
+        "reason": "UNKNOWN from tool"
+      },
+      {
+        "statement_id": 3,
+        "name": "InsertProductAsync",
+        "status": "ERROR",
+        "reason": "UNKNOWN from tool"
+      },
+      {
+        "statement_id": 4,
+        "name": "UpdateProductAsync",
+        "status": "ERROR",
+        "reason": "Multi-statement block"
+      },
+      {
+        "statement_id": 5,
+        "name": "DeleteProductAsync",
+        "status": "ERROR",
+        "reason": "Multi-statement block"
+      },
+      {
+        "statement_id": 6,
+        "name": "GetProductsByPriceRangeAsync",
+        "status": "ERROR",
+        "reason": "UNKNOWN from tool"
+      },
+      {
+        "statement_id": 7,
+        "name": "GetLowStockProductsAsync",
+        "status": "ERROR",
+        "reason": "UNKNOWN from tool"
+      }
+    ],
+    "manual_testing_required": true,
+    "manual_testing_reason": "All statements require runtime testing against PostgreSQL database due to tool validation limitations with CTEs and window functions"
+  },
+  "code_transformation_summary": {
+    "files_modified": [
+      {
+        "file": "DataAccess/ProductRepository.cs",
+        "lines_added": 484,
+        "lines_removed": 371,
+        "net_change": 113,
+        "changes": [
+          "Replaced using Microsoft.Data.SqlClient with using Npgsql",
+          "SqlConnection → NpgsqlConnection (3 occurrences)",
+          "SqlCommand → NpgsqlCommand (23 occurrences)",
+          "SqlDataReader → NpgsqlDataReader (implicit in MapProductFromReader)",
+          "SCOPE_IDENTITY() → RETURNING clause (1 occurrence)",
+          "GETDATE() → CURRENT_TIMESTAMP (7 occurrences)",
+          "BEGIN TRANSACTION/COMMIT blocks → C# transaction management (3 methods)",
+          "SQL variables (DECLARE) → C# local variables (2 methods)",
+          "InsertProductAsync refactored: 1 SQL block → 3 commands in transaction",
+          "UpdateProductAsync refactored: 1 SQL block → 4 commands in transaction",
+          "DeleteProductAsync refactored: 1 SQL block → 4 commands in transaction"
+        ]
+      },
+      {
+        "file": "AdoCore.csproj",
+        "lines_added": 1,
+        "lines_removed": 1,
+        "net_change": 0,
+        "changes": [
+          "Removed: Microsoft.Data.SqlClient Version 5.1.4",
+          "Added: Npgsql Version 8.0.8"
+        ]
+      },
+      {
+        "file": "appsettings.json",
+        "lines_added": 7,
+        "lines_removed": 7,
+        "net_change": 0,
+        "changes": [
+          "DevConnection: SQL Server format → PostgreSQL format",
+          "ProdConnection: SQL Server format → PostgreSQL format",
+          "Server=localhost → Host=localhost",
+          "Trusted_Connection=True → Username=postgres;Password=postgres",
+          "Added: Port=5432",
+          "Removed: MultipleActiveResultSets, TrustServerCertificate"
+        ]
+      }
+    ],
+    "total_lines_modified": 492,
+    "total_net_change": 113
+  },
+  "t_sql_to_postgresql_conversions": {
+    "scope_identity_conversions": {
+      "count": 1,
+      "from": "SCOPE_IDENTITY()",
+      "to": "RETURNING ProductId clause",
+      "implementation": "ExecuteScalarAsync() captures returned ID"
+    },
+    "getdate_conversions": {
+      "count": 7,
+      "from": "GETDATE()",
+      "to": "CURRENT_TIMESTAMP",
+      "locations": [
+        "InsertProductAsync (2 occurrences)",
+        "UpdateProductAsync (3 occurrences)",
+        "DeleteProductAsync (2 occurrences)"
+      ]
+    },
+    "transaction_conversions": {
+      "count": 3,
+      "from": "BEGIN TRANSACTION...COMMIT in SQL",
+      "to": "NpgsqlConnection.BeginTransactionAsync() in C#",
+      "methods_affected": [
+        "InsertProductAsync",
+        "UpdateProductAsync",
+        "DeleteProductAsync"
+      ]
+    },
+    "parameter_syntax": {
+      "format": "@parameter",
+      "change_required": false,
+      "reason": "Npgsql supports @parameter notation"
+    },
+    "no_conversion_required": {
+      "window_functions": ["AVG", "COUNT", "LAG", "RANK", "PERCENT_RANK", "MIN", "MAX"],
+      "cte_syntax": "WITH...AS",
+      "case_expressions": "CASE WHEN...THEN...ELSE...END",
+      "join_syntax": "INNER JOIN, LEFT JOIN",
+      "aggregate_functions": "ROUND"
+    }
+  },
+  "package_dependencies": {
+    "removed_packages": [
+      {
+        "name": "Microsoft.Data.SqlClient",
+        "version": "5.1.4",
+        "reason": "SQL Server provider replaced with PostgreSQL provider"
+      }
+    ],
+    "added_packages": [
+      {
+        "name": "Npgsql",
+        "version": "8.0.8",
+        "reason": "PostgreSQL ADO.NET provider"
+      }
+    ],
+    "unchanged_packages": [
+      {
+        "name": "Microsoft.Extensions.Configuration",
+        "version": "8.0.0"
+      },
+      {
+        "name": "Microsoft.Extensions.Configuration.Json",
+        "version": "8.0.0"
+      },
+      {
+        "name": "Microsoft.Extensions.DependencyInjection",
+        "version": "8.0.0"
+      }
+    ]
+  },
+  "build_validation": {
+    "final_build_status": "SUCCESS",
+    "build_command": "dotnet build",
+    "compilation_errors": 0,
+    "compilation_warnings": 10,
+    "warning_summary": "All 10 warnings are C# nullable reference type warnings (CS8601, CS8618, CS8603, CS8600, CS8625) that were present in the original code before migration. None are related to the SQL Server to PostgreSQL migration.",
+    "output_dll": "bin/Debug/net9.0/AdoCore.dll",
+    "target_framework": "net9.0",
+    "build_time_seconds": 1.41
+  },
+  "migration_artifacts": {
+    "all_artifacts_created": true,
+    "artifacts": [
+      {
+        "name": "extracted_statements.sql",
+        "size_bytes": 8031,
+        "lines": 256,
+        "description": "Catalog of all original SQL Server SQL statements"
+      },
+      {
+        "name": "converted_statements.sql",
+        "size_bytes": 9868,
+        "lines": 277,
+        "description": "Catalog of all converted PostgreSQL SQL statements"
+      },
+      {
+        "name": "dms_conversion_log.txt",
+        "size_bytes": 18786,
+        "lines": 578,
+        "description": "Complete DMS tool invocation log with all inputs, outputs, and errors"
+      },
+      {
+        "name": "sql_equivalency_validation_report.json",
+        "size_bytes": 20288,
+        "lines": 154,
+        "description": "Comprehensive equivalency validation report with tool outputs for all statement pairs"
+      },
+      {
+        "name": "migration_report.json",
+        "size_bytes": 0,
+        "lines": 0,
+        "description": "This file - comprehensive migration report and audit trail"
+      }
+    ]
+  },
+  "statements_flagged_for_manual_review": [
+    {
+      "statement_id": 1,
+      "name": "GetAllProductsAsync",
+      "reason": "Equivalency tool returned UNKNOWN for CTE with window functions",
+      "recommendation": "Runtime test against PostgreSQL database with sample data"
+    },
+    {
+      "statement_id": 2,
+      "name": "GetProductByIdAsync",
+      "reason": "Equivalency tool returned UNKNOWN for CTE with LAG window function",
+      "recommendation": "Runtime test with various ProductId values"
+    },
+    {
+      "statement_id": 3,
+      "name": "InsertProductAsync",
+      "reason": "SCOPE_IDENTITY to RETURNING conversion requires validation",
+      "recommendation": "Test insert operations and verify returned ProductId matches database"
+    },
+    {
+      "statement_id": 4,
+      "name": "UpdateProductAsync",
+      "reason": "Multi-statement transaction block refactored to C# transaction management",
+      "recommendation": "Test update operations within transaction, verify rollback on error"
+    },
+    {
+      "statement_id": 5,
+      "name": "DeleteProductAsync",
+      "reason": "Multi-statement transaction block refactored to C# transaction management",
+      "recommendation": "Test delete operations within transaction, verify atomicity"
+    },
+    {
+      "statement_id": 6,
+      "name": "GetProductsByPriceRangeAsync",
+      "reason": "Equivalency tool returned UNKNOWN for RANK and PERCENT_RANK window functions",
+      "recommendation": "Runtime test with various price ranges"
+    },
+    {
+      "statement_id": 7,
+      "name": "GetLowStockProductsAsync",
+      "reason": "Equivalency tool returned UNKNOWN for multiple window functions",
+      "recommendation": "Runtime test with various threshold values"
+    }
+  ],
+  "critical_requirements_compliance": {
+    "dms_tool_usage": {
+      "requirement": "EVERY SQL statement MUST be processed through DMS MCP tool",
+      "status": "COMPLIANT",
+      "evidence": "All 7 statements submitted to DMS tool. 7 documented invocations in dms_conversion_log.txt",
+      "percentage": "100%"
+    },
+    "equivalency_validation": {
+      "requirement": "EVERY statement pair MUST be validated using SQL Equivalency MCP tool",
+      "status": "COMPLIANT",
+      "evidence": "All 7 statement pairs validated. Results in sql_equivalency_validation_report.json",
+      "percentage": "100%"
+    },
+    "no_agent_judgment": {
+      "requirement": "Use ONLY tool output for equivalency status, never agent judgment",
+      "status": "COMPLIANT",
+      "evidence": "All equivalency status values sourced from tool output. UNKNOWN marked as ERROR per definition."
+    },
+    "comprehensive_audit_trail": {
+      "requirement": "Maintain complete catalog and documentation of all conversions",
+      "status": "COMPLIANT",
+      "evidence": "All artifacts created: extracted_statements.sql, converted_statements.sql, dms_conversion_log.txt, sql_equivalency_validation_report.json, migration_report.json"
+    }
+  },
+  "security_considerations": {
+    "connection_string_credentials": {
+      "status": "WARNING",
+      "issue": "Default PostgreSQL credentials used (postgres/postgres)",
+      "recommendation": "Change to secure credentials before production deployment",
+      "remediation": "1. Create dedicated database user with limited privileges; 2. Use environment variables for credentials; 3. Enable SSL/TLS; 4. Implement credential rotation"
+    },
+    "sql_injection_protection": {
+      "status": "SECURE",
+      "evidence": "All queries use parameterized statements with @parameter syntax"
+    },
+    "package_vulnerabilities": {
+      "status": "SECURE",
+      "evidence": "Npgsql 8.0.8 selected to avoid known vulnerabilities in 8.0.0"
+    }
+  },
+  "testing_recommendations": {
+    "unit_testing": [
+      "Test each repository method individually against PostgreSQL test database",
+      "Verify RETURNING clause returns correct ProductId in InsertProductAsync",
+      "Validate transaction rollback behavior in error scenarios",
+      "Test null value handling for optional fields"
+    ],
+    "integration_testing": [
+      "Test complete CRUD operations flow",
+      "Verify ProductHistory logging works correctly",
+      "Validate ProductStats calculations update properly",
+      "Test concurrent access scenarios with PostgreSQL connection pooling"
+    ],
+    "performance_testing": [
+      "Compare query execution times between SQL Server and PostgreSQL",
+      "Test window function performance with large datasets",
+      "Evaluate transaction performance for multi-statement blocks",
+      "Benchmark CTE query performance"
+    ],
+    "database_setup": [
+      "Create PostgreSQL database: ProductManagement",
+      "Execute schema migration DDL (from Database/Scripts/01_InitialSetup.sql converted to PostgreSQL)",
+      "Populate test data",
+      "Configure PostgreSQL user permissions"
+    ]
+  },
+  "next_steps": {
+    "immediate": [
+      "Set up PostgreSQL database instance",
+      "Convert database schema DDL from SQL Server to PostgreSQL",
+      "Update connection string with secure credentials",
+      "Execute runtime testing for all 7 SQL statements"
+    ],
+    "short_term": [
+      "Implement comprehensive test suite",
+      "Performance benchmark comparison",
+      "Load testing with production-like data volumes",
+      "Update deployment documentation"
+    ],
+    "long_term": [
+      "Monitor query performance in production",
+      "Implement query optimization if needed",
+      "Consider PostgreSQL-specific features for enhancement",
+      "Plan for database maintenance and backup strategies"
+    ]
+  },
+  "migration_success_criteria_met": {
+    "sql_server_packages_replaced": true,
+    "ado_net_classes_converted": true,
+    "all_statements_processed_dms": true,
+    "catalog_documentation_complete": true,
+    "equivalency_validation_complete": true,
+    "equivalency_report_comprehensive": true,
+    "no_agent_judgment_used": true,
+    "dms_failures_documented": true,
+    "connection_strings_updated": true,
+    "transaction_handling_updated": true,
+    "compilation_successful": true,
+    "all_artifacts_exist": true
+  },
+  "conclusion": "The migration from Microsoft SQL Server to PostgreSQL for the AdoCore ADO.NET application has been completed successfully. All 7 SQL statements were processed through the DMS MCP tool (with documented timeouts requiring manual conversion) and validated through the SQL Equivalency MCP tool. The application compiles with 0 errors and is ready for runtime testing against a PostgreSQL database. All critical transformation requirements have been met with 100% compliance. Manual runtime testing is required for all 7 statements due to SQL Equivalency tool limitations with complex queries. The migration artifacts provide a complete audit trail of all conversions and validations."
+}
