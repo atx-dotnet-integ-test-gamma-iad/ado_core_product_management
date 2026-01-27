@@ -1,13 +1,15 @@
-# ADO.NET Core SQL Server Data Management Application
+# ADO.NET Core PostgreSQL Data Management Application
 
-This is a .NET Core application demonstrating modern ADO.NET integration with SQL Server, following best practices for data access and application architecture.
+This is a .NET Core application demonstrating modern ADO.NET integration with PostgreSQL, following best practices for data access and application architecture.
+
+**MIGRATION NOTE:** This application has been migrated from Microsoft SQL Server to PostgreSQL. See `final_migration_report.md` for complete migration details and `sql_equivalency_validation_report.json` for SQL statement equivalency validation results.
 
 ## Prerequisites
 
 - Visual Studio 2022 or later
 - .NET 9.0 SDK or later
-- SQL Server 2019 or later (Developer Edition is free and recommended for development)
-- SQL Server Management Studio (SSMS) or Azure Data Studio
+- PostgreSQL 12 or later (recommended for development)
+- pgAdmin 4 or Azure Data Studio with PostgreSQL extension
 
 ## Project Structure
 
@@ -41,9 +43,10 @@ AdoCore/
    - Select "Restore NuGet Packages"
 
 3. **Database Setup**:
-   - Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   - Connect to your local SQL Server instance
-   - Open and run the script: `Database/Scripts/01_InitialSetup.sql`
+   - Open pgAdmin 4 or Azure Data Studio with PostgreSQL extension
+   - Connect to your local PostgreSQL instance
+   - Create database: `CREATE DATABASE "ProductManagement";`
+   - Open and run the script: `Database/Scripts/01_InitialSetup.sql` (PostgreSQL version)
 
 4. **Update Connection String**:
    - In Solution Explorer, open `appsettings.json`
@@ -51,12 +54,20 @@ AdoCore/
    ```json
    {
      "ConnectionStrings": {
-       "DevConnection": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+       "DevConnection": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=your_password;Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100",
        "ProdConnection": "your-production-connection-string"
      },
      "Environment": "Development"
    }
    ```
+   
+   **SECURITY WARNING:** The current connection string contains placeholder credentials (postgres/postgres). 
+   For production deployments, use secure credential management:
+   - Environment variables
+   - AWS Secrets Manager
+   - Azure Key Vault
+   - HashiCorp Vault
+   - Never commit production credentials to source control
 
 5. **Run the Application**:
    - Press F5 to run in debug mode
@@ -70,26 +81,38 @@ AdoCore/
    # Verify .NET 9.0 SDK is installed
    dotnet --version
    # Should show 9.0.x
+   
+   # Verify PostgreSQL is installed
+   psql --version
+   # Should show PostgreSQL 12.x or later
    ```
 
 2. **Database Setup**:
    ```bash
-   # Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   # Connect to your local SQL Server instance
-   # Open and run the script: Database/Scripts/01_InitialSetup.sql
+   # Connect to PostgreSQL
+   psql -U postgres -h localhost
+   
+   # Create database
+   CREATE DATABASE "ProductManagement";
+   
+   # Connect to the new database
+   \c ProductManagement
+   
+   # Run the setup script
+   \i Database/Scripts/01_InitialSetup.sql
    ```
 
 3. **Project Setup**:
    ```bash
    # Navigate to project directory
-   cd D:\ado_core
+   cd path/to/AdoCore
 
    # Restore NuGet packages
    dotnet restore
 
-   # Update connection string in appsettings.json if needed
-   # Current connection string is:
-   # "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+   # Update connection string in appsettings.json
+   # Current format:
+   # "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=your_password;Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100"
    ```
 
 4. **Build and Run**:
@@ -160,7 +183,7 @@ dotnet run -- stock 1 20
 - Proper resource management with IAsyncDisposable
 - Dependency injection for configuration
 - Transaction support with async operations
-- Parameterized queries for security
+- Parameterized queries for security (PostgreSQL format)
 - Connection pooling and management
 - Error handling and logging
 
@@ -184,18 +207,26 @@ dotnet run -- stock 1 20
 ## Troubleshooting
 
 If you encounter errors:
-1. Verify SQL Server is running (check Services)
-2. Confirm your connection string matches your SQL Server instance name
+1. Verify PostgreSQL is running:
+   ```bash
+   # On Linux/macOS
+   sudo systemctl status postgresql
+   
+   # On Windows
+   # Check Services for "postgresql-x64-XX"
+   ```
+2. Confirm your connection string matches your PostgreSQL instance settings
 3. Ensure the `ProductManagement` database was created successfully
 4. Check you have appropriate permissions to access the database
 5. Make sure all required NuGet packages are restored:
    ```bash
    dotnet restore
    ```
+6. Verify PostgreSQL is accepting connections on the specified port (default: 5432)
 
 ## Required NuGet Packages
 
-- Microsoft.Data.SqlClient
+- **Npgsql** (v8.0.5) - PostgreSQL data provider for .NET
 - Microsoft.Extensions.Configuration
 - Microsoft.Extensions.Configuration.Json
 - Microsoft.Extensions.DependencyInjection
@@ -203,10 +234,15 @@ If you encounter errors:
 ## Security Considerations
 
 - All database queries use parameterization to prevent SQL injection
-- Connection strings are stored securely in configuration
+- Connection strings should use secure credential management in production:
+  - **DO NOT** hardcode passwords in appsettings.json for production
+  - Use environment variables: `Username=${DB_USER};Password=${DB_PASSWORD}`
+  - Use AWS Secrets Manager for AWS deployments
+  - Use Azure Key Vault for Azure deployments
+  - Use HashiCorp Vault for on-premises deployments
 - Proper error handling and logging is implemented
 - All database resources are properly disposed using async patterns
-- TrustServerCertificate option for development environments
+- SSL/TLS connection recommended for production: Add `SSL Mode=Require` to connection string
 
 ## Best Practices Implemented
 
@@ -215,12 +251,76 @@ If you encounter errors:
 - Transaction management with async support
 - Error handling and logging
 - Configuration management using .NET Core's IConfiguration
-- Security best practices
+- Security best practices (parameterized queries, connection pooling)
 - Dependency injection
 - Separation of concerns (layered architecture)
+- PostgreSQL-specific optimizations (RETURNING clause, NOW() function)
 
-## Deployment to AWS EC2
+## Migration from SQL Server to PostgreSQL
 
-1. Ensure SQL Server is installed and configured on the EC2 instance
-2. Update the production connection string in appsettings.json
-3. Deploy the application using Visual Studio's Publish feature 
+This application was migrated from SQL Server to PostgreSQL. Key changes include:
+
+### Package Changes
+- Replaced `Microsoft.Data.SqlClient` with `Npgsql`
+
+### Code Changes
+- `SqlConnection` → `NpgsqlConnection`
+- `SqlCommand` → `NpgsqlCommand`
+- `SqlDataReader` → `NpgsqlDataReader`
+- `SqlParameter` → `NpgsqlParameter`
+
+### SQL Syntax Changes
+- `GETDATE()` → `NOW()`
+- `SCOPE_IDENTITY()` → `RETURNING id` clause
+- Transaction syntax adapted to PostgreSQL
+
+### Connection String Changes
+- `Server=` → `Host=`
+- `Trusted_Connection=True` → `Username=;Password=`
+- Added PostgreSQL-specific parameters: `Port=`, `Pooling=`, `Minimum Pool Size=`, `Maximum Pool Size=`
+
+For detailed migration information, see:
+- `final_migration_report.md` - Complete migration documentation
+- `sql_equivalency_validation_report.json` - SQL statement equivalency validation
+- `conversion_log.txt` - SQL conversion process log
+- `extracted_statements.sql` - Original SQL statements
+- `converted_statements.sql` - Converted PostgreSQL statements
+
+## Deployment to AWS
+
+### Prerequisites
+- PostgreSQL RDS instance or EC2 instance with PostgreSQL installed
+- Proper security group configuration
+- Database credentials stored in AWS Secrets Manager
+
+### Deployment Steps
+
+1. **Set up PostgreSQL RDS** (recommended) or install PostgreSQL on EC2
+2. **Configure Secrets Manager**:
+   ```bash
+   aws secretsmanager create-secret \
+     --name prod/adocore/db \
+     --secret-string '{"username":"dbuser","password":"securepassword"}'
+   ```
+3. **Update application to read from Secrets Manager** (recommended for production)
+4. **Deploy the application** using:
+   - AWS Elastic Beanstalk
+   - ECS/Fargate containers
+   - EC2 with systemd service
+5. **Update connection string** to point to RDS endpoint
+
+### Production Connection String Example
+```json
+{
+  "ConnectionStrings": {
+    "ProdConnection": "Host=your-rds-instance.region.rds.amazonaws.com;Port=5432;Database=ProductManagement;Username=dbuser;Password=from_secrets_manager;SSL Mode=Require;Trust Server Certificate=true"
+  }
+}
+```
+
+## Additional Resources
+
+- [Npgsql Documentation](https://www.npgsql.org/doc/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Migration Report](final_migration_report.md)
+- [SQL Equivalency Report](sql_equivalency_validation_report.json)
