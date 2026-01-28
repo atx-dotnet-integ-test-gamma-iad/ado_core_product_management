@@ -1,0 +1,105 @@
+{
+  "dms_conversion_log": {
+    "conversion_date": "2026-01-28T04:19:00Z",
+    "total_statements": 7,
+    "dms_tool_status": "UNAVAILABLE",
+    "dms_error_summary": "DMS MCP tool experienced timeout errors and metadata model conversion failures",
+    "conversion_method_used": "MANUAL_AFTER_DMS_FAILURE",
+    "statements": [
+      {
+        "statement_id": 1,
+        "method_name": "GetAllProductsAsync",
+        "original_statement": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name",
+        "dms_attempt": true,
+        "dms_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+        "dms_timestamp": "2026-01-28T04:22:44.009374",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 1 uses CTE, window functions (AVG OVER, COUNT OVER), CASE statements, INNER JOIN, and ROUND - all of which are PostgreSQL compatible. No syntax changes required. Manual conversion verified compatibility.",
+        "postgresql_statement": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name",
+        "changes_applied": "None - Statement is PostgreSQL compatible as-is"
+      },
+      {
+        "statement_id": 2,
+        "method_name": "GetProductByIdAsync",
+        "original_statement": "WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice, LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock FROM Products WHERE ProductId = @ProductId) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, ph.PreviousPrice, ph.PreviousStock, CASE WHEN ph.PreviousPrice IS NOT NULL THEN ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) ELSE NULL END as PriceChangePercentage FROM Products p LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId WHERE p.ProductId = @ProductId",
+        "dms_attempt": true,
+        "dms_error": "Command execution timed out after 300 seconds",
+        "dms_timestamp": "2026-01-28T04:24:00Z",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 2 uses CTE, LAG window function, LEFT JOIN, CASE with NULL handling, and ROUND - all PostgreSQL compatible. Parameterized query (@ProductId) works with PostgreSQL. No changes needed.",
+        "postgresql_statement": "WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice, LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock FROM Products WHERE ProductId = @ProductId) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, ph.PreviousPrice, ph.PreviousStock, CASE WHEN ph.PreviousPrice IS NOT NULL THEN ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) ELSE NULL END as PriceChangePercentage FROM Products p LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId WHERE p.ProductId = @ProductId",
+        "changes_applied": "None - Statement is PostgreSQL compatible as-is"
+      },
+      {
+        "statement_id": 3,
+        "method_name": "InsertProductAsync",
+        "original_statement": "DECLARE @NewProductId INT; BEGIN TRANSACTION; INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity); SET @NewProductId = SCOPE_IDENTITY(); INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE()); UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = GETDATE() WHERE StatId = 1; COMMIT; SELECT @NewProductId;",
+        "dms_attempt": false,
+        "dms_error": "Not attempted due to previous DMS tool failures",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 3 is a complex transaction requiring key transformations: (1) SCOPE_IDENTITY() must be replaced with RETURNING clause in INSERT statement, (2) GETDATE() must be replaced with NOW(), (3) Transaction management handled at application level with NpgsqlTransaction. For ADO.NET, the INSERT will use RETURNING ProductId to get the new ID, then subsequent statements executed within the transaction.",
+        "postgresql_statement": "INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity) RETURNING ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, NOW()); UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = NOW() WHERE StatId = 1;",
+        "changes_applied": "SCOPE_IDENTITY() -> RETURNING ProductId; GETDATE() -> NOW(); Transaction managed at application level"
+      },
+      {
+        "statement_id": 4,
+        "method_name": "UpdateProductAsync",
+        "original_statement": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId; UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE()); UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1; COMMIT;",
+        "dms_attempt": false,
+        "dms_error": "Not attempted due to previous DMS tool failures",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 4 transaction requires: (1) GETDATE() -> NOW(), (2) Transaction management at application level. The SELECT to get old values will be executed first, then UPDATE and INSERT statements within NpgsqlTransaction. Variable handling moved to application layer (C# variables).",
+        "postgresql_statement": "SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId; UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = NOW() WHERE ProductId = @ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, NOW()); UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = NOW() WHERE StatId = 1;",
+        "changes_applied": "GETDATE() -> NOW(); Transaction managed at application level; Variables moved to C# code"
+      },
+      {
+        "statement_id": 5,
+        "method_name": "DeleteProductAsync",
+        "original_statement": "BEGIN TRANSACTION; DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT; SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE()); DELETE FROM Products WHERE ProductId = @ProductId; UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1; COMMIT;",
+        "dms_attempt": false,
+        "dms_error": "Not attempted due to previous DMS tool failures",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 5 transaction requires: (1) GETDATE() -> NOW(), (2) Transaction management at application level, (3) CASE expression is PostgreSQL compatible. The SELECT to get old values executed first, then INSERT, DELETE, UPDATE within NpgsqlTransaction. Variables handled in C# code.",
+        "postgresql_statement": "SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId; INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, NOW()); DELETE FROM Products WHERE ProductId = @ProductId; UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = NOW() WHERE StatId = 1;",
+        "changes_applied": "GETDATE() -> NOW(); Transaction managed at application level; Variables moved to C# code"
+      },
+      {
+        "statement_id": 6,
+        "method_name": "GetProductsByPriceRangeAsync",
+        "original_statement": "WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice) SELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment FROM RankedProducts rp ORDER BY rp.PriceRank",
+        "dms_attempt": false,
+        "dms_error": "Not attempted due to previous DMS tool failures",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 6 uses CTE, RANK() and PERCENT_RANK() window functions, CASE statement, BETWEEN clause - all PostgreSQL compatible. No changes required.",
+        "postgresql_statement": "WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice) SELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment FROM RankedProducts rp ORDER BY rp.PriceRank",
+        "changes_applied": "None - Statement is PostgreSQL compatible as-is"
+      },
+      {
+        "statement_id": 7,
+        "method_name": "GetLowStockProductsAsync",
+        "original_statement": "WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock FROM Products p) SELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus, ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage FROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity",
+        "dms_attempt": false,
+        "dms_error": "Not attempted due to previous DMS tool failures",
+        "manual_conversion_applied": true,
+        "manual_conversion_reasoning": "Statement 7 uses CTE, multiple window functions (AVG, MIN, MAX OVER), CASE statement, ROUND function - all PostgreSQL compatible. No changes required.",
+        "postgresql_statement": "WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock FROM Products p) SELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus, ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage FROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity",
+        "changes_applied": "None - Statement is PostgreSQL compatible as-is"
+      }
+    ],
+    "conversion_summary": {
+      "statements_attempted_with_dms": 2,
+      "statements_dms_successful": 0,
+      "statements_dms_failed": 2,
+      "statements_manually_converted": 7,
+      "key_transformations": [
+        "GETDATE() -> NOW() (applied to statements 3, 4, 5)",
+        "SCOPE_IDENTITY() -> RETURNING clause (applied to statement 3)",
+        "Transaction management moved to application level (statements 3, 4, 5)",
+        "Variable declarations moved to C# code (statements 3, 4, 5)",
+        "CTE, window functions, CASE statements - all compatible (no changes)"
+      ],
+      "schema_transformations": "None - no schema object name changes applied",
+      "notes": "DMS MCP tool was unavailable due to timeout and metadata model conversion errors. All conversions performed manually following PostgreSQL migration best practices. Statements 1, 2, 6, 7 required no changes (PostgreSQL compatible). Statements 3, 4, 5 required GETDATE()->NOW() conversion and transaction/variable handling moved to application layer per ADO.NET PostgreSQL patterns."
+    }
+  }
+}
