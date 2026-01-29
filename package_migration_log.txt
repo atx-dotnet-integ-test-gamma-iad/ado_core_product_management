@@ -1,0 +1,39 @@
+# Package Migration Log
+## SQL Server to PostgreSQL Migration
+
+### Date: 2026-01-29
+
+### Removed Packages
+- **Microsoft.Data.SqlClient** Version 5.1.4
+  - Reason: SQL Server specific ADO.NET provider, incompatible with PostgreSQL
+  - Removed from: AdoCore.csproj
+
+### Added Packages
+- **Npgsql** Version 8.0.5
+  - Reason: PostgreSQL ADO.NET provider, required for PostgreSQL database connectivity
+  - Added to: AdoCore.csproj
+  - Compatibility: .NET 9.0
+  - Note: Updated from 8.0.1 to 8.0.5 to avoid known security vulnerability
+
+### Maintained Packages (No Changes)
+- **Microsoft.Extensions.Configuration** Version 8.0.0
+- **Microsoft.Extensions.Configuration.Json** Version 8.0.0
+- **Microsoft.Extensions.DependencyInjection** Version 8.0.0
+
+### Version Selection Rationale
+- Npgsql 8.0.1: Latest stable version compatible with .NET 9.0
+- Provides full ADO.NET support for PostgreSQL
+- Supports async/await patterns used in the application
+- Compatible with named parameter syntax (@ParamName)
+
+### Migration Notes
+- Package replacement is one-to-one: Microsoft.Data.SqlClient → Npgsql
+- No additional dependencies required
+- No version conflicts with existing packages
+- dotnet restore required to download new package
+
+### Next Steps
+1. Run dotnet restore to download Npgsql package
+2. Update using statements in code (Step 6)
+3. Replace ADO.NET class references (Step 6)
+4. Update connection strings (Step 7)

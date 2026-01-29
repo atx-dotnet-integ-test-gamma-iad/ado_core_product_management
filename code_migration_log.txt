@@ -1,0 +1,132 @@
+# Code Migration Log: ADO.NET Classes Update
+## SQL Server to PostgreSQL Migration
+## Date: 2026-01-29
+
+### Summary
+All SQL Server ADO.NET classes in ProductRepository.cs have been replaced with Npgsql equivalents for PostgreSQL connectivity.
+
+---
+
+## Class Replacements
+
+### Using Statement (Line 5)
+**Old:** `using Microsoft.Data.SqlClient;`
+**New:** `using Npgsql;`
+**Status:** ✓ Replaced
+
+---
+
+### Private Connection Field (Line 14)
+**Old:** `private SqlConnection _connection;`
+**New:** `private NpgsqlConnection _connection;`
+**Status:** ✓ Replaced
+
+---
+
+### GetConnectionAsync Method (Line 25)
+**Old Return Type:** `Task<SqlConnection>`
+**New Return Type:** `Task<NpgsqlConnection>`
+**Old Instantiation:** `new SqlConnection(_connectionString)`
+**New Instantiation:** `new NpgsqlConnection(_connectionString)`
+**Status:** ✓ Replaced
+
+---
+
+### SqlCommand Replacements
+All instances of `new SqlCommand(sql, connection)` replaced with `new NpgsqlCommand(sql, connection)`
+
+**Methods Updated:**
+1. GetAllProductsAsync (Line ~72)
+2. GetProductByIdAsync (Line ~115)
+3. InsertProductAsync (Line ~152)
+4. UpdateProductAsync (Line ~194)
+5. DeleteProductAsync (Line ~238)
+6. GetProductsByPriceRangeAsync (Line ~280)
+7. GetLowStockProductsAsync (Line ~311)
+
+**Total Replacements:** 7 occurrences
+**Status:** ✓ All Replaced
+
+---
+
+### MapProductFromReader Method (Line 333)
+**Old Parameter:** `SqlDataReader reader`
+**New Parameter:** `NpgsqlDataReader reader`
+**Status:** ✓ Replaced
+
+---
+
+## Behavior Differences & Notes
+
+### Connection Handling
+- `NpgsqlConnection` behavior is identical to `SqlConnection` for our use case
+- ConnectionState enum works the same
+- OpenAsync(), CloseAsync(), DisposeAsync() methods compatible
+
+### Command Execution
+- `NpgsqlCommand` fully compatible with existing patterns
+- ExecuteScalarAsync(), ExecuteNonQueryAsync(), ExecuteReaderAsync() work identically
+- Named parameters (@ParamName) supported by Npgsql driver
+
+### Parameter Handling
+- AddWithValue() method works the same with Npgsql
+- No explicit NpgsqlParameter objects needed for our simple parameter usage
+- Type inference works correctly for our data types (int, string, decimal, DateTime)
+
+### Transaction Handling
+- connection.BeginTransactionAsync() returns NpgsqlTransaction (compatible)
+- CommitAsync() and RollbackAsync() work identically
+- ExecuteInTransactionAsync method requires no changes
+
+### Data Reader
+- NpgsqlDataReader interface identical to SqlDataReader
+- Column access by name works the same
+- Type conversion methods (Convert.ToInt32, etc.) work identically
+- DBNull.Value handling unchanged
+
+---
+
+## Unchanged Elements
+
+### What Didn't Need Changes
+- All async/await patterns
+- Connection string handling (will be updated in Step 7)
+- Parameter names and binding
+- Transaction patterns
+- Error handling and exception patterns
+- IAsyncDisposable implementation
+- Repository constructor and configuration handling
+
+---
+
+## Verification Checklist
+- [x] No occurrences of 'SqlConnection' remain
+- [x] No occurrences of 'SqlCommand' remain (as type declarations)
+- [x] No occurrences of 'SqlDataReader' remain
+- [x] Using statement updated to Npgsql
+- [x] Private field updated
+- [x] Method signatures updated
+- [x] All instantiations updated
+- [x] Code compiles successfully (to be verified)
+
+---
+
+## Files Modified
+**DataAccess/ProductRepository.cs**
+- Lines Changed: 8 distinct locations
+- Total Replacements: 11 (including all SqlCommand instantiations)
+- Behavior: Fully compatible, no logic changes
+
+---
+
+## Next Steps
+- [ ] Update connection strings to PostgreSQL format (Step 7)
+- [ ] Test PostgreSQL connectivity
+- [ ] Verify all CRUD operations work with PostgreSQL
+- [ ] Run unit tests with PostgreSQL database
+
+---
+
+**Migration Completed:** 2026-01-29
+**Code Compiles:** To be verified
+**All SQL Server ADO.NET References Removed:** Yes

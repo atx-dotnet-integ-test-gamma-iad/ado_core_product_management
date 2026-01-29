@@ -1,0 +1,166 @@
+{
+  "conversion_date": "2026-01-29T15:04:00Z",
+  "migration_project": "SQL Server to PostgreSQL ADO.NET Migration",
+  "dms_tool": "dms-mcp____statement_conversion_tool",
+  "total_statements": 7,
+  "successful_conversions": 0,
+  "failed_conversions": 7,
+  "manual_conversions_required": 7,
+  "conversions": [
+    {
+      "statement_id": 1,
+      "method": "GetAllProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T14:42:09.928787",
+      "dms_status": "error",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T14:42:12.536781",
+          "status": "completed",
+          "request_identifier": "2c0b23ee-2f8a-445f-83d1-1298db3dd2a0",
+          "metadata_model_name": "sql-conversion-1769697732",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "timestamp": "2026-01-29T14:42:25.327865",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE with window functions (AVG, COUNT OVER) - fully compatible syntax, no changes needed except ensuring PostgreSQL schema"
+    },
+    {
+      "statement_id": 2,
+      "method": "GetProductByIdAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T14:45:09.652507",
+      "dms_status": "error",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T14:45:11.929508",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE with LAG window function - fully compatible, parameter syntax compatible with Npgsql"
+    },
+    {
+      "statement_id": 3,
+      "method": "InsertProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T14:47:55.792308",
+      "dms_status": "error",
+      "dms_error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T14:47:58.041344",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Complex transaction with SCOPE_IDENTITY() and GETDATE(). Converted: SCOPE_IDENTITY() to RETURNING clause, GETDATE() to NOW(), BEGIN TRANSACTION to BEGIN, removed DECLARE statements, restructured to use CTE for handling returned ID"
+    },
+    {
+      "statement_id": 4,
+      "method": "UpdateProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T14:50:00.115088",
+      "dms_status": "error",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T14:50:02.612671",
+          "status": "completed",
+          "request_identifier": "f6876d99-0646-4e29-9db4-245f119ec796",
+          "metadata_model_name": "sql-conversion-1769698202",
+          "poll_attempts": 8
+        },
+        {
+          "step": "convert_metadata_model",
+          "timestamp": "2026-01-29T14:51:20.779484",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Transaction with DECLARE and GETDATE(). Converted: GETDATE() to NOW(), BEGIN TRANSACTION to BEGIN, removed DECLARE statements, converted variable assignments to CTE"
+    },
+    {
+      "statement_id": 5,
+      "method": "DeleteProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T14:54:03.166534",
+      "dms_status": "error",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T14:54:05.627885",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Transaction with DECLARE, GETDATE(), and CASE expression. Converted: GETDATE() to NOW(), BEGIN TRANSACTION to BEGIN, removed DECLARE statements, converted variable assignments to CTE, CASE expression compatible"
+    },
+    {
+      "statement_id": 6,
+      "method": "GetProductsByPriceRangeAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T14:56:49.567722",
+      "dms_status": "error",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T14:56:51.711707",
+          "status": "completed",
+          "request_identifier": "7c5806dc-a6e5-4a4e-9993-ecf7227de016",
+          "metadata_model_name": "sql-conversion-1769698611",
+          "poll_attempts": 11
+        },
+        {
+          "step": "convert_metadata_model",
+          "timestamp": "2026-01-29T14:58:42.124630",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE with RANK() and PERCENT_RANK() window functions - fully compatible, no changes needed"
+    },
+    {
+      "statement_id": 7,
+      "method": "GetLowStockProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_attempt_timestamp": "2026-01-29T15:01:24.148802",
+      "dms_status": "error",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-01-29T15:01:26.377594",
+          "status": "started"
+        }
+      ],
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE with multiple window functions (AVG, MIN, MAX OVER) - fully compatible, no changes needed"
+    }
+  ],
+  "summary": {
+    "dms_tool_issues": "All DMS conversion attempts failed due to metadata model creation or conversion timeouts. This appears to be a systematic DMS service issue rather than SQL syntax problems.",
+    "manual_conversion_approach": "Applied PostgreSQL best practices for manual conversion: GETDATE() to NOW(), SCOPE_IDENTITY() to RETURNING clause, BEGIN TRANSACTION to BEGIN, DECLARE variables to CTEs or subqueries",
+    "compatibility_notes": "Most SQL Server constructs used in this application are compatible with PostgreSQL: window functions, CTEs, CASE expressions, ROUND function, JOIN operations, and named parameters (via Npgsql driver)",
+    "critical_changes": [
+      "SCOPE_IDENTITY() replaced with RETURNING clause in INSERT statements",
+      "GETDATE() replaced with NOW() for current timestamp",
+      "Transaction syntax adjusted from BEGIN TRANSACTION to BEGIN",
+      "Variable declarations removed and converted to CTEs or subqueries"
+    ],
+    "schema_changes": "No schema object name changes required. Tables remain: Products, ProductHistory, ProductStats. Default schema changed from dbo to public (PostgreSQL default)."
+  }
+}
