@@ -1,0 +1,574 @@
+================================================================================
+CODE TRANSFORMATION LOG
+Microsoft SQL Server to PostgreSQL Migration
+================================================================================
+Transformation ID: 20260130_050432_dae44674
+Target File: DataAccess/ProductRepository.cs
+Transformation Date: 2026-01-30
+================================================================================
+
+This log documents all code transformations applied to migrate from Microsoft
+SQL Server (Microsoft.Data.SqlClient) to PostgreSQL (Npgsql), including:
+- Using statement replacements
+- Class name replacements
+- SQL statement re-integrations with PostgreSQL syntax
+- Transaction management updates
+================================================================================
+
+================================================================================
+1. USING STATEMENT REPLACEMENT
+================================================================================
+Location: Line 5
+Before: using Microsoft.Data.SqlClient;
+After:  using Npgsql;
+
+Reason: Replace SQL Server client library with PostgreSQL client library (Npgsql)
+
+================================================================================
+2. FIELD TYPE REPLACEMENT - Connection Field
+================================================================================
+Location: Line 14
+Before: private SqlConnection _connection;
+After:  private NpgsqlConnection _connection;
+
+Reason: Replace SQL Server connection type with Npgsql connection type
+
+================================================================================
+3. METHOD RETURN TYPE REPLACEMENT - GetConnectionAsync
+================================================================================
+Location: Line 25
+Before: private async Task<SqlConnection> GetConnectionAsync()
+After:  private async Task<NpgsqlConnection> GetConnectionAsync()
+
+Reason: Update method return type to match Npgsql connection type
+
+================================================================================
+4. CONNECTION INSTANTIATION REPLACEMENT
+================================================================================
+Location: Line 29
+Before: _connection = new SqlConnection(_connectionString);
+After:  _connection = new NpgsqlConnection(_connectionString);
+
+Reason: Instantiate Npgsql connection instead of SQL Server connection
+
+================================================================================
+5. SQL COMMAND REPLACEMENT - GetAllProductsAsync
+================================================================================
+Location: Line 75
+Before: using var command = new SqlCommand(sql, connection);
+After:  using var command = new NpgsqlCommand(sql, connection);
+
+Reason: Replace SqlCommand with NpgsqlCommand
+
+SQL Statement Status: NO CHANGES REQUIRED
+- CTE with AVG/COUNT window functions is PostgreSQL compatible
+- No schema object name changes from DMS conversion
+
+================================================================================
+6. SQL COMMAND REPLACEMENT - GetProductByIdAsync
+================================================================================
+Location: Line 123
+Before: using var command = new SqlCommand(sql, connection);
+After:  using var command = new NpgsqlCommand(sql, connection);
+
+Reason: Replace SqlCommand with NpgsqlCommand
+
+SQL Statement Status: NO CHANGES REQUIRED
+- CTE with LAG window function is PostgreSQL compatible
+- No schema object name changes from DMS conversion
+
+================================================================================
+7. INSERT METHOD TRANSFORMATION - InsertProductAsync
+================================================================================
+Location: Lines 130-197
+Complete method restructure for PostgreSQL transaction management and RETURNING clause
+
+BEFORE:
+--------
+public async Task<int> InsertProductAsync(Product product)
+{
+    var connection = await GetConnectionAsync();
+    
+    const string sql = @"
+        DECLARE @NewProductId INT;
+        
+        BEGIN TRANSACTION;
+            INSERT INTO Products (Name, Description, Price, StockQuantity)
+            VALUES (@Name, @Description, @Price, @StockQuantity);
+            
+            SET @NewProductId = SCOPE_IDENTITY();
+            
+            INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+            VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+            
+            UPDATE ProductStats
+            SET 
+                TotalProducts = TotalProducts + 1,
+                AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+                LastUpdated = GETDATE()
+            WHERE StatId = 1;
+        COMMIT;
+        
+        SELECT @NewProductId;";
+    
+    using var command = new SqlCommand(sql, connection);
+    command.Parameters.AddWithValue("@Name", product.Name);
+    command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+    command.Parameters.AddWithValue("@Price", product.Price);
+    command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+    
+    return Convert.ToInt32(await command.ExecuteScalarAsync());
+}
+
+AFTER:
+------
+public async Task<int> InsertProductAsync(Product product)
+{
+    var connection = await GetConnectionAsync();
+    using var transaction = await connection.BeginTransactionAsync();
+    
+    try
+    {
+        // Insert the new product and get the ID using RETURNING
+        const string insertSql = @"
+            INSERT INTO Products (Name, Description, Price, StockQuantity)
+            VALUES (@Name, @Description, @Price, @StockQuantity)
+            RETURNING ProductId";
+
+        int newProductId;
+        using (var command = new NpgsqlCommand(insertSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@Name", product.Name);
+            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Price", product.Price);
+            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+
+            newProductId = Convert.ToInt32(await command.ExecuteScalarAsync());
+        }
+
+        // Log the insertion
+        const string logSql = @"
+            INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+            VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP)";
+
+        using (var command = new NpgsqlCommand(logSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@NewProductId", newProductId);
+            command.Parameters.AddWithValue("@Price", product.Price);
+            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Update product statistics
+        const string updateStatsSql = @"
+            UPDATE ProductStats
+            SET 
+                TotalProducts = TotalProducts + 1,
+                AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+                LastUpdated = CURRENT_TIMESTAMP
+            WHERE StatId = 1";
+
+        using (var command = new NpgsqlCommand(updateStatsSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@Price", product.Price);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+        return newProductId;
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
+
+KEY CHANGES:
+- Transaction management moved from SQL to ADO.NET (NpgsqlTransaction)
+- DECLARE @NewProductId INT removed (PostgreSQL doesn't support T-SQL variables in this context)
+- SCOPE_IDENTITY() replaced with RETURNING clause (PostgreSQL standard)
+- GETDATE() replaced with CURRENT_TIMESTAMP (PostgreSQL standard)
+- Single SQL string split into multiple commands for ADO.NET transaction management
+- SqlCommand replaced with NpgsqlCommand throughout
+- try/catch/rollback pattern added for proper transaction management
+
+Schema Object Names: NO CHANGES (Products, ProductHistory, ProductStats unchanged)
+
+================================================================================
+8. UPDATE METHOD TRANSFORMATION - UpdateProductAsync
+================================================================================
+Location: Lines 199-289
+Complete method restructure for PostgreSQL transaction and variable handling
+
+BEFORE:
+--------
+public async Task UpdateProductAsync(Product product)
+{
+    var connection = await GetConnectionAsync();
+    
+    const string sql = @"
+        BEGIN TRANSACTION;
+            DECLARE @OldPrice DECIMAL(18,2);
+            DECLARE @OldStock INT;
+            
+            SELECT @OldPrice = Price, @OldStock = StockQuantity
+            FROM Products
+            WHERE ProductId = @ProductId;
+            
+            UPDATE Products
+            SET 
+                Name = @Name,
+                Description = @Description,
+                Price = @Price,
+                StockQuantity = @StockQuantity,
+                ModifiedDate = GETDATE()
+            WHERE ProductId = @ProductId;
+            
+            INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+            VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+            
+            UPDATE ProductStats
+            SET 
+                AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+                LastUpdated = GETDATE()
+            WHERE StatId = 1;
+        COMMIT;";
+    
+    using var command = new SqlCommand(sql, connection);
+    command.Parameters.AddWithValue("@ProductId", product.ProductId);
+    command.Parameters.AddWithValue("@Name", product.Name);
+    command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+    command.Parameters.AddWithValue("@Price", product.Price);
+    command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+    
+    await command.ExecuteNonQueryAsync();
+}
+
+AFTER:
+------
+public async Task UpdateProductAsync(Product product)
+{
+    var connection = await GetConnectionAsync();
+    using var transaction = await connection.BeginTransactionAsync();
+
+    try
+    {
+        // Store old values for history using a temp table
+        const string tempTableSql = @"
+            CREATE TEMP TABLE IF NOT EXISTS temp_product_old AS
+            SELECT Price as OldPrice, StockQuantity as OldStock
+            FROM Products
+            WHERE ProductId = @ProductId";
+
+        using (var command = new NpgsqlCommand(tempTableSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@ProductId", product.ProductId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Update the product
+        const string updateSql = @"
+            UPDATE Products
+            SET 
+                Name = @Name,
+                Description = @Description,
+                Price = @Price,
+                StockQuantity = @StockQuantity,
+                ModifiedDate = CURRENT_TIMESTAMP
+            WHERE ProductId = @ProductId";
+
+        using (var command = new NpgsqlCommand(updateSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@ProductId", product.ProductId);
+            command.Parameters.AddWithValue("@Name", product.Name);
+            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Price", product.Price);
+            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Log the changes
+        const string logSql = @"
+            INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+            SELECT @ProductId, 'UPDATE', OldPrice, @Price, OldStock, @StockQuantity, CURRENT_TIMESTAMP
+            FROM temp_product_old";
+
+        using (var command = new NpgsqlCommand(logSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@ProductId", product.ProductId);
+            command.Parameters.AddWithValue("@Price", product.Price);
+            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Update product statistics
+        const string updateStatsSql = @"
+            UPDATE ProductStats
+            SET 
+                AveragePrice = (AveragePrice * TotalProducts - (SELECT OldPrice FROM temp_product_old) + @Price) / TotalProducts,
+                LastUpdated = CURRENT_TIMESTAMP
+            WHERE StatId = 1";
+
+        using (var command = new NpgsqlCommand(updateStatsSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@Price", product.Price);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Clean up temp table
+        const string dropTempSql = "DROP TABLE temp_product_old";
+        using (var command = new NpgsqlCommand(dropTempSql, connection, transaction))
+        {
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
+
+KEY CHANGES:
+- Transaction management moved from SQL to ADO.NET (NpgsqlTransaction)
+- DECLARE variables replaced with temporary table (temp_product_old)
+- SELECT @var = col converted to CREATE TEMP TABLE pattern
+- GETDATE() replaced with CURRENT_TIMESTAMP
+- Single SQL string split into multiple commands
+- SqlCommand replaced with NpgsqlCommand throughout
+- try/catch/rollback pattern added
+- Temp table cleanup added (DROP TABLE)
+
+Schema Object Names: NO CHANGES (Products, ProductHistory, ProductStats unchanged)
+
+================================================================================
+9. DELETE METHOD TRANSFORMATION - DeleteProductAsync
+================================================================================
+Location: Lines 291-378
+Complete method restructure for PostgreSQL transaction and variable handling
+
+BEFORE:
+--------
+public async Task DeleteProductAsync(int productId)
+{
+    var connection = await GetConnectionAsync();
+    
+    const string sql = @"
+        BEGIN TRANSACTION;
+            DECLARE @OldPrice DECIMAL(18,2);
+            DECLARE @OldStock INT;
+            
+            SELECT @OldPrice = Price, @OldStock = StockQuantity
+            FROM Products
+            WHERE ProductId = @ProductId;
+            
+            INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+            VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+            
+            DELETE FROM Products 
+            WHERE ProductId = @ProductId;
+            
+            UPDATE ProductStats
+            SET 
+                TotalProducts = TotalProducts - 1,
+                AveragePrice = CASE 
+                    WHEN TotalProducts > 1 
+                    THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+                    ELSE 0
+                END,
+                LastUpdated = GETDATE()
+            WHERE StatId = 1;
+        COMMIT;";
+    
+    using var command = new SqlCommand(sql, connection);
+    command.Parameters.AddWithValue("@ProductId", productId);
+    
+    await command.ExecuteNonQueryAsync();
+}
+
+AFTER:
+------
+public async Task DeleteProductAsync(int productId)
+{
+    var connection = await GetConnectionAsync();
+    using var transaction = await connection.BeginTransactionAsync();
+
+    try
+    {
+        // Store product info in temp table before deletion
+        const string tempTableSql = @"
+            CREATE TEMP TABLE IF NOT EXISTS temp_product_deleted AS
+            SELECT Price as OldPrice, StockQuantity as OldStock
+            FROM Products
+            WHERE ProductId = @ProductId";
+
+        using (var command = new NpgsqlCommand(tempTableSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@ProductId", productId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Log the deletion
+        const string logSql = @"
+            INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+            SELECT @ProductId, 'DELETE', OldPrice, NULL, OldStock, NULL, CURRENT_TIMESTAMP
+            FROM temp_product_deleted";
+
+        using (var command = new NpgsqlCommand(logSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@ProductId", productId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Delete the product
+        const string deleteSql = @"
+            DELETE FROM Products 
+            WHERE ProductId = @ProductId";
+
+        using (var command = new NpgsqlCommand(deleteSql, connection, transaction))
+        {
+            command.Parameters.AddWithValue("@ProductId", productId);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Update product statistics
+        const string updateStatsSql = @"
+            UPDATE ProductStats
+            SET 
+                TotalProducts = TotalProducts - 1,
+                AveragePrice = CASE 
+                    WHEN TotalProducts > 1 
+                    THEN (AveragePrice * TotalProducts - (SELECT OldPrice FROM temp_product_deleted)) / (TotalProducts - 1)
+                    ELSE 0
+                END,
+                LastUpdated = CURRENT_TIMESTAMP
+            WHERE StatId = 1";
+
+        using (var command = new NpgsqlCommand(updateStatsSql, connection, transaction))
+        {
+            await command.ExecuteNonQueryAsync();
+        }
+
+        // Clean up temp table
+        const string dropTempSql = "DROP TABLE temp_product_deleted";
+        using (var command = new NpgsqlCommand(dropTempSql, connection, transaction))
+        {
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
+
+KEY CHANGES:
+- Transaction management moved from SQL to ADO.NET (NpgsqlTransaction)
+- DECLARE variables replaced with temporary table (temp_product_deleted)
+- GETDATE() replaced with CURRENT_TIMESTAMP
+- Single SQL string split into multiple commands
+- SqlCommand replaced with NpgsqlCommand throughout
+- try/catch/rollback pattern added
+- Temp table cleanup added (DROP TABLE)
+- CASE expression preserved (PostgreSQL compatible)
+
+Schema Object Names: NO CHANGES (Products, ProductHistory, ProductStats unchanged)
+
+================================================================================
+10. SQL COMMAND REPLACEMENT - GetProductsByPriceRangeAsync
+================================================================================
+Location: Line 422
+Before: using var command = new SqlCommand(sql, connection);
+After:  using var command = new NpgsqlCommand(sql, connection);
+
+Reason: Replace SqlCommand with NpgsqlCommand
+
+SQL Statement Status: NO CHANGES REQUIRED
+- CTE with RANK/PERCENT_RANK window functions is PostgreSQL compatible
+- No schema object name changes from DMS conversion
+
+================================================================================
+11. SQL COMMAND REPLACEMENT - GetLowStockProductsAsync
+================================================================================
+Location: Line 451
+Before: using var command = new SqlCommand(sql, connection);
+After:  using var command = new NpgsqlCommand(sql, connection);
+
+Reason: Replace SqlCommand with NpgsqlCommand
+
+SQL Statement Status: NO CHANGES REQUIRED
+- CTE with AVG/MIN/MAX window functions is PostgreSQL compatible
+- No schema object name changes from DMS conversion
+
+================================================================================
+12. DATA READER TYPE REPLACEMENT - MapProductFromReader
+================================================================================
+Location: Line 474
+Before: private static Product MapProductFromReader(SqlDataReader reader)
+After:  private static Product MapProductFromReader(NpgsqlDataReader reader)
+
+Reason: Replace SqlDataReader with NpgsqlDataReader parameter type
+
+================================================================================
+
+================================================================================
+TRANSFORMATION SUMMARY
+================================================================================
+
+Total Transformations: 12
+
+Class Replacements:
+- SqlConnection → NpgsqlConnection: 3 occurrences (field, method return, instantiation)
+- SqlCommand → NpgsqlCommand: 10 occurrences (all query methods)
+- SqlDataReader → NpgsqlDataReader: 1 occurrence (MapProductFromReader parameter)
+
+SQL Statement Conversions:
+- Statement 1 (GetAllProductsAsync): NO CHANGES - PostgreSQL compatible
+- Statement 2 (GetProductByIdAsync): NO CHANGES - PostgreSQL compatible
+- Statement 3 (InsertProductAsync): MAJOR RESTRUCTURE
+  - SCOPE_IDENTITY() → RETURNING ProductId
+  - GETDATE() → CURRENT_TIMESTAMP
+  - Transaction management → ADO.NET NpgsqlTransaction
+  - T-SQL variables removed
+- Statement 4 (UpdateProductAsync): MAJOR RESTRUCTURE
+  - GETDATE() → CURRENT_TIMESTAMP
+  - T-SQL variables → temp table pattern
+  - Transaction management → ADO.NET NpgsqlTransaction
+- Statement 5 (DeleteProductAsync): MAJOR RESTRUCTURE
+  - GETDATE() → CURRENT_TIMESTAMP
+  - T-SQL variables → temp table pattern
+  - Transaction management → ADO.NET NpgsqlTransaction
+- Statement 6 (GetProductsByPriceRangeAsync): NO CHANGES - PostgreSQL compatible
+- Statement 7 (GetLowStockProductsAsync): NO CHANGES - PostgreSQL compatible
+
+Schema Object Name Changes: NONE
+- All table names remain unchanged (Products, ProductHistory, ProductStats)
+- DMS tool did not apply schema name transformations
+
+Transaction Management:
+- All transaction methods converted from embedded SQL (BEGIN TRANSACTION/COMMIT)
+  to ADO.NET pattern (NpgsqlTransaction with try/catch/rollback)
+
+Function Conversions:
+- SCOPE_IDENTITY() → RETURNING clause (1 occurrence)
+- GETDATE() → CURRENT_TIMESTAMP (7 occurrences total)
+
+Compatibility Notes:
+- Parameter syntax (@parameter) unchanged (compatible with PostgreSQL)
+- Window functions (AVG, COUNT, LAG, RANK, PERCENT_RANK, MIN, MAX OVER) unchanged
+- CTEs (WITH clause) unchanged (PostgreSQL compatible)
+- CASE expressions unchanged (PostgreSQL compatible)
+- ROUND function unchanged (PostgreSQL compatible)
+
+Build Status: SUCCESS
+All transformations complete and code compiles without errors.
+
+================================================================================
+END OF CODE TRANSFORMATION LOG
+================================================================================
