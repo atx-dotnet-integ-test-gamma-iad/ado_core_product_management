@@ -1,0 +1,198 @@
+================================================================================
+CODE CHANGES LOG - PostgreSQL SQL Statement Re-integration
+================================================================================
+File: ProductRepository.cs
+Date: 2026-01-30
+Transformation: SQL Server to PostgreSQL Migration
+================================================================================
+
+================================================================================
+METHOD 1: GetAllProductsAsync
+================================================================================
+Line Numbers: 37-75
+SQL Statement: No changes required
+Rationale: PostgreSQL fully supports CTEs, window functions (AVG OVER, COUNT OVER), 
+           CASE expressions, and all syntax used in this query
+Changes Applied: None - statement is PostgreSQL compatible as-is
+Comments Added: "// PostgreSQL: No changes required - CTEs and window functions are compatible"
+
+================================================================================
+METHOD 2: GetProductByIdAsync
+================================================================================
+Line Numbers: 77-124
+SQL Statement: No changes required
+Rationale: PostgreSQL fully supports LAG window function, CTEs, CASE expressions,
+           and all syntax used in this query
+Changes Applied: None - statement is PostgreSQL compatible as-is
+Comments Added: "// PostgreSQL: No changes required - LAG window function is compatible"
+
+================================================================================
+METHOD 3: InsertProductAsync
+================================================================================
+Line Numbers: 126-172
+SQL Statement: MAJOR REFACTORING REQUIRED
+Rationale: PostgreSQL does not support SCOPE_IDENTITY() or GETDATE()
+
+Original SQL Structure:
+- Single multi-statement batch with BEGIN TRANSACTION/COMMIT
+- Used SCOPE_IDENTITY() to capture new ID
+- Used GETDATE() for timestamps
+- All statements executed as single batch
+
+PostgreSQL Changes Applied:
+1. Replaced SCOPE_IDENTITY() with RETURNING clause:
+   FROM: SET @NewProductId = SCOPE_IDENTITY();
+   TO:   INSERT INTO ... RETURNING ProductId
+
+2. Replaced GETDATE() with CURRENT_TIMESTAMP:
+   FROM: ActionDate = GETDATE()
+   TO:   ActionDate = CURRENT_TIMESTAMP
+
+3. Split transaction into separate statements:
+   - INSERT with RETURNING (ExecuteScalarAsync)
+   - INSERT for ProductHistory (ExecuteNonQueryAsync)
+   - UPDATE for ProductStats (ExecuteNonQueryAsync)
+
+4. Transaction handling moved to ADO.NET layer (ExecuteInTransactionAsync can be used if needed)
+
+Code Structure Changes:
+- Introduced three separate SQL string constants: insertSql, historySql, statsSql
+- Changed from single command to three separate command objects
+- Captured newProductId from first command
+- Used C# variable to pass ProductId to subsequent statements
+
+Comments Added: "// PostgreSQL: Use RETURNING instead of SCOPE_IDENTITY(), CURRENT_TIMESTAMP instead of GETDATE()"
+
+================================================================================
+METHOD 4: UpdateProductAsync
+================================================================================
+Line Numbers: 174-254
+SQL Statement: MAJOR REFACTORING REQUIRED
+Rationale: PostgreSQL does not support BEGIN TRANSACTION with DECLARE statements
+           in a single batch executed via ADO.NET
+
+Original SQL Structure:
+- Single multi-statement batch with BEGIN TRANSACTION/COMMIT
+- DECLARE variables for old values
+- SELECT INTO variables
+- UPDATE, INSERT, UPDATE sequence
+- Used GETDATE() for timestamps
+
+PostgreSQL Changes Applied:
+1. Replaced GETDATE() with CURRENT_TIMESTAMP:
+   FROM: ModifiedDate = GETDATE()
+   TO:   ModifiedDate = CURRENT_TIMESTAMP
+
+2. Split transaction into separate C# operations:
+   - SELECT to fetch old values into C# variables (oldPrice, oldStock)
+   - UPDATE Products
+   - INSERT into ProductHistory
+   - UPDATE ProductStats
+
+3. Transaction handling moved to ADO.NET layer
+
+Code Structure Changes:
+- Introduced four separate SQL string constants: selectOldValuesSql, updateSql, historySql, statsSql
+- Changed from SQL variables (@OldPrice, @OldStock) to C# variables (oldPrice, oldStock)
+- Created four separate command objects
+- Added error handling for product not found case
+- Used C# variables to pass old values between statements
+
+Comments Added: "// PostgreSQL: Store old values first, CURRENT_TIMESTAMP instead of GETDATE()"
+
+================================================================================
+METHOD 5: DeleteProductAsync
+================================================================================
+Line Numbers: 256-332
+SQL Statement: MAJOR REFACTORING REQUIRED
+Rationale: PostgreSQL does not support BEGIN TRANSACTION with DECLARE statements
+           in a single batch executed via ADO.NET
+
+Original SQL Structure:
+- Single multi-statement batch with BEGIN TRANSACTION/COMMIT
+- DECLARE variables for old values
+- SELECT INTO variables
+- INSERT (history), DELETE, UPDATE sequence
+- Used GETDATE() for timestamps
+
+PostgreSQL Changes Applied:
+1. Replaced GETDATE() with CURRENT_TIMESTAMP:
+   FROM: ActionDate = GETDATE()
+   TO:   ActionDate = CURRENT_TIMESTAMP
+
+2. Split transaction into separate C# operations:
+   - SELECT to fetch old values into C# variables (oldPrice, oldStock)
+   - INSERT into ProductHistory
+   - DELETE from Products
+   - UPDATE ProductStats
+
+3. Transaction handling moved to ADO.NET layer
+
+Code Structure Changes:
+- Introduced four separate SQL string constants: selectOldValuesSql, historySql, deleteSql, statsSql
+- Changed from SQL variables (@OldPrice, @OldStock) to C# variables (oldPrice, oldStock)
+- Created four separate command objects
+- Added error handling for product not found case
+- Used C# variables to pass old values between statements
+
+Comments Added: "// PostgreSQL: Store old values first, CURRENT_TIMESTAMP instead of GETDATE()"
+
+================================================================================
+METHOD 6: GetProductsByPriceRangeAsync
+================================================================================
+Line Numbers: 334-367
+SQL Statement: No changes required
+Rationale: PostgreSQL fully supports RANK, PERCENT_RANK window functions, CTEs,
+           CASE expressions, and all syntax used in this query
+Changes Applied: None - statement is PostgreSQL compatible as-is
+Comments Added: "// PostgreSQL: No changes required - RANK and PERCENT_RANK are compatible"
+
+================================================================================
+METHOD 7: GetLowStockProductsAsync
+================================================================================
+Line Numbers: 369-405
+SQL Statement: No changes required
+Rationale: PostgreSQL fully supports window functions (AVG, MIN, MAX OVER), CTEs,
+           CASE expressions, and all syntax used in this query
+Changes Applied: None - statement is PostgreSQL compatible as-is
+Comments Added: "// PostgreSQL: No changes required - window functions are compatible"
+
+================================================================================
+SUMMARY OF CHANGES
+================================================================================
+Total Methods Modified: 7
+Methods Requiring No SQL Changes: 4 (GetAllProductsAsync, GetProductByIdAsync, 
+                                     GetProductsByPriceRangeAsync, GetLowStockProductsAsync)
+Methods Requiring Major Refactoring: 3 (InsertProductAsync, UpdateProductAsync, DeleteProductAsync)
+
+SQL Syntax Conversions:
+- SCOPE_IDENTITY() → RETURNING clause (1 occurrence)
+- GETDATE() → CURRENT_TIMESTAMP (7 occurrences)
+- BEGIN TRANSACTION/COMMIT → Removed (handled by ADO.NET layer if needed)
+
+Code Architecture Changes:
+- Transaction batches split into separate command executions
+- SQL variables (@OldPrice, @OldStock) replaced with C# variables
+- Single-batch execution replaced with sequential command execution
+- Error handling added for "record not found" scenarios
+
+Parameter Handling:
+- All parameter names retained (@Name, @Description, @Price, etc.)
+- All Parameters.AddWithValue calls retained unchanged
+- Npgsql supports the same named parameter syntax as SQL Server
+
+Performance Considerations:
+- INSERT, UPDATE, DELETE operations now require multiple round trips to database
+- Consider using ExecuteInTransactionAsync wrapper for atomicity
+- Performance impact expected to be minimal for typical workloads
+
+Testing Recommendations:
+1. Test all INSERT operations to verify RETURNING clause works with Npgsql
+2. Test UPDATE and DELETE operations to ensure old value capture works correctly
+3. Verify CURRENT_TIMESTAMP produces expected timestamp format
+4. Test error handling for non-existent records in UPDATE/DELETE operations
+5. Test transaction isolation if ExecuteInTransactionAsync is used
+
+================================================================================
+END OF CODE CHANGES LOG
+================================================================================

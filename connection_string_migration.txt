@@ -1,0 +1,193 @@
+================================================================================
+CONNECTION STRING MIGRATION DOCUMENTATION
+================================================================================
+Migration: Microsoft SQL Server to PostgreSQL
+Date: 2026-01-30
+File: appsettings.json
+================================================================================
+
+================================================================================
+ORIGINAL SQL SERVER CONNECTION STRINGS
+================================================================================
+
+DevConnection:
+--------------
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+ProdConnection:
+---------------
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+================================================================================
+CONVERTED POSTGRESQL CONNECTION STRINGS
+================================================================================
+
+DevConnection:
+--------------
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true
+
+ProdConnection:
+---------------
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true
+
+================================================================================
+PARAMETER TRANSFORMATION MAPPING
+================================================================================
+
+SQL Server Parameter              PostgreSQL Equivalent         Notes
+--------------------              ---------------------         -----
+Server=localhost                  Host=localhost                Server → Host
+[No explicit port]                Port=5432                     Added default PostgreSQL port
+Database=ProductManagement        Database=ProductManagement    Unchanged
+Trusted_Connection=True           Username=postgres             Windows auth → PostgreSQL auth
+                                  Password=postgres             
+MultipleActiveResultSets=true     [Removed]                     SQL Server specific, not needed
+TrustServerCertificate=True       [Removed]                     SQL Server specific, not needed
+[No pooling parameter]            Pooling=true                  Added PostgreSQL connection pooling
+
+================================================================================
+DETAILED PARAMETER EXPLANATIONS
+================================================================================
+
+1. Server → Host
+   -----------
+   SQL Server: Server=localhost
+   PostgreSQL: Host=localhost
+   
+   PostgreSQL uses "Host" instead of "Server" to specify the database server location.
+
+2. Port Addition
+   -------------
+   SQL Server: [Implicit, typically 1433]
+   PostgreSQL: Port=5432
+   
+   PostgreSQL default port is 5432. Explicitly specified for clarity.
+
+3. Database Name
+   -------------
+   SQL Server: Database=ProductManagement
+   PostgreSQL: Database=ProductManagement
+   
+   No changes required. Database name remains the same.
+
+4. Authentication
+   --------------
+   SQL Server: Trusted_Connection=True (Windows Authentication)
+   PostgreSQL: Username=postgres;Password=postgres (PostgreSQL Authentication)
+   
+   PostgreSQL does not support Windows Integrated Authentication in the same way.
+   Changed to username/password authentication.
+   
+   NOTE: In production environments, credentials should be:
+   - Stored in secure configuration (Azure Key Vault, AWS Secrets Manager, etc.)
+   - Not hardcoded in appsettings.json
+   - Different for each environment
+
+5. MultipleActiveResultSets
+   -------------------------
+   SQL Server: MultipleActiveResultSets=true
+   PostgreSQL: [Removed]
+   
+   This is a SQL Server specific optimization that allows multiple result sets
+   on a single connection. PostgreSQL handles this differently and does not
+   require this parameter.
+
+6. TrustServerCertificate
+   -----------------------
+   SQL Server: TrustServerCertificate=True
+   PostgreSQL: [Removed]
+   
+   This is a SQL Server specific parameter for SSL/TLS connections.
+   PostgreSQL has its own SSL configuration parameters if needed:
+   - SSL Mode=Require (to enforce SSL)
+   - SSL Mode=Prefer (to prefer SSL if available)
+
+7. Connection Pooling
+   ------------------
+   SQL Server: [Implicit, enabled by default]
+   PostgreSQL: Pooling=true
+   
+   Added explicitly to enable connection pooling. Npgsql supports additional
+   pooling parameters:
+   - Minimum Pool Size=1 (default: 1)
+   - Maximum Pool Size=20 (default: 100)
+
+================================================================================
+ADDITIONAL POSTGRESQL CONNECTION STRING OPTIONS
+================================================================================
+
+If needed, the following parameters can be added to the connection string:
+
+Performance Optimization:
+-------------------------
+- Minimum Pool Size=1         # Minimum number of connections in pool
+- Maximum Pool Size=20        # Maximum number of connections in pool
+- Connection Idle Lifetime=60 # Seconds before idle connection is closed
+- Connection Pruning Interval=10 # How often to check for idle connections
+
+Security:
+---------
+- SSL Mode=Require            # Force SSL connection
+- SSL Mode=Prefer             # Use SSL if available
+- SSL Mode=Disable            # Do not use SSL
+
+Timeout Settings:
+-----------------
+- Timeout=30                  # Connection timeout in seconds
+- Command Timeout=30          # Command execution timeout in seconds
+
+Application Name:
+-----------------
+- Application Name=AdoCore    # Identifies application in PostgreSQL logs
+
+================================================================================
+PRODUCTION RECOMMENDATIONS
+================================================================================
+
+1. Credentials Management
+   ----------------------
+   DO NOT store passwords in appsettings.json for production.
+   
+   Options:
+   - Environment variables
+   - Azure Key Vault (for Azure deployments)
+   - AWS Secrets Manager (for AWS deployments)
+   - Docker secrets (for containerized deployments)
+   - Configuration providers with encryption
+
+2. Connection String Template for Production
+   -----------------------------------------
+   Host={DB_HOST};Port={DB_PORT};Database={DB_NAME};Username={DB_USER};Password={DB_PASSWORD};Pooling=true;Maximum Pool Size=50;SSL Mode=Require
+
+3. Security Best Practices
+   ------------------------
+   - Use strong passwords for database users
+   - Limit database user permissions (principle of least privilege)
+   - Enable SSL/TLS for connections
+   - Use separate database users for different environments
+   - Rotate credentials regularly
+   - Monitor connection usage and performance
+
+4. Performance Tuning
+   -------------------
+   - Adjust pool sizes based on application load
+   - Monitor connection pool exhaustion
+   - Use appropriate timeout values
+   - Consider read replicas for read-heavy workloads
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+[ ] Verify application connects to PostgreSQL database successfully
+[ ] Test DevConnection in development environment
+[ ] Test ProdConnection in production environment (with proper credentials)
+[ ] Verify connection pooling is working (check pg_stat_activity in PostgreSQL)
+[ ] Test application behavior with database connection failures
+[ ] Verify SSL connection if SSL Mode=Require is used
+[ ] Monitor connection pool usage under load
+[ ] Validate credentials security (not exposed in logs, etc.)
+
+================================================================================
+END OF CONNECTION STRING MIGRATION DOCUMENTATION
+================================================================================
