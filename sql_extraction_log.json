@@ -1,0 +1,241 @@
+{
+  "extraction_metadata": {
+    "extraction_date": "2026-01-30",
+    "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+    "database": "ProductManagement",
+    "schema": "dbo",
+    "total_statements_extracted": 7,
+    "extraction_tool": "Manual extraction with line number tracking",
+    "notes": "All SQL statements include window functions, CTEs, or transaction blocks requiring careful conversion"
+  },
+  "statements": [
+    {
+      "statement_id": "GetAllProductsAsync",
+      "statement_number": 1,
+      "source_method": "GetAllProductsAsync()",
+      "line_range": {
+        "start": 39,
+        "end": 69
+      },
+      "sql_type": "SELECT",
+      "uses_cte": true,
+      "uses_window_functions": true,
+      "uses_transaction": false,
+      "window_functions": ["AVG OVER", "COUNT OVER"],
+      "sql_server_specific_functions": [],
+      "parameters": [],
+      "tables_referenced": ["Products"],
+      "description": "Retrieves all products with price analysis using CTE and window functions to calculate average price and categorize products",
+      "complexity": "medium",
+      "requires_dms_conversion": true
+    },
+    {
+      "statement_id": "GetProductByIdAsync",
+      "statement_number": 2,
+      "source_method": "GetProductByIdAsync(int productId)",
+      "line_range": {
+        "start": 83,
+        "end": 115
+      },
+      "sql_type": "SELECT",
+      "uses_cte": true,
+      "uses_window_functions": true,
+      "uses_transaction": false,
+      "window_functions": ["LAG OVER"],
+      "sql_server_specific_functions": [],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "description": "Product identifier"
+        }
+      ],
+      "tables_referenced": ["Products"],
+      "description": "Retrieves a single product by ID with historical price and stock comparison using LAG window function",
+      "complexity": "medium",
+      "requires_dms_conversion": true
+    },
+    {
+      "statement_id": "InsertProductAsync",
+      "statement_number": 3,
+      "source_method": "InsertProductAsync(Product product)",
+      "line_range": {
+        "start": 130,
+        "end": 153
+      },
+      "sql_type": "INSERT (Transaction)",
+      "uses_cte": false,
+      "uses_window_functions": false,
+      "uses_transaction": true,
+      "window_functions": [],
+      "sql_server_specific_functions": ["SCOPE_IDENTITY", "GETDATE"],
+      "parameters": [
+        {
+          "name": "@Name",
+          "type": "nvarchar(100)",
+          "description": "Product name"
+        },
+        {
+          "name": "@Description",
+          "type": "nvarchar(500)",
+          "description": "Product description"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal(18,2)",
+          "description": "Product price"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "description": "Initial stock quantity"
+        }
+      ],
+      "tables_referenced": ["Products", "ProductHistory", "ProductStats"],
+      "description": "Inserts a new product within a transaction, logs to history, updates statistics. Uses SCOPE_IDENTITY() to get new ID.",
+      "complexity": "hard",
+      "requires_dms_conversion": true,
+      "notes": "SCOPE_IDENTITY() must be converted to RETURNING clause in PostgreSQL"
+    },
+    {
+      "statement_id": "UpdateProductAsync",
+      "statement_number": 4,
+      "source_method": "UpdateProductAsync(Product product)",
+      "line_range": {
+        "start": 168,
+        "end": 199
+      },
+      "sql_type": "UPDATE (Transaction)",
+      "uses_cte": false,
+      "uses_window_functions": false,
+      "uses_transaction": true,
+      "window_functions": [],
+      "sql_server_specific_functions": ["GETDATE"],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "description": "Product identifier"
+        },
+        {
+          "name": "@Name",
+          "type": "nvarchar(100)",
+          "description": "Updated product name"
+        },
+        {
+          "name": "@Description",
+          "type": "nvarchar(500)",
+          "description": "Updated product description"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal(18,2)",
+          "description": "Updated product price"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "description": "Updated stock quantity"
+        }
+      ],
+      "tables_referenced": ["Products", "ProductHistory", "ProductStats"],
+      "description": "Updates product within a transaction, stores old values, logs changes to history, updates statistics",
+      "complexity": "hard",
+      "requires_dms_conversion": true
+    },
+    {
+      "statement_id": "DeleteProductAsync",
+      "statement_number": 5,
+      "source_method": "DeleteProductAsync(int productId)",
+      "line_range": {
+        "start": 214,
+        "end": 242
+      },
+      "sql_type": "DELETE (Transaction)",
+      "uses_cte": false,
+      "uses_window_functions": false,
+      "uses_transaction": true,
+      "window_functions": [],
+      "sql_server_specific_functions": ["GETDATE"],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "description": "Product identifier to delete"
+        }
+      ],
+      "tables_referenced": ["Products", "ProductHistory", "ProductStats"],
+      "description": "Deletes a product within a transaction, logs to history, updates statistics with CASE expression handling",
+      "complexity": "hard",
+      "requires_dms_conversion": true
+    },
+    {
+      "statement_id": "GetProductsByPriceRangeAsync",
+      "statement_number": 6,
+      "source_method": "GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)",
+      "line_range": {
+        "start": 256,
+        "end": 279
+      },
+      "sql_type": "SELECT",
+      "uses_cte": true,
+      "uses_window_functions": true,
+      "uses_transaction": false,
+      "window_functions": ["RANK OVER", "PERCENT_RANK OVER"],
+      "sql_server_specific_functions": [],
+      "parameters": [
+        {
+          "name": "@MinPrice",
+          "type": "decimal(18,2)",
+          "description": "Minimum price for range"
+        },
+        {
+          "name": "@MaxPrice",
+          "type": "decimal(18,2)",
+          "description": "Maximum price for range"
+        }
+      ],
+      "tables_referenced": ["Products"],
+      "description": "Retrieves products within a price range with RANK and PERCENT_RANK for price segmentation analysis",
+      "complexity": "medium",
+      "requires_dms_conversion": true
+    },
+    {
+      "statement_id": "GetLowStockProductsAsync",
+      "statement_number": 7,
+      "source_method": "GetLowStockProductsAsync(int threshold)",
+      "line_range": {
+        "start": 293,
+        "end": 319
+      },
+      "sql_type": "SELECT",
+      "uses_cte": true,
+      "uses_window_functions": true,
+      "uses_transaction": false,
+      "window_functions": ["AVG OVER", "MIN OVER", "MAX OVER"],
+      "sql_server_specific_functions": [],
+      "parameters": [
+        {
+          "name": "@Threshold",
+          "type": "int",
+          "description": "Stock quantity threshold for low stock alert"
+        }
+      ],
+      "tables_referenced": ["Products"],
+      "description": "Retrieves low stock products with statistical analysis using multiple window functions",
+      "complexity": "medium",
+      "requires_dms_conversion": true
+    }
+  ],
+  "summary": {
+    "total_select_statements": 4,
+    "total_insert_statements": 1,
+    "total_update_statements": 1,
+    "total_delete_statements": 1,
+    "statements_with_ctes": 4,
+    "statements_with_window_functions": 4,
+    "statements_with_transactions": 3,
+    "sql_server_specific_functions_count": 2,
+    "unique_sql_server_functions": ["SCOPE_IDENTITY", "GETDATE"]
+  }
+}
