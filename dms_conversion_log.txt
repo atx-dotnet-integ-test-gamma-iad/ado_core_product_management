@@ -1,0 +1,364 @@
+==================================================================================
+DMS MCP TOOL CONVERSION LOG
+==================================================================================
+Conversion Date: 2025-01-31
+Total Statements Processed: 7
+Tool: dms-mcp____statement_conversion_tool
+Region: us-east-1
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+==================================================================================
+
+==================================================================================
+STATEMENT 1: GetAllProductsAsync() - CTE with Window Functions
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:03:55.254076
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: completed (request: b18ef652-7277-4838-9102-ef54ecfb6495, poll_attempts: 2)
+- convert_metadata_model: started
+
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:06:39.010544
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model conversion after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes: Statement is PostgreSQL compatible with no changes required
+
+==================================================================================
+STATEMENT 2: GetProductByIdAsync() - CTE with LAG Window Function
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:06:49.288449
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: started
+
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:09:21.849364
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model creation after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes: Statement is PostgreSQL compatible with no changes required
+
+==================================================================================
+STATEMENT 3: InsertProductAsync() - Transaction Block with INSERT
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:09:31.095215
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: started
+
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:12:03.623549
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model creation after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes: 
+- SCOPE_IDENTITY() converted to RETURNING clause
+- GETDATE() converted to CURRENT_TIMESTAMP
+- BEGIN TRANSACTION converted to BEGIN
+- DECLARE variable syntax compatible
+- SELECT @NewProductId removed (value returned via RETURNING clause)
+
+==================================================================================
+STATEMENT 4: UpdateProductAsync() - Transaction Block with UPDATE
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:12:12.299761
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: completed (request: 0623ef71-8d79-497f-a76c-0c219419f434, poll_attempts: 11)
+- convert_metadata_model: started
+
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:16:31.579528
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model conversion after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes:
+- GETDATE() converted to CURRENT_TIMESTAMP
+- BEGIN TRANSACTION converted to BEGIN
+- DECLARE variable syntax compatible
+- SELECT INTO variable syntax compatible with PostgreSQL
+
+==================================================================================
+STATEMENT 5: DeleteProductAsync() - Transaction Block with DELETE
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:16:40.852186
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: started
+
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:19:13.152593
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model creation after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes:
+- GETDATE() converted to CURRENT_TIMESTAMP
+- BEGIN TRANSACTION converted to BEGIN
+- DECLARE variable syntax compatible
+- CASE expression compatible
+
+==================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync() - CTE with RANK Functions
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:19:21.445517
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: started
+
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:21:53.795514
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model creation after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes: Statement is PostgreSQL compatible with no changes required
+
+==================================================================================
+STATEMENT 7: GetLowStockProductsAsync() - CTE with Aggregate Window Functions
+==================================================================================
+Invocation Timestamp: 2026-01-31T06:22:03.559965
+Schema: dbo (public for PostgreSQL)
+Database: ProductManagement
+
+Input SQL (MS SQL Server):
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+DMS Tool Status: ERROR
+Workflow Steps:
+- create_metadata_model: completed (request: b9b06aca-0686-4a02-bc5b-6566a3e46b6a, poll_attempts: 12)
+- convert_metadata_model: started
+
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Error Timestamp: 2026-01-31T06:26:33.464207
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed to complete metadata model conversion after multiple attempts
+
+Schema Object Name Changes: None detected
+Manual Conversion Notes: Statement is PostgreSQL compatible with no changes required
+
+==================================================================================
+CONVERSION SUMMARY
+==================================================================================
+Total Statements Processed: 7
+Successfully Converted by DMS: 0
+Failed Conversions (Manual Conversion Required): 7
+Schema Object Renames: 0
+
+Common Conversion Patterns Applied:
+1. GETDATE() → CURRENT_TIMESTAMP
+2. SCOPE_IDENTITY() → RETURNING clause
+3. BEGIN TRANSACTION → BEGIN
+4. Window functions (LAG, RANK, PERCENT_RANK, AVG, MIN, MAX, COUNT) - compatible, no changes
+5. ROUND function - compatible, no changes
+6. CASE expressions - compatible, no changes
+7. CTE (WITH) syntax - compatible, no changes
+8. Parameter syntax (@param) - compatible with Npgsql, no changes
+
+All DMS tool invocations failed due to metadata model creation/conversion timeouts.
+Manual conversions were performed respecting PostgreSQL syntax while maintaining
+functional equivalence with the original SQL Server statements.
+==================================================================================

@@ -1,0 +1,91 @@
+==================================================================================
+DMS MCP TOOL CONVERSION FAILURES LOG
+==================================================================================
+Date: 2025-01-31
+Total Failures: 7 (all statements)
+==================================================================================
+
+All 7 SQL statements were processed through the DMS MCP tool as required by the
+transformation definition. However, all invocations failed due to metadata model
+creation or conversion timeout errors.
+
+As per transformation guidelines:
+"Whenever the DMS tool is unable to convert and returns info or actions, use your 
+best judgement to convert the transformation, but document the statement + DMS 
+output + your conversion to a summary file."
+
+This file documents all DMS failures and the manual conversions applied.
+
+==================================================================================
+FAILURE 1: GetAllProductsAsync()
+==================================================================================
+Original Statement: CTE with window functions (AVG, COUNT) and CASE expressions
+DMS Error: Metadata model conversion failed after 15 attempts
+Manual Conversion: No changes required - statement is PostgreSQL compatible
+
+==================================================================================
+FAILURE 2: GetProductByIdAsync()
+==================================================================================
+Original Statement: CTE with LAG window function and LEFT JOIN
+DMS Error: Metadata model creation failed after 15 attempts
+Manual Conversion: No changes required - statement is PostgreSQL compatible
+
+==================================================================================
+FAILURE 3: InsertProductAsync()
+==================================================================================
+Original Statement: Transaction block with SCOPE_IDENTITY() and GETDATE()
+DMS Error: Metadata model creation failed after 15 attempts
+Manual Conversion Applied:
+1. SCOPE_IDENTITY() → RETURNING ProductId
+2. GETDATE() → CURRENT_TIMESTAMP
+3. BEGIN TRANSACTION → BEGIN
+4. Restructured to return ProductId via RETURNING clause
+
+==================================================================================
+FAILURE 4: UpdateProductAsync()
+==================================================================================
+Original Statement: Transaction block with GETDATE()
+DMS Error: Metadata model conversion failed after 15 attempts
+Manual Conversion Applied:
+1. GETDATE() → CURRENT_TIMESTAMP (3 occurrences)
+2. BEGIN TRANSACTION → BEGIN
+
+==================================================================================
+FAILURE 5: DeleteProductAsync()
+==================================================================================
+Original Statement: Transaction block with GETDATE() and CASE expression
+DMS Error: Metadata model creation failed after 15 attempts
+Manual Conversion Applied:
+1. GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+2. BEGIN TRANSACTION → BEGIN
+
+==================================================================================
+FAILURE 6: GetProductsByPriceRangeAsync()
+==================================================================================
+Original Statement: CTE with RANK and PERCENT_RANK window functions
+DMS Error: Metadata model creation failed after 15 attempts
+Manual Conversion: No changes required - statement is PostgreSQL compatible
+
+==================================================================================
+FAILURE 7: GetLowStockProductsAsync()
+==================================================================================
+Original Statement: CTE with aggregate window functions (AVG, MIN, MAX)
+DMS Error: Metadata model conversion failed after 15 attempts
+Manual Conversion: No changes required - statement is PostgreSQL compatible
+
+==================================================================================
+SUMMARY
+==================================================================================
+All 7 statements were ATTEMPTED through DMS MCP tool first (as required).
+All 7 conversions failed due to DMS service timeout issues.
+Manual conversions were performed after DMS failures, following PostgreSQL best
+practices and maintaining functional equivalence with original SQL Server statements.
+
+Key Manual Conversion Patterns:
+- GETDATE() → CURRENT_TIMESTAMP
+- SCOPE_IDENTITY() → RETURNING clause
+- BEGIN TRANSACTION → BEGIN
+- Window functions, CTEs, CASE expressions require no changes
+
+No schema object name changes were detected or applied during manual conversion.
+==================================================================================
