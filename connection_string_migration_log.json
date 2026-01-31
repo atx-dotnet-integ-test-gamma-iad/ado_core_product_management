@@ -1,0 +1,92 @@
+{
+  "connection_string_migration_metadata": {
+    "migration_date": "2026-01-31T18:46:00Z",
+    "source_file": "sourceCode/appsettings.json",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL"
+  },
+  "connection_string_changes": [
+    {
+      "connection_name": "DevConnection",
+      "old_format": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+      "new_format": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true",
+      "parameter_changes": [
+        {
+          "parameter": "Server",
+          "action": "replaced",
+          "new_parameter": "Host",
+          "new_value": "localhost"
+        },
+        {
+          "parameter": "Port",
+          "action": "added",
+          "new_value": "5432",
+          "reason": "PostgreSQL default port"
+        },
+        {
+          "parameter": "Database",
+          "action": "unchanged",
+          "value": "ProductManagement"
+        },
+        {
+          "parameter": "Trusted_Connection",
+          "action": "removed",
+          "reason": "SQL Server specific - replaced with Username/Password"
+        },
+        {
+          "parameter": "Username",
+          "action": "added",
+          "new_value": "postgres",
+          "reason": "PostgreSQL authentication"
+        },
+        {
+          "parameter": "Password",
+          "action": "added",
+          "new_value": "postgres",
+          "reason": "PostgreSQL authentication"
+        },
+        {
+          "parameter": "MultipleActiveResultSets",
+          "action": "removed",
+          "reason": "SQL Server specific - not applicable to PostgreSQL"
+        },
+        {
+          "parameter": "TrustServerCertificate",
+          "action": "removed",
+          "reason": "SQL Server specific"
+        },
+        {
+          "parameter": "Pooling",
+          "action": "added",
+          "new_value": "true",
+          "reason": "PostgreSQL connection pooling"
+        }
+      ]
+    },
+    {
+      "connection_name": "ProdConnection",
+      "old_format": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+      "new_format": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true",
+      "parameter_changes": "Same as DevConnection"
+    }
+  ],
+  "migration_summary": {
+    "parameters_removed": 3,
+    "parameters_added": 4,
+    "parameters_unchanged": 1,
+    "sql_server_specific_parameters_removed": ["Trusted_Connection", "MultipleActiveResultSets", "TrustServerCertificate"],
+    "postgresql_specific_parameters_added": ["Host", "Port", "Username", "Password", "Pooling"]
+  },
+  "security_notes": [
+    "Username and Password are hardcoded for demonstration purposes",
+    "In production, use secure credential management (environment variables, secrets manager, etc.)",
+    "Consider using connection string encryption for sensitive data"
+  ],
+  "notes": [
+    "Both DevConnection and ProdConnection updated to PostgreSQL format",
+    "Port 5432 is PostgreSQL default",
+    "Pooling enabled for better performance",
+    "Connection strings are valid JSON format",
+    "All SQL Server specific parameters successfully removed"
+  ]
+}

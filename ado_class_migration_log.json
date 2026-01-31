@@ -1,0 +1,79 @@
+{
+  "ado_class_migration_metadata": {
+    "migration_date": "2026-01-31T18:45:00Z",
+    "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+    "total_replacements": 72
+  },
+  "class_replacements": [
+    {
+      "old_class": "Microsoft.Data.SqlClient",
+      "new_class": "Npgsql",
+      "replacement_type": "using_directive",
+      "line_number": 5,
+      "context": "namespace import"
+    },
+    {
+      "old_class": "SqlConnection",
+      "new_class": "NpgsqlConnection",
+      "replacement_type": "class_reference",
+      "occurrences": 8,
+      "locations": [
+        "Field declaration (_connection)",
+        "GetConnectionAsync return type",
+        "GetConnectionAsync instantiation",
+        "Various method local variables"
+      ]
+    },
+    {
+      "old_class": "SqlCommand",
+      "new_class": "NpgsqlCommand",
+      "replacement_type": "class_reference",
+      "occurrences": 53,
+      "locations": [
+        "GetAllProductsAsync",
+        "GetProductByIdAsync",
+        "InsertProductAsync (3 commands)",
+        "UpdateProductAsync (4 commands)",
+        "DeleteProductAsync (4 commands)",
+        "GetProductsByPriceRangeAsync",
+        "GetLowStockProductsAsync"
+      ]
+    },
+    {
+      "old_class": "SqlDataReader",
+      "new_class": "NpgsqlDataReader",
+      "replacement_type": "class_reference",
+      "occurrences": 11,
+      "locations": [
+        "MapProductFromReader method parameter",
+        "Reader variables in GetAllProductsAsync",
+        "Reader variables in GetProductByIdAsync",
+        "Reader variables in UpdateProductAsync",
+        "Reader variables in DeleteProductAsync",
+        "Reader variables in GetProductsByPriceRangeAsync",
+        "Reader variables in GetLowStockProductsAsync"
+      ]
+    }
+  ],
+  "migration_summary": {
+    "using_directives_updated": 1,
+    "sql_connection_replacements": 8,
+    "sql_command_replacements": 53,
+    "sql_data_reader_replacements": 11,
+    "total_type_references_updated": 72
+  },
+  "unchanged_elements": {
+    "method_signatures": "All preserved",
+    "business_logic": "All preserved",
+    "exception_handling": "All preserved",
+    "async_patterns": "All preserved",
+    "parameter_binding": "AddWithValue pattern maintained (Npgsql compatible)"
+  },
+  "notes": [
+    "All SQL Server ADO.NET types successfully replaced with Npgsql equivalents",
+    "Npgsql maintains API compatibility with SqlClient for most operations",
+    "Transaction handling patterns preserved (BeginTransactionAsync/CommitAsync/RollbackAsync)",
+    "Parameter binding using AddWithValue works identically in Npgsql",
+    "Async operation patterns maintained unchanged"
+  ]
+}

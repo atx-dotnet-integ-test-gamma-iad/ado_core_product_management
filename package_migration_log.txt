@@ -1,0 +1,24 @@
+Package Migration Log
+====================
+Date: 2026-01-31T18:44:00Z
+Migration: Microsoft SQL Server to PostgreSQL
+
+Package Removed:
+- Package: Microsoft.Data.SqlClient
+- Version: 5.1.4
+- Purpose: SQL Server ADO.NET provider
+
+Package Added:
+- Package: Npgsql
+- Version: 8.0.0
+- Purpose: PostgreSQL ADO.NET provider
+
+Other Packages (Unchanged):
+- Microsoft.Extensions.Configuration: 8.0.0
+- Microsoft.Extensions.Configuration.Json: 8.0.0
+- Microsoft.Extensions.DependencyInjection: 8.0.0
+
+Migration Notes:
+- Npgsql provides PostgreSQL ADO.NET provider compatible with ADO.NET patterns
+- Version 8.0.0 chosen for compatibility with .NET 9.0 target framework
+- Npgsql supports async operations, transactions, and parameter binding similar to SqlClient

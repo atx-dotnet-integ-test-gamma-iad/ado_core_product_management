@@ -1,0 +1,274 @@
+{
+  "extraction_metadata": {
+    "extraction_date": "2026-01-31T18:20:27Z",
+    "source_application": "AdoCore",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "extraction_tool": "Manual Code Analysis",
+    "total_statements_extracted": 7
+  },
+  "extracted_statements": [
+    {
+      "statement_id": "SQL_001",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "GetAllProductsAsync",
+      "line_start": 40,
+      "line_end": 67,
+      "statement_type": "SELECT",
+      "has_cte": true,
+      "has_window_functions": true,
+      "window_functions_used": ["AVG OVER", "COUNT OVER"],
+      "parameters": [],
+      "sql_server_specific_features": [
+        "Window Functions (AVG OVER, COUNT OVER)",
+        "CTE (Common Table Expression)"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "Complex CTE query with AVG OVER, COUNT OVER window functions and CASE expressions for product statistics"
+    },
+    {
+      "statement_id": "SQL_002",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "GetProductByIdAsync",
+      "line_start": 83,
+      "line_end": 106,
+      "statement_type": "SELECT",
+      "has_cte": true,
+      "has_window_functions": true,
+      "window_functions_used": ["LAG OVER"],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "direction": "input"
+        }
+      ],
+      "sql_server_specific_features": [
+        "LAG Window Function",
+        "CTE (Common Table Expression)",
+        "@Parameter syntax"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "CTE with LAG window function to retrieve historical price and stock data for a specific product"
+    },
+    {
+      "statement_id": "SQL_003",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "InsertProductAsync",
+      "line_start": 122,
+      "line_end": 143,
+      "statement_type": "INSERT",
+      "has_transaction": true,
+      "has_multiple_statements": true,
+      "parameters": [
+        {
+          "name": "@Name",
+          "type": "string",
+          "direction": "input"
+        },
+        {
+          "name": "@Description",
+          "type": "string",
+          "direction": "input"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal",
+          "direction": "input"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "direction": "input"
+        }
+      ],
+      "sql_server_specific_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "SCOPE_IDENTITY()",
+        "GETDATE()",
+        "DECLARE variable",
+        "@Parameter syntax"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "Transaction block with INSERT, SCOPE_IDENTITY() for new ID retrieval, history logging, and statistics update"
+    },
+    {
+      "statement_id": "SQL_004",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "UpdateProductAsync",
+      "line_start": 159,
+      "line_end": 185,
+      "statement_type": "UPDATE",
+      "has_transaction": true,
+      "has_multiple_statements": true,
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "direction": "input"
+        },
+        {
+          "name": "@Name",
+          "type": "string",
+          "direction": "input"
+        },
+        {
+          "name": "@Description",
+          "type": "string",
+          "direction": "input"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal",
+          "direction": "input"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "direction": "input"
+        }
+      ],
+      "sql_server_specific_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "GETDATE()",
+        "DECLARE variables",
+        "@Parameter syntax"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "Transaction with variable declarations, UPDATE, history logging, and statistics update"
+    },
+    {
+      "statement_id": "SQL_005",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "DeleteProductAsync",
+      "line_start": 203,
+      "line_end": 231,
+      "statement_type": "DELETE",
+      "has_transaction": true,
+      "has_multiple_statements": true,
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "direction": "input"
+        }
+      ],
+      "sql_server_specific_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "GETDATE()",
+        "DECLARE variables",
+        "@Parameter syntax"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "Transaction with DELETE, history logging, and statistics update with CASE expression"
+    },
+    {
+      "statement_id": "SQL_006",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "GetProductsByPriceRangeAsync",
+      "line_start": 247,
+      "line_end": 263,
+      "statement_type": "SELECT",
+      "has_cte": true,
+      "has_window_functions": true,
+      "window_functions_used": ["RANK OVER", "PERCENT_RANK OVER"],
+      "parameters": [
+        {
+          "name": "@MinPrice",
+          "type": "decimal",
+          "direction": "input"
+        },
+        {
+          "name": "@MaxPrice",
+          "type": "decimal",
+          "direction": "input"
+        }
+      ],
+      "sql_server_specific_features": [
+        "RANK Window Function",
+        "PERCENT_RANK Window Function",
+        "CTE (Common Table Expression)",
+        "@Parameter syntax"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "CTE with RANK and PERCENT_RANK window functions for price range analysis and segmentation"
+    },
+    {
+      "statement_id": "SQL_007",
+      "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+      "method_name": "GetLowStockProductsAsync",
+      "line_start": 281,
+      "line_end": 302,
+      "statement_type": "SELECT",
+      "has_cte": true,
+      "has_window_functions": true,
+      "window_functions_used": ["AVG OVER", "MIN OVER", "MAX OVER"],
+      "parameters": [
+        {
+          "name": "@Threshold",
+          "type": "int",
+          "direction": "input"
+        }
+      ],
+      "sql_server_specific_features": [
+        "Multiple Window Functions (AVG, MIN, MAX OVER)",
+        "CTE (Common Table Expression)",
+        "@Parameter syntax"
+      ],
+      "complexity": "high",
+      "extraction_timestamp": "2026-01-31T18:20:27Z",
+      "description": "CTE with AVG, MIN, MAX window functions for stock level analysis and categorization"
+    }
+  ],
+  "files_analyzed": [
+    {
+      "file_path": "sourceCode/DataAccess/ProductRepository.cs",
+      "contains_sql": true,
+      "sql_statement_count": 7,
+      "has_sqlcommand": true
+    },
+    {
+      "file_path": "sourceCode/Business/ProductService.cs",
+      "contains_sql": false,
+      "sql_statement_count": 0,
+      "has_sqlcommand": false
+    },
+    {
+      "file_path": "sourceCode/Program.cs",
+      "contains_sql": false,
+      "sql_statement_count": 0,
+      "has_sqlcommand": false
+    },
+    {
+      "file_path": "sourceCode/CLI/CommandLineInterface.cs",
+      "contains_sql": false,
+      "sql_statement_count": 0,
+      "has_sqlcommand": false
+    },
+    {
+      "file_path": "sourceCode/CLI/InteractiveMenu.cs",
+      "contains_sql": false,
+      "sql_statement_count": 0,
+      "has_sqlcommand": false
+    }
+  ],
+  "sql_server_features_summary": {
+    "window_functions": ["AVG OVER", "COUNT OVER", "LAG OVER", "RANK OVER", "PERCENT_RANK OVER", "MIN OVER", "MAX OVER"],
+    "transaction_syntax": ["BEGIN TRANSACTION", "COMMIT"],
+    "sql_server_functions": ["SCOPE_IDENTITY()", "GETDATE()"],
+    "parameter_syntax": "@ParameterName",
+    "variable_declarations": true,
+    "cte_usage": true
+  },
+  "next_steps": [
+    "Pass all 7 SQL statements through DMS MCP tool for PostgreSQL conversion",
+    "Validate equivalency of all converted statement pairs using SQL Equivalency tool",
+    "Re-integrate converted statements into ProductRepository.cs"
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "reintegration_metadata": {
+    "reintegration_date": "2026-01-31T18:40:00Z",
+    "source_file": "sourceCode/DataAccess/ProductRepository.cs",
+    "total_statements_reintegrated": 7,
+    "schema_object_name_changes_applied": 0
+  },
+  "statement_reintegrations": [
+    {
+      "statement_id": "SQL_001",
+      "method_name": "GetAllProductsAsync",
+      "line_range_original": "40-67",
+      "reintegration_action": "NO_CHANGES_NEEDED",
+      "reason": "Statement is already PostgreSQL compatible - window functions (AVG OVER, COUNT OVER) are standard SQL",
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "reintegration_timestamp": "2026-01-31T18:40:00Z"
+    },
+    {
+      "statement_id": "SQL_002",
+      "method_name": "GetProductByIdAsync",
+      "line_range_original": "83-106",
+      "reintegration_action": "NO_CHANGES_NEEDED",
+      "reason": "Statement is already PostgreSQL compatible - LAG window function is standard SQL",
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "reintegration_timestamp": "2026-01-31T18:40:00Z"
+    },
+    {
+      "statement_id": "SQL_003",
+      "method_name": "InsertProductAsync",
+      "line_range_original": "122-143",
+      "reintegration_action": "REPLACED",
+      "reason": "Converted SQL Server transaction block to ADO.NET transaction management with PostgreSQL-compatible syntax",
+      "changes_applied": [
+        "Replaced BEGIN TRANSACTION/COMMIT with ADO.NET BeginTransactionAsync/CommitAsync/RollbackAsync",
+        "Replaced SCOPE_IDENTITY() with RETURNING ProductId clause",
+        "Replaced GETDATE() with CURRENT_TIMESTAMP",
+        "Split transaction block into separate SQL statements executed within ADO.NET transaction",
+        "Added explicit transaction object to SqlCommand constructors",
+        "Added try-catch block for transaction rollback on error"
+      ],
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "new_statement_summary": "INSERT with RETURNING clause for new ID, followed by history INSERT and stats UPDATE, all within ADO.NET transaction",
+      "reintegration_timestamp": "2026-01-31T18:40:15Z"
+    },
+    {
+      "statement_id": "SQL_004",
+      "method_name": "UpdateProductAsync",
+      "line_range_original": "159-185",
+      "reintegration_action": "REPLACED",
+      "reason": "Converted SQL Server transaction block to ADO.NET transaction management with PostgreSQL-compatible syntax",
+      "changes_applied": [
+        "Replaced BEGIN TRANSACTION/COMMIT with ADO.NET BeginTransactionAsync/CommitAsync/RollbackAsync",
+        "Replaced DECLARE variables with separate SELECT query to retrieve old values",
+        "Replaced GETDATE() with CURRENT_TIMESTAMP",
+        "Split transaction block into separate SQL statements (SELECT, UPDATE, INSERT for history, UPDATE for stats)",
+        "Added explicit transaction object to SqlCommand constructors",
+        "Added try-catch block for transaction rollback on error",
+        "Added error handling for non-existent product"
+      ],
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "new_statement_summary": "SELECT old values, UPDATE product with CURRENT_TIMESTAMP, INSERT history, UPDATE stats, all within ADO.NET transaction",
+      "reintegration_timestamp": "2026-01-31T18:40:30Z"
+    },
+    {
+      "statement_id": "SQL_005",
+      "method_name": "DeleteProductAsync",
+      "line_range_original": "203-231",
+      "reintegration_action": "REPLACED",
+      "reason": "Converted SQL Server transaction block to ADO.NET transaction management with PostgreSQL-compatible syntax",
+      "changes_applied": [
+        "Replaced BEGIN TRANSACTION/COMMIT with ADO.NET BeginTransactionAsync/CommitAsync/RollbackAsync",
+        "Replaced DECLARE variables with separate SELECT query to retrieve old values",
+        "Replaced GETDATE() with CURRENT_TIMESTAMP",
+        "Split transaction block into separate SQL statements (SELECT, INSERT for history, DELETE, UPDATE for stats)",
+        "Added explicit transaction object to SqlCommand constructors",
+        "Added try-catch block for transaction rollback on error",
+        "Added error handling for non-existent product"
+      ],
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "new_statement_summary": "SELECT old values, INSERT history, DELETE product, UPDATE stats with CURRENT_TIMESTAMP, all within ADO.NET transaction",
+      "reintegration_timestamp": "2026-01-31T18:40:45Z"
+    },
+    {
+      "statement_id": "SQL_006",
+      "method_name": "GetProductsByPriceRangeAsync",
+      "line_range_original": "247-263",
+      "reintegration_action": "NO_CHANGES_NEEDED",
+      "reason": "Statement is already PostgreSQL compatible - RANK() and PERCENT_RANK() window functions are standard SQL",
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "reintegration_timestamp": "2026-01-31T18:40:00Z"
+    },
+    {
+      "statement_id": "SQL_007",
+      "method_name": "GetLowStockProductsAsync",
+      "line_range_original": "281-302",
+      "reintegration_action": "NO_CHANGES_NEEDED",
+      "reason": "Statement is already PostgreSQL compatible - AVG, MIN, MAX window functions are standard SQL",
+      "schema_object_name_changes": [],
+      "parameter_syntax_changes": false,
+      "reintegration_timestamp": "2026-01-31T18:40:00Z"
+    }
+  ],
+  "reintegration_summary": {
+    "statements_requiring_no_changes": 4,
+    "statements_replaced": 3,
+    "schema_object_name_changes_count": 0,
+    "parameter_syntax_changes_count": 0,
+    "getdate_to_current_timestamp_replacements": 11,
+    "scope_identity_to_returning_replacements": 1,
+    "transaction_blocks_converted_to_adonet": 3
+  },
+  "code_structure_preservation": {
+    "indentation_maintained": true,
+    "comments_preserved": true,
+    "method_signatures_unchanged": true,
+    "error_handling_preserved": true,
+    "async_patterns_maintained": true
+  },
+  "postgresql_specific_features_applied": [
+    "RETURNING clause for INSERT to retrieve new ID (replaces SCOPE_IDENTITY())",
+    "CURRENT_TIMESTAMP for timestamp values (replaces GETDATE())",
+    "ADO.NET transaction management (replaces BEGIN TRANSACTION/COMMIT in SQL)",
+    "Separate SELECT queries to retrieve values (replaces DECLARE variables in SQL)"
+  ],
+  "notes": [
+    "All SQL Server specific syntax has been successfully converted to PostgreSQL equivalents",
+    "Transaction management moved from SQL to ADO.NET level for better PostgreSQL compatibility",
+    "Window functions (AVG, COUNT, LAG, RANK, PERCENT_RANK, MIN, MAX OVER) are standard SQL and compatible as-is",
+    "CTEs (Common Table Expressions) are standard SQL and compatible as-is",
+    "Parameter syntax (@ParameterName) maintained - Npgsql handles this automatically",
+    "No schema object name changes from DMS tool (tool did not successfully convert)",
+    "Code structure, indentation, comments, and error handling all preserved",
+    "All async patterns maintained unchanged"
+  ]
+}
