@@ -1,0 +1,20 @@
+{
+  "migration_date": "2025-02-01T05:15:00Z",
+  "total_statements_processed": 7,
+  "statements_converted_by_dms": 0,
+  "statements_requiring_manual_conversion": 7,
+  "statements_validated_equivalent": 2,
+  "statements_validated_not_equivalent": 0,
+  "statements_with_equivalency_errors": 5,
+  "files_modified": [
+    "AdoCore.csproj",
+    "DataAccess/ProductRepository.cs",
+    "appsettings.json"
+  ],
+  "packages_changed": {
+    "removed": ["Microsoft.Data.SqlClient 5.1.4"],
+    "added": ["Npgsql 8.0.0"]
+  },
+  "build_status": "success",
+  "warnings_count": 10
+}
