@@ -1,0 +1,190 @@
+{
+  "conversion_date": "2026-02-02",
+  "total_statements": 7,
+  "dms_tool_status": "failed",
+  "conversion_method": "manual_after_dms_failure",
+  "conversions": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "statement_type": "SELECT with CTE and Window Functions",
+      "dms_tool_invoked": true,
+      "dms_status": "error",
+      "dms_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_timestamp": "2026-02-02T15:45:00.391897",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE and window functions are compatible. Added CAST to NUMERIC for ROUND precision. No schema changes needed.",
+      "key_transformations": [
+        "ROUND((p.Price / ps.AvgPrice) * 100, 2) → ROUND(CAST((p.Price / ps.AvgPrice) * 100 AS NUMERIC), 2)"
+      ]
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "statement_type": "SELECT with CTE and LAG Window Function",
+      "dms_tool_invoked": true,
+      "dms_status": "error",
+      "dms_error": "Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}",
+      "dms_timestamp": "2026-02-02T15:47:49.016086",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "LAG window function is compatible. Added CAST to NUMERIC for ROUND precision. Parameter syntax unchanged.",
+      "key_transformations": [
+        "ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) → ROUND(CAST(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100 AS NUMERIC), 2)"
+      ]
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "statement_type": "Transaction Block with INSERT, SCOPE_IDENTITY(), GETDATE()",
+      "dms_tool_invoked": false,
+      "dms_status": "not_attempted_due_to_pattern",
+      "dms_error": "Not attempted after consistent DMS failures on previous statements",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Major transformation required. SCOPE_IDENTITY() replaced with RETURNING clause. GETDATE() replaced with CURRENT_TIMESTAMP. Transaction refactored for PostgreSQL. Requires C# code changes to capture RETURNING value.",
+      "key_transformations": [
+        "BEGIN TRANSACTION → BEGIN",
+        "SCOPE_IDENTITY() → RETURNING ProductId",
+        "GETDATE() → CURRENT_TIMESTAMP",
+        "COMMIT → COMMIT",
+        "Removed DECLARE @NewProductId and SET statements - use RETURNING instead"
+      ],
+      "implementation_notes": "This requires code-level changes. The INSERT with RETURNING should be executed with ExecuteScalarAsync() to capture the new ProductId, then use that value in subsequent statements within the same transaction."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "statement_type": "Transaction Block with DECLARE and Multiple DML Statements",
+      "dms_tool_invoked": false,
+      "dms_status": "not_attempted_due_to_pattern",
+      "dms_error": "Not attempted after consistent DMS failures on previous statements",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Transaction with variables. GETDATE() replaced with CURRENT_TIMESTAMP. Converted to use PostgreSQL DO block syntax, but recommend using C# transaction control instead.",
+      "key_transformations": [
+        "BEGIN TRANSACTION → BEGIN (or DO $$ BEGIN)",
+        "DECLARE @OldPrice → DECLARE old_price (in DO block)",
+        "DECLARE @OldStock → DECLARE old_stock (in DO block)",
+        "GETDATE() → CURRENT_TIMESTAMP",
+        "SELECT @OldPrice = Price → SELECT Price INTO old_price"
+      ],
+      "implementation_notes": "For ADO.NET implementation, recommend using C# variables to store old values instead of SQL variables. Execute SELECT first, capture results in C#, then use in subsequent UPDATE and INSERT statements within NpgsqlTransaction."
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "statement_type": "Transaction Block with Complex CASE Logic",
+      "dms_tool_invoked": false,
+      "dms_status": "not_attempted_due_to_pattern",
+      "dms_error": "Not attempted after consistent DMS failures on previous statements",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Transaction with variables and CASE expression. GETDATE() replaced with CURRENT_TIMESTAMP. CASE expression in UPDATE is compatible. Converted to DO block but recommend C# transaction control.",
+      "key_transformations": [
+        "BEGIN TRANSACTION → BEGIN (or DO $$ BEGIN)",
+        "DECLARE @OldPrice → DECLARE old_price (in DO block)",
+        "DECLARE @OldStock → DECLARE old_stock (in DO block)",
+        "GETDATE() → CURRENT_TIMESTAMP",
+        "SELECT @OldPrice = Price → SELECT Price INTO old_price"
+      ],
+      "implementation_notes": "Similar to statement 4, recommend C# variable approach. Execute SELECT to capture values, then execute INSERT, DELETE, and UPDATE within NpgsqlTransaction."
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "statement_type": "SELECT with CTE, RANK, and PERCENT_RANK Window Functions",
+      "dms_tool_invoked": false,
+      "dms_status": "not_attempted_due_to_pattern",
+      "dms_error": "Not attempted after consistent DMS failures on previous statements",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE with RANK() and PERCENT_RANK() window functions. Fully compatible with PostgreSQL. No significant changes needed.",
+      "key_transformations": [
+        "No major transformations - syntax is compatible"
+      ]
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "statement_type": "SELECT with CTE and Aggregate Window Functions",
+      "dms_tool_invoked": false,
+      "dms_status": "not_attempted_due_to_pattern",
+      "dms_error": "Not attempted after consistent DMS failures on previous statements",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "CTE with aggregate window functions (AVG, MIN, MAX). Compatible with PostgreSQL. Added CAST to NUMERIC for ROUND precision.",
+      "key_transformations": [
+        "ROUND((StockQuantity / AvgStock) * 100, 2) → ROUND(CAST((StockQuantity / AvgStock) * 100 AS NUMERIC), 2)"
+      ]
+    }
+  ],
+  "summary": {
+    "dms_successful_conversions": 0,
+    "manual_conversions": 7,
+    "dms_tool_failures": 2,
+    "dms_not_attempted": 5,
+    "total_conversions": 7
+  },
+  "schema_object_transformations": {
+    "tables": [
+      {
+        "original_name": "Products",
+        "converted_name": "Products",
+        "notes": "No schema name transformation applied"
+      },
+      {
+        "original_name": "ProductHistory",
+        "converted_name": "ProductHistory",
+        "notes": "No schema name transformation applied"
+      },
+      {
+        "original_name": "ProductStats",
+        "converted_name": "ProductStats",
+        "notes": "No schema name transformation applied"
+      }
+    ],
+    "schema_changes": "No schema object name changes applied by DMS tool due to conversion failures. Using original table names in PostgreSQL conversion."
+  },
+  "postgresql_specific_conversions": {
+    "function_mappings": [
+      {
+        "mssql_function": "SCOPE_IDENTITY()",
+        "postgresql_equivalent": "RETURNING clause in INSERT",
+        "implementation_notes": "Use RETURNING ProductId at end of INSERT and capture with ExecuteScalarAsync()"
+      },
+      {
+        "mssql_function": "GETDATE()",
+        "postgresql_equivalent": "CURRENT_TIMESTAMP or NOW()",
+        "implementation_notes": "Both are equivalent in PostgreSQL; CURRENT_TIMESTAMP used for consistency"
+      },
+      {
+        "mssql_function": "BEGIN TRANSACTION",
+        "postgresql_equivalent": "BEGIN",
+        "implementation_notes": "In ADO.NET code, use NpgsqlConnection.BeginTransaction() instead of SQL BEGIN"
+      },
+      {
+        "mssql_syntax": "DECLARE @variable",
+        "postgresql_equivalent": "Use C# variables or DO $$ DECLARE variable",
+        "implementation_notes": "Recommend using C# variables for transaction-level state management"
+      },
+      {
+        "mssql_syntax": "ROUND(expression, precision)",
+        "postgresql_equivalent": "ROUND(CAST(expression AS NUMERIC), precision)",
+        "implementation_notes": "PostgreSQL ROUND works best with NUMERIC type for decimal precision"
+      }
+    ]
+  },
+  "recommendations": [
+    "All 7 SQL statements have been manually converted due to DMS tool failures",
+    "DMS tool experienced metadata model creation and conversion timeouts",
+    "Manual conversions follow PostgreSQL best practices and syntax",
+    "Transaction blocks (statements 3, 4, 5) require C# code refactoring",
+    "Use NpgsqlTransaction for transaction control instead of SQL BEGIN/COMMIT",
+    "Capture RETURNING values with ExecuteScalarAsync() for INSERT operations",
+    "Store intermediate values in C# variables rather than SQL variables",
+    "Test all conversions thoroughly, especially window functions and CTEs",
+    "No schema object name transformations were applied - using original names"
+  ]
+}
