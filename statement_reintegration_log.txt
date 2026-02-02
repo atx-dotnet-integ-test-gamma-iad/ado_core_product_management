@@ -1,0 +1,444 @@
+===============================================================================
+SQL STATEMENT RE-INTEGRATION LOG
+Date: 2026-02-02
+File: DataAccess/ProductRepository.cs
+Purpose: Document replacement of SQL Server statements with PostgreSQL equivalents
+===============================================================================
+
+===============================================================================
+STATEMENT 1: GetAllProductsAsync - CTE with Window Functions
+===============================================================================
+Source Location: ProductRepository.cs, line ~41-68
+Status: NO CHANGES REQUIRED
+Reason: Statement is already PostgreSQL compatible
+
+BEFORE (SQL Server):
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+AFTER (PostgreSQL):
+[IDENTICAL - NO CHANGES]
+
+NOTES:
+- CTE syntax fully compatible
+- AVG() OVER() and COUNT() OVER() window functions identical in PostgreSQL
+- CASE expressions work the same way
+- ROUND() function has same signature
+
+===============================================================================
+STATEMENT 2: GetProductByIdAsync - CTE with LAG Window Function
+===============================================================================
+Source Location: ProductRepository.cs, line ~78-107
+Status: NO CHANGES REQUIRED
+Reason: Statement is already PostgreSQL compatible
+
+BEFORE (SQL Server):
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+AFTER (PostgreSQL):
+[IDENTICAL - NO CHANGES]
+
+NOTES:
+- LAG() window function fully supported in PostgreSQL
+- Parameterized query (@ProductId) works with Npgsql
+- LEFT JOIN syntax identical
+
+===============================================================================
+STATEMENT 3: InsertProductAsync - Transaction with SCOPE_IDENTITY
+===============================================================================
+Source Location: ProductRepository.cs, line ~116-155
+Status: MAJOR CHANGES APPLIED
+Reason: SCOPE_IDENTITY() and GETDATE() are SQL Server specific
+
+BEFORE (SQL Server):
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    -- Insert the new product
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+AFTER (PostgreSQL):
+WITH inserted_product AS (
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity)
+    RETURNING ProductId
+),
+inserted_history AS (
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    SELECT ProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP
+    FROM inserted_product
+    RETURNING ProductId
+)
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts + 1,
+    AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1
+RETURNING (SELECT ProductId FROM inserted_product);
+
+CHANGES APPLIED:
+1. Removed DECLARE @NewProductId INT - PostgreSQL uses RETURNING instead
+2. Removed BEGIN TRANSACTION/COMMIT - Transaction managed at application level
+3. Replaced SCOPE_IDENTITY() with RETURNING clause in first INSERT
+4. Replaced GETDATE() with CURRENT_TIMESTAMP (2 occurrences)
+5. Used CTEs to chain operations and pass ProductId between statements
+6. Changed SELECT @NewProductId to RETURNING (SELECT ProductId FROM inserted_product)
+
+NOTES:
+- PostgreSQL RETURNING clause captures inserted ID immediately
+- CTEs with data-modifying statements allow operation chaining
+- CURRENT_TIMESTAMP is standard SQL, GETDATE() is SQL Server specific
+- Transaction control moved to C# code using NpgsqlConnection.BeginTransaction()
+
+===============================================================================
+STATEMENT 4: UpdateProductAsync - Transaction with Variable Declarations
+===============================================================================
+Source Location: ProductRepository.cs, line ~163-195
+Status: MAJOR CHANGES APPLIED
+Reason: Variable declarations and GETDATE() are SQL Server specific
+
+BEFORE (SQL Server):
+BEGIN TRANSACTION;
+    -- Store old values for history
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    -- Update the product
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    -- Log the changes
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+AFTER (PostgreSQL):
+WITH old_values AS (
+    SELECT Price as OldPrice, StockQuantity as OldStock
+    FROM Products
+    WHERE ProductId = @ProductId
+),
+updated_product AS (
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = CURRENT_TIMESTAMP
+    WHERE ProductId = @ProductId
+    RETURNING ProductId
+),
+inserted_history AS (
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    SELECT @ProductId, 'UPDATE', ov.OldPrice, @Price, ov.OldStock, @StockQuantity, CURRENT_TIMESTAMP
+    FROM old_values ov
+    RETURNING ProductId
+)
+UPDATE ProductStats
+SET 
+    AveragePrice = (AveragePrice * TotalProducts - (SELECT OldPrice FROM old_values) + @Price) / TotalProducts,
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+CHANGES APPLIED:
+1. Removed BEGIN TRANSACTION/COMMIT - Transaction managed at application level
+2. Removed DECLARE statements for @OldPrice and @OldStock
+3. Created old_values CTE to capture old values using SELECT
+4. Replaced GETDATE() with CURRENT_TIMESTAMP (3 occurrences)
+5. Used CTEs to chain UPDATE, INSERT, and second UPDATE operations
+6. Reference old values from CTE using (SELECT OldPrice FROM old_values)
+
+NOTES:
+- PostgreSQL doesn't support variable declarations in SQL statements
+- CTEs provide elegant alternative for capturing and passing values
+- All operations now use standard SQL features
+- RETURNING clause allows operation chaining
+
+===============================================================================
+STATEMENT 5: DeleteProductAsync - Transaction with Variable Declarations
+===============================================================================
+Source Location: ProductRepository.cs, line ~202-234
+Status: MAJOR CHANGES APPLIED
+Reason: Variable declarations and GETDATE() are SQL Server specific
+
+BEFORE (SQL Server):
+BEGIN TRANSACTION;
+    -- Store product info for history
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    -- Log the deletion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    -- Delete the product
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+AFTER (PostgreSQL):
+WITH old_values AS (
+    SELECT Price as OldPrice, StockQuantity as OldStock
+    FROM Products
+    WHERE ProductId = @ProductId
+),
+inserted_history AS (
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    SELECT @ProductId, 'DELETE', ov.OldPrice, NULL, ov.OldStock, NULL, CURRENT_TIMESTAMP
+    FROM old_values ov
+    RETURNING ProductId
+),
+deleted_product AS (
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId
+    RETURNING ProductId
+)
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts - 1,
+    AveragePrice = CASE 
+        WHEN TotalProducts > 1 
+        THEN (AveragePrice * TotalProducts - (SELECT OldPrice FROM old_values)) / (TotalProducts - 1)
+        ELSE 0
+    END,
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+CHANGES APPLIED:
+1. Removed BEGIN TRANSACTION/COMMIT - Transaction managed at application level
+2. Removed DECLARE statements for @OldPrice and @OldStock
+3. Created old_values CTE to capture values before deletion
+4. Replaced GETDATE() with CURRENT_TIMESTAMP (2 occurrences)
+5. Put DELETE in a CTE (deleted_product) with RETURNING
+6. Used CTEs to ensure proper operation ordering
+7. Reference old values from CTE in final UPDATE
+
+NOTES:
+- PostgreSQL allows DELETE in CTEs (powerful feature)
+- Operation order guaranteed by CTE dependencies
+- CURRENT_TIMESTAMP is standard SQL
+
+===============================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync - RANK and PERCENT_RANK
+===============================================================================
+Source Location: ProductRepository.cs, line ~241-262
+Status: NO CHANGES REQUIRED
+Reason: Statement is already PostgreSQL compatible
+
+BEFORE (SQL Server):
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+AFTER (PostgreSQL):
+[IDENTICAL - NO CHANGES]
+
+NOTES:
+- RANK() and PERCENT_RANK() window functions are standard SQL
+- PostgreSQL supports these functions identically
+- BETWEEN operator works the same way
+
+===============================================================================
+STATEMENT 7: GetLowStockProductsAsync - Aggregate Window Functions
+===============================================================================
+Source Location: ProductRepository.cs, line ~269-290
+Status: NO CHANGES REQUIRED
+Reason: Statement is already PostgreSQL compatible
+
+BEFORE (SQL Server):
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+AFTER (PostgreSQL):
+[IDENTICAL - NO CHANGES]
+
+NOTES:
+- AVG(), MIN(), MAX() with OVER() are standard SQL window functions
+- PostgreSQL supports these identically to SQL Server
+- ROUND() function signature is the same
+
+===============================================================================
+RE-INTEGRATION SUMMARY
+===============================================================================
+
+Total Statements Re-integrated: 7
+Statements Unchanged (PostgreSQL Compatible): 4 (Statements 1, 2, 6, 7)
+Statements Modified (Required Conversion): 3 (Statements 3, 4, 5)
+
+CATEGORIES OF CHANGES:
+1. SQL Server Specific Functions Replaced:
+   - SCOPE_IDENTITY() → RETURNING clause (1 occurrence)
+   - GETDATE() → CURRENT_TIMESTAMP (7 occurrences total)
+
+2. SQL Server Syntax Replaced:
+   - DECLARE @variable → CTEs for value passing (4 variables removed)
+   - BEGIN TRANSACTION/COMMIT → Application-level transaction management
+   - SET @variable = expression → CTE-based value capture
+
+3. PostgreSQL Features Utilized:
+   - RETURNING clause for capturing IDs and results
+   - CTEs with data-modifying statements (INSERT/UPDATE/DELETE in CTEs)
+   - CTE chaining for multi-statement operations
+
+4. Schema Object Names:
+   - No schema object name changes were made by DMS tool
+   - All table names remain as: Products, ProductHistory, ProductStats
+
+CODE STRUCTURE:
+- All methods maintain their original signatures
+- Parameter binding remains unchanged (@parameter syntax works with Npgsql)
+- Async/await patterns preserved
+- Error handling remains at application level
+
+TESTING RECOMMENDATIONS:
+1. Test InsertProductAsync to verify RETURNING clause returns correct ProductId
+2. Test UpdateProductAsync to ensure old values are captured correctly
+3. Test DeleteProductAsync to verify operation ordering in CTEs
+4. Verify transaction behavior with application-level transaction management
+5. Test all SELECT statements to ensure window functions behave as expected
+
+COMPATIBILITY NOTES:
+- All parameterized queries using @ syntax are compatible with Npgsql
+- Connection pooling works identically
+- async/await patterns remain unchanged
+- Exception handling remains the same
+
+===============================================================================
+END OF RE-INTEGRATION LOG
+===============================================================================
