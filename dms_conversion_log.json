@@ -1,0 +1,188 @@
+{
+  "conversion_metadata": {
+    "total_statements": 7,
+    "conversion_date": "2026-02-02",
+    "dms_tool_status": "UNAVAILABLE",
+    "dms_error_reason": "Metadata model creation/conversion failures across all attempts",
+    "fallback_method": "MANUAL_CONVERSION_WITH_EXPERT_JUDGMENT"
+  },
+  "dms_tool_attempts": [
+    {
+      "statement_id": 1,
+      "statement_name": "GetAllProductsAsync - CTE with Window Functions",
+      "attempt_timestamp": "2026-02-02T11:11:41.637710",
+      "dms_status": "ERROR",
+      "dms_error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-02-02T11:11:44.230350",
+          "status": "completed",
+          "request_identifier": "3ff9d78c-4831-4f98-84ba-307aaba106d8",
+          "metadata_model_name": "sql-conversion-1770030704",
+          "poll_attempts": 2
+        },
+        {
+          "step": "convert_metadata_model",
+          "timestamp": "2026-02-02T11:11:57.094895",
+          "status": "started"
+        }
+      ],
+      "dms_error_timestamp": "2026-02-02T11:14:29.775171",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "PostgreSQL natively supports CTE and window functions (AVG OVER, COUNT OVER). No syntax changes required. Statement is PostgreSQL compatible as-is."
+    },
+    {
+      "statement_id": 2,
+      "statement_name": "GetProductByIdAsync - CTE with LAG Window Function",
+      "attempt_timestamp": "2026-02-02T11:14:41.559302",
+      "dms_status": "ERROR",
+      "dms_error": "Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-02-02T11:14:43.762294",
+          "status": "started"
+        }
+      ],
+      "dms_error_timestamp": "2026-02-02T11:17:18.495403",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "PostgreSQL natively supports LAG window function. Parameter @ProductId is compatible with Npgsql. No syntax changes required."
+    },
+    {
+      "statement_id": 3,
+      "statement_name": "InsertProductAsync - Transaction Block",
+      "attempt_timestamp": "2026-02-02T11:17:28.188566",
+      "dms_status": "ERROR",
+      "dms_error": "Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}",
+      "dms_workflow_steps": [
+        {
+          "step": "create_metadata_model",
+          "timestamp": "2026-02-02T11:17:30.537935",
+          "status": "started"
+        }
+      ],
+      "dms_error_timestamp": "2026-02-02T11:20:04.893977",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Converted T-SQL specific constructs: SCOPE_IDENTITY() → RETURNING clause, GETDATE() → CURRENT_TIMESTAMP, removed BEGIN TRANSACTION/COMMIT (handled in C# code). Provided alternative simpler version split into multiple commands for better C# ADO.NET integration."
+    },
+    {
+      "statement_id": 4,
+      "statement_name": "UpdateProductAsync - Transaction Block",
+      "attempt_timestamp": "Not attempted (DMS tool consistently failing)",
+      "dms_status": "NOT_ATTEMPTED",
+      "dms_error": "DMS tool unavailable after previous consistent failures",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Converted GETDATE() → CURRENT_TIMESTAMP, converted DECLARE to PostgreSQL DO block syntax, removed BEGIN TRANSACTION/COMMIT. Provided alternative simpler version with multiple commands for C# ADO.NET."
+    },
+    {
+      "statement_id": 5,
+      "statement_name": "DeleteProductAsync - Transaction Block",
+      "attempt_timestamp": "Not attempted (DMS tool consistently failing)",
+      "dms_status": "NOT_ATTEMPTED",
+      "dms_error": "DMS tool unavailable after previous consistent failures",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "Converted GETDATE() → CURRENT_TIMESTAMP, converted DECLARE to PostgreSQL syntax, removed BEGIN TRANSACTION/COMMIT. CASE expression is PostgreSQL compatible. Provided alternative simpler version for C# ADO.NET."
+    },
+    {
+      "statement_id": 6,
+      "statement_name": "GetProductsByPriceRangeAsync - RANK and PERCENT_RANK",
+      "attempt_timestamp": "Not attempted (DMS tool consistently failing)",
+      "dms_status": "NOT_ATTEMPTED",
+      "dms_error": "DMS tool unavailable after previous consistent failures",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "PostgreSQL natively supports RANK() and PERCENT_RANK() window functions. CTE syntax is compatible. No syntax changes required."
+    },
+    {
+      "statement_id": 7,
+      "statement_name": "GetLowStockProductsAsync - Multiple Window Functions",
+      "attempt_timestamp": "Not attempted (DMS tool consistently failing)",
+      "dms_status": "NOT_ATTEMPTED",
+      "dms_error": "DMS tool unavailable after previous consistent failures",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "manual_conversion_applied": true,
+      "manual_conversion_notes": "PostgreSQL natively supports AVG OVER, MIN OVER, MAX OVER window functions. CTE and CASE expressions are compatible. No syntax changes required."
+    }
+  ],
+  "conversion_summary": {
+    "total_statements_processed": 7,
+    "dms_tool_successful_conversions": 0,
+    "dms_tool_failed_conversions": 3,
+    "dms_tool_not_attempted": 4,
+    "manual_conversions_applied": 7,
+    "statements_requiring_no_changes": 4,
+    "statements_requiring_syntax_changes": 3
+  },
+  "conversion_details": {
+    "no_changes_required": [
+      {
+        "statement_id": 1,
+        "reason": "PostgreSQL natively supports CTE and window functions (AVG OVER, COUNT OVER)"
+      },
+      {
+        "statement_id": 2,
+        "reason": "PostgreSQL natively supports LAG window function"
+      },
+      {
+        "statement_id": 6,
+        "reason": "PostgreSQL natively supports RANK and PERCENT_RANK window functions"
+      },
+      {
+        "statement_id": 7,
+        "reason": "PostgreSQL natively supports multiple window functions (AVG, MIN, MAX OVER)"
+      }
+    ],
+    "syntax_changes_required": [
+      {
+        "statement_id": 3,
+        "changes": [
+          "SCOPE_IDENTITY() → RETURNING clause in INSERT statement",
+          "GETDATE() → CURRENT_TIMESTAMP",
+          "BEGIN TRANSACTION/COMMIT → Removed (handled at C# connection level)",
+          "Provided alternative split into multiple commands for C# ADO.NET"
+        ]
+      },
+      {
+        "statement_id": 4,
+        "changes": [
+          "GETDATE() → CURRENT_TIMESTAMP",
+          "DECLARE syntax → PostgreSQL DO block syntax",
+          "BEGIN TRANSACTION/COMMIT → Removed (handled at C# connection level)",
+          "Provided alternative split into multiple commands for C# ADO.NET"
+        ]
+      },
+      {
+        "statement_id": 5,
+        "changes": [
+          "GETDATE() → CURRENT_TIMESTAMP",
+          "DECLARE syntax → PostgreSQL DO block syntax",
+          "BEGIN TRANSACTION/COMMIT → Removed (handled at C# connection level)",
+          "Provided alternative split into multiple commands for C# ADO.NET"
+        ]
+      }
+    ]
+  },
+  "implementation_recommendations": {
+    "statements_1_2_6_7": "Can be used directly in C# code with Npgsql without modifications",
+    "statements_3_4_5": "Recommend using the alternative simpler versions that split operations into multiple commands. Execute these commands within a NpgsqlTransaction for proper transaction handling in C# code.",
+    "transaction_handling": "All transaction blocks (BEGIN TRANSACTION/COMMIT) should be managed using NpgsqlConnection.BeginTransactionAsync() in C# code, not in SQL statements",
+    "parameter_binding": "Parameter names (@Parameter) remain compatible with Npgsql. No changes needed to AddWithValue calls in C# code."
+  },
+  "dms_tool_diagnostic_info": {
+    "tool_name": "dms-mcp____statement_conversion_tool",
+    "region": "us-east-1",
+    "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "database_name": "ProductManagement",
+    "schema_name": "dbo",
+    "server_name": "172.31.83.165",
+    "error_pattern": "Consistent metadata model creation/conversion failures after 15 polling attempts",
+    "impact": "All SQL conversion performed manually using PostgreSQL expertise",
+    "mitigation": "Manual conversions reviewed for PostgreSQL compatibility and functional equivalence"
+  }
+}
