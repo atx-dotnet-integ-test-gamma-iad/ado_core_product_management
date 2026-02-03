@@ -1,0 +1,125 @@
+-- ========================================
+-- DMS CONVERSION LOG
+-- Microsoft SQL Server to PostgreSQL Migration
+-- Conversion Tool: AWS DMS MCP Tool
+-- Total Statements: 7
+-- ========================================
+
+========================================
+STATEMENT 1: GetAllProductsAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:23:53.590906
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: completed (request_identifier: 4e8826bc-38ca-4b9d-9764-ba429d951b7f)
+  - convert_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to complete metadata model conversion
+
+========================================
+STATEMENT 2: GetProductByIdAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:26:54.145092
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to create metadata model
+
+========================================
+STATEMENT 3: InsertProductAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:29:41.883708
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to create metadata model
+
+========================================
+STATEMENT 4: UpdateProductAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:32:28.434905
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to create metadata model
+
+========================================
+STATEMENT 5: DeleteProductAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:35:14.502784
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to create metadata model
+
+========================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:37:59.907445
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to create metadata model
+
+========================================
+STATEMENT 7: GetLowStockProductsAsync
+========================================
+DMS Tool Attempt: FAILED
+Conversion Timestamp: 2026-02-03T02:40:45.928848
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Status: error
+Workflow Steps:
+  - create_metadata_model: started (failed after 15 poll attempts)
+
+Manual Conversion Required: YES
+Manual Conversion Reason: DMS tool unable to create metadata model
+
+========================================
+SUMMARY
+========================================
+Total Statements Processed: 7
+DMS Tool Successful Conversions: 0
+DMS Tool Failed Conversions: 7
+Manual Conversions Required: 7
+
+Common DMS Error Pattern:
+All statements encountered metadata model creation or conversion timeout errors.
+The DMS tool was unable to complete the migration project setup within the configured polling attempts.
+
+Fallback Strategy:
+Manual conversion applied for all statements using PostgreSQL syntax equivalents:
+- GETDATE() → CURRENT_TIMESTAMP or NOW()
+- SCOPE_IDENTITY() → RETURNING clause
+- @parameter → $1, $2, etc. (positional parameters)
+- BEGIN TRANSACTION/COMMIT → BEGIN/COMMIT (PostgreSQL syntax)
+- DECLARE variable assignments → PostgreSQL variable syntax where needed
+- Window functions (LAG, RANK, PERCENT_RANK, AVG OVER, etc.) → Direct PostgreSQL equivalents (compatible)
+- CTE (WITH clause) → Direct PostgreSQL equivalents (compatible)
+- CASE expressions → Direct PostgreSQL equivalents (compatible)
+
+Note: All SQL statements were passed through the DMS MCP tool as required by the transformation definition.
+The tool was invoked for every statement without exception. Manual conversions were applied only after
+DMS tool failures were documented.
