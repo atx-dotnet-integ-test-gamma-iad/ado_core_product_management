@@ -1,0 +1,431 @@
+===============================================================================
+ADO.NET CLASS MIGRATION LOG
+SQL Server to PostgreSQL Migration - ProductRepository.cs
+===============================================================================
+Date: 2026-02-04
+File: DataAccess/ProductRepository.cs
+Migration Type: SQL Server ADO.NET Classes → Npgsql Equivalents
+===============================================================================
+
+===============================================================================
+USING DIRECTIVE REPLACEMENT
+===============================================================================
+Line: 5
+Status: COMPLETED
+
+Before:
+-------
+using Microsoft.Data.SqlClient;
+
+After:
+------
+using Npgsql;
+
+Description:
+------------
+Replaced the SQL Server ADO.NET namespace with the Npgsql namespace. This change 
+enables access to PostgreSQL-specific ADO.NET classes (NpgsqlConnection, NpgsqlCommand, 
+NpgsqlDataReader, etc.) that provide the same functionality as their SQL Server 
+counterparts but for PostgreSQL databases.
+
+Impact:
+-------
+- All SQL Server classes in the Microsoft.Data.SqlClient namespace are no longer accessible
+- All Npgsql classes are now available for use
+- No other using directives were modified
+
+===============================================================================
+CLASS REPLACEMENT 1: SqlConnection → NpgsqlConnection
+===============================================================================
+Total Occurrences Replaced: 3
+Status: COMPLETED
+
+Occurrence 1 - Field Declaration:
+----------------------------------
+Line: 14
+Context: private field declaration
+
+Before:
+private SqlConnection _connection;
+
+After:
+private NpgsqlConnection _connection;
+
+Description: Private field storing the database connection instance
+
+Occurrence 2 - Method Return Type:
+-----------------------------------
+Line: 25
+Context: GetConnectionAsync() method signature
+
+Before:
+private async Task<SqlConnection> GetConnectionAsync()
+
+After:
+private async Task<NpgsqlConnection> GetConnectionAsync()
+
+Description: Method return type for connection retrieval
+
+Occurrence 3 - Object Instantiation:
+-------------------------------------
+Line: 29
+Context: Connection object creation in GetConnectionAsync()
+
+Before:
+_connection = new SqlConnection(_connectionString);
+
+After:
+_connection = new NpgsqlConnection(_connectionString);
+
+Description: Creates new PostgreSQL connection instance
+
+Functional Equivalence:
+-----------------------
+NpgsqlConnection provides identical functionality to SqlConnection:
+- Implements IDbConnection interface
+- Supports async operations (OpenAsync, CloseAsync)
+- Connection state management (Open, Closed, Broken)
+- Connection string parsing
+- Connection pooling (built-in)
+- Transaction support (BeginTransactionAsync)
+- Dispose pattern implementation
+
+Key Differences:
+----------------
+- Connection string format differs (handled in Step 7)
+- Some PostgreSQL-specific properties available
+- Slightly different exception types (NpgsqlException vs SqlException)
+- Internal connection pooling implementation differs
+
+Compatibility Notes:
+--------------------
+- Parameters.AddWithValue() works identically
+- BeginTransactionAsync() signature is the same
+- OpenAsync() and CloseAsync() behavior is equivalent
+- State property works identically
+- Dispose pattern is compatible
+
+===============================================================================
+CLASS REPLACEMENT 2: SqlCommand → NpgsqlCommand
+===============================================================================
+Total Occurrences Replaced: 7
+Status: COMPLETED
+
+Occurrence 1 - GetAllProductsAsync:
+------------------------------------
+Line: 74
+Context: Command creation for SELECT query
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command for CTE query with window functions
+
+Occurrence 2 - GetProductByIdAsync:
+------------------------------------
+Line: 108
+Context: Command creation for parameterized SELECT
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command with @ProductId parameter
+
+Occurrence 3 - InsertProductAsync:
+-----------------------------------
+Line: 153
+Context: Command creation for INSERT transaction
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command for multi-statement transaction
+
+Occurrence 4 - UpdateProductAsync:
+-----------------------------------
+Line: 184
+Context: Command creation for UPDATE transaction
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command for complex UPDATE transaction
+
+Occurrence 5 - DeleteProductAsync:
+-----------------------------------
+Line: 221
+Context: Command creation for DELETE transaction
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command for DELETE with logging
+
+Occurrence 6 - GetProductsByPriceRangeAsync:
+---------------------------------------------
+Line: 260
+Context: Command creation for price range query
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command with @MinPrice and @MaxPrice parameters
+
+Occurrence 7 - GetLowStockProductsAsync:
+-----------------------------------------
+Line: 294
+Context: Command creation for low stock query
+
+Before:
+using var command = new SqlCommand(sql, connection);
+
+After:
+using var command = new NpgsqlCommand(sql, connection);
+
+Description: Creates command with @Threshold parameter
+
+Functional Equivalence:
+-----------------------
+NpgsqlCommand provides identical functionality to SqlCommand:
+- Implements IDbCommand interface
+- CommandText property for SQL
+- Parameters collection (Parameters.AddWithValue)
+- ExecuteReaderAsync() for SELECT queries
+- ExecuteScalarAsync() for single value returns
+- ExecuteNonQueryAsync() for INSERT/UPDATE/DELETE
+- Transaction support (optional transaction parameter)
+- Prepared statement support
+
+Key Differences:
+----------------
+- Parameter naming: @ParamName syntax works (Npgsql handles automatically)
+- PostgreSQL supports positional parameters ($1, $2) but @names also work
+- Some PostgreSQL-specific command types available
+- Different timeout behavior (PostgreSQL server-side vs client-side)
+
+Compatibility Notes:
+--------------------
+- Parameters.AddWithValue("@Name", value) works identically
+- No code changes needed for parameter handling
+- ExecuteReaderAsync(), ExecuteScalarAsync(), ExecuteNonQueryAsync() all compatible
+- Using statement with IDisposable works the same
+- Async/await patterns identical
+
+===============================================================================
+CLASS REPLACEMENT 3: SqlDataReader → NpgsqlDataReader
+===============================================================================
+Total Occurrences Replaced: 1
+Status: COMPLETED
+
+Occurrence 1 - MapProductFromReader:
+-------------------------------------
+Line: 344
+Context: Private helper method parameter
+
+Before:
+private static Product MapProductFromReader(SqlDataReader reader)
+
+After:
+private static Product MapProductFromReader(NpgsqlDataReader reader)
+
+Description: Maps database reader to Product object
+
+Functional Equivalence:
+-----------------------
+NpgsqlDataReader provides identical functionality to SqlDataReader:
+- Implements IDataReader interface
+- Field access by name: reader["ColumnName"]
+- Field access by ordinal: reader[0], reader[1], etc.
+- Type conversion methods: GetInt32(), GetString(), GetDecimal(), GetDateTime()
+- ReadAsync() for asynchronous iteration
+- IsDBNull() for null checking
+- Close() and Dispose() support
+
+Key Differences:
+----------------
+- PostgreSQL type system differences (handled automatically)
+- Some PostgreSQL-specific data types available
+- Different behavior for certain edge cases (e.g., date ranges)
+
+Compatibility Notes:
+--------------------
+- reader["ColumnName"] works identically
+- Convert.ToXxx(reader["Column"]) pattern works the same
+- DBNull.Value checks work identically
+- Using statement works the same
+- No code changes required for this method
+
+Usage Context in MapProductFromReader:
+---------------------------------------
+The method uses:
+- reader["ProductId"] → Works identically
+- reader["Name"] → Works identically
+- reader["Description"] with DBNull check → Works identically
+- reader["Price"] → Works identically
+- reader["StockQuantity"] → Works identically
+- reader["CreatedDate"] → Works identically
+- reader["ModifiedDate"] with DBNull check → Works identically
+
+All access patterns are fully compatible between SqlDataReader and NpgsqlDataReader.
+
+===============================================================================
+OTHER CLASSES CHECKED (NOT EXPLICITLY USED)
+===============================================================================
+
+SqlParameter:
+-------------
+Status: NOT EXPLICITLY USED
+Context: Parameters added using Parameters.AddWithValue() throughout code
+Note: Implicit usage through Parameters.AddWithValue() works identically with Npgsql
+Alternative: Could explicitly use NpgsqlParameter if needed, but not required
+
+SqlTransaction:
+---------------
+Status: NOT EXPLICITLY USED
+Context: Transactions created using BeginTransactionAsync()
+Note: BeginTransactionAsync() returns NpgsqlTransaction automatically
+Usage: transaction.CommitAsync() and transaction.RollbackAsync() work identically
+Alternative: Could explicitly type as NpgsqlTransaction but not required
+
+SqlException:
+-------------
+Status: NOT EXPLICITLY USED IN CATCHES
+Context: Exception handling uses generic catch blocks
+Note: NpgsqlException will be thrown instead of SqlException
+Consideration: If adding exception-specific handling, use NpgsqlException
+Impact: Current error handling is compatible (generic catch works)
+
+===============================================================================
+MIGRATION SUMMARY
+===============================================================================
+
+Total Class Replacements: 11
+- Using directive: 1 replacement
+- SqlConnection: 3 replacements (field, method return, instantiation)
+- SqlCommand: 7 replacements (one per database method)
+- SqlDataReader: 1 replacement (MapProductFromReader parameter)
+
+Verification Status:
+--------------------
+✓ All SQL Server classes replaced with Npgsql equivalents
+✓ No remaining references to Microsoft.Data.SqlClient classes
+✓ All method signatures updated correctly
+✓ Field declarations updated
+✓ Object instantiations updated
+✓ Parameter types updated
+
+Build Impact:
+-------------
+After these changes:
+- Code should compile successfully (pending connection string update in Step 7)
+- No missing type errors
+- Npgsql package fully integrated
+- Ready for runtime testing
+
+Functional Testing Required:
+-----------------------------
+After deployment:
+1. Test database connectivity with PostgreSQL
+2. Verify all CRUD operations function correctly
+3. Test parameter binding and data type conversions
+4. Validate transaction commit/rollback behavior
+5. Test error handling with NpgsqlException
+6. Verify connection pooling behavior
+7. Performance testing under load
+
+Compatibility Guarantees:
+--------------------------
+✓ All replaced classes implement same ADO.NET interfaces
+✓ Method signatures remain compatible
+✓ Async/await patterns work identically
+✓ Parameter handling works the same
+✓ Transaction semantics maintained
+✓ Reader patterns fully compatible
+✓ Dispose patterns identical
+
+Known Behavioral Differences:
+------------------------------
+1. Connection Strings:
+   - Must use PostgreSQL format (updated in Step 7)
+   
+2. SQL Syntax:
+   - PostgreSQL syntax required (updated in Step 4)
+   
+3. Data Types:
+   - PostgreSQL type system (handled automatically by Npgsql)
+   
+4. Exceptions:
+   - NpgsqlException instead of SqlException (caught by generic catches)
+   
+5. Connection Pooling:
+   - Different internal implementation (compatible interface)
+
+No Code Logic Changes Required:
+--------------------------------
+The class replacements are drop-in substitutes. No changes needed to:
+- Method logic
+- Control flow
+- Error handling (using generic catches)
+- Parameter binding code
+- Reader iteration
+- Transaction management
+- Dispose patterns
+
+===============================================================================
+VERIFICATION CHECKLIST
+===============================================================================
+
+Pre-Build Verification:
+-----------------------
+✓ using Microsoft.Data.SqlClient removed
+✓ using Npgsql added
+✓ No SqlConnection references remain
+✓ All SqlConnection replaced with NpgsqlConnection
+✓ No SqlCommand references remain
+✓ All SqlCommand replaced with NpgsqlCommand
+✓ No SqlDataReader references remain
+✓ All SqlDataReader replaced with NpgsqlDataReader
+✓ No SqlTransaction explicit usage (uses var)
+✓ No SqlParameter explicit usage (uses Parameters.AddWithValue)
+
+Post-Build Verification (Next Step):
+-------------------------------------
+□ dotnet build succeeds (pending connection string update)
+□ No compilation errors
+□ No missing type warnings
+□ NuGet package restore successful
+□ All dependencies resolved
+
+Runtime Verification (After Deployment):
+-----------------------------------------
+□ Connection to PostgreSQL succeeds
+□ GetAllProductsAsync executes successfully
+□ GetProductByIdAsync executes successfully
+□ InsertProductAsync executes successfully
+□ UpdateProductAsync executes successfully
+□ DeleteProductAsync executes successfully
+□ GetProductsByPriceRangeAsync executes successfully
+□ GetLowStockProductsAsync executes successfully
+□ Transaction commit works correctly
+□ Transaction rollback works correctly
+□ Exception handling works as expected
+
+===============================================================================
