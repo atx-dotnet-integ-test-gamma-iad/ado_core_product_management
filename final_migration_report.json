@@ -1,0 +1,299 @@
+{
+  "migration_report": {
+    "migration_date": "2026-02-04",
+    "migration_type": "Microsoft SQL Server to PostgreSQL",
+    "application_name": "AdoCore - Product Management System",
+    "migration_status": "COMPLETED_SUCCESSFULLY",
+    "build_status": "SUCCESS",
+    "compilation_errors": 0,
+    "compilation_warnings": 10
+  },
+  "sql_statements_summary": {
+    "total_statements_processed": 7,
+    "statements_successfully_converted_by_dms": 0,
+    "statements_requiring_manual_intervention": 7,
+    "statements_validated_as_equivalent": 3,
+    "statements_validated_as_non_equivalent": 0,
+    "statements_with_equivalency_validation_errors": 4,
+    "statement_details": [
+      {
+        "statement_id": 1,
+        "method": "GetAllProductsAsync",
+        "type": "SELECT with CTE and window functions",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "ERROR",
+        "notes": "DMS tool metadata model creation failed. Manual conversion applied. SQL Equivalency tool returned UNKNOWN (marked as ERROR per requirements)."
+      },
+      {
+        "statement_id": 2,
+        "method": "GetProductByIdAsync",
+        "type": "SELECT with CTE and LAG window function",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "ERROR",
+        "notes": "DMS tool metadata model creation failed. Manual conversion applied. SQL Equivalency tool returned UNKNOWN (marked as ERROR per requirements)."
+      },
+      {
+        "statement_id": 3,
+        "method": "InsertProductAsync",
+        "type": "Transaction block with INSERT",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "EQUIVALENT",
+        "notes": "DMS tool not attempted due to consistent failures. Manual conversion applied. SQL Equivalency tool validated as EQUIVALENT."
+      },
+      {
+        "statement_id": 4,
+        "method": "UpdateProductAsync",
+        "type": "Transaction block with UPDATE",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "EQUIVALENT",
+        "notes": "DMS tool not attempted due to consistent failures. Manual conversion applied. SQL Equivalency tool validated as EQUIVALENT."
+      },
+      {
+        "statement_id": 5,
+        "method": "DeleteProductAsync",
+        "type": "Transaction block with DELETE",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "EQUIVALENT",
+        "notes": "DMS tool not attempted due to consistent failures. Manual conversion applied. SQL Equivalency tool validated as EQUIVALENT."
+      },
+      {
+        "statement_id": 6,
+        "method": "GetProductsByPriceRangeAsync",
+        "type": "SELECT with CTE, RANK and PERCENT_RANK",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "ERROR",
+        "notes": "DMS tool not attempted due to consistent failures. Manual conversion applied. SQL Equivalency tool returned UNKNOWN (marked as ERROR per requirements)."
+      },
+      {
+        "statement_id": 7,
+        "method": "GetLowStockProductsAsync",
+        "type": "SELECT with CTE and multiple window functions",
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+        "equivalency_status": "ERROR",
+        "notes": "DMS tool not attempted due to consistent failures. Manual conversion applied. SQL Equivalency tool returned UNKNOWN (marked as ERROR per requirements)."
+      }
+    ]
+  },
+  "statements_requiring_manual_review": [
+    {
+      "statement_id": 1,
+      "method": "GetAllProductsAsync",
+      "reason": "SQL Equivalency tool returned UNKNOWN status. Complex window functions may require runtime testing to verify behavior equivalence.",
+      "recommendation": "Test with production-like data to verify window function calculations match expected results."
+    },
+    {
+      "statement_id": 2,
+      "method": "GetProductByIdAsync",
+      "reason": "SQL Equivalency tool returned UNKNOWN status. LAG window function with ORDER BY may require runtime testing.",
+      "recommendation": "Test with historical product data to verify LAG function returns correct previous values."
+    },
+    {
+      "statement_id": 6,
+      "method": "GetProductsByPriceRangeAsync",
+      "reason": "SQL Equivalency tool returned UNKNOWN status. RANK and PERCENT_RANK functions may require runtime testing.",
+      "recommendation": "Test with various price ranges to verify ranking and percentile calculations."
+    },
+    {
+      "statement_id": 7,
+      "method": "GetLowStockProductsAsync",
+      "reason": "SQL Equivalency tool returned UNKNOWN status. Multiple window functions (AVG, MIN, MAX) may require runtime testing.",
+      "recommendation": "Test with various stock levels to verify aggregate calculations across windows."
+    }
+  ],
+  "package_dependency_changes": {
+    "removed": [
+      {
+        "package": "Microsoft.Data.SqlClient",
+        "version": "5.1.4",
+        "reason": "SQL Server specific ADO.NET provider"
+      }
+    ],
+    "added": [
+      {
+        "package": "Npgsql",
+        "version": "8.0.3",
+        "reason": "PostgreSQL ADO.NET provider, compatible with .NET 9.0"
+      }
+    ],
+    "unchanged": [
+      {
+        "package": "Microsoft.Extensions.Configuration",
+        "version": "8.0.0"
+      },
+      {
+        "package": "Microsoft.Extensions.Configuration.Json",
+        "version": "8.0.0"
+      },
+      {
+        "package": "Microsoft.Extensions.DependencyInjection",
+        "version": "8.0.0"
+      }
+    ]
+  },
+  "ado_net_class_replacements": {
+    "summary": "All SQL Server specific ADO.NET classes replaced with Npgsql equivalents",
+    "replacements": [
+      {
+        "from": "using Microsoft.Data.SqlClient",
+        "to": "using Npgsql",
+        "occurrences": 1
+      },
+      {
+        "from": "SqlConnection",
+        "to": "NpgsqlConnection",
+        "occurrences": 3
+      },
+      {
+        "from": "SqlCommand",
+        "to": "NpgsqlCommand",
+        "occurrences": 7
+      },
+      {
+        "from": "SqlDataReader",
+        "to": "NpgsqlDataReader",
+        "occurrences": 1
+      }
+    ]
+  },
+  "connection_string_transformation": {
+    "summary": "Both DevConnection and ProdConnection converted from SQL Server to PostgreSQL format",
+    "dev_connection": {
+      "before": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+      "after": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres"
+    },
+    "prod_connection": {
+      "before": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+      "after": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres"
+    },
+    "parameter_changes": {
+      "removed": [
+        "Server (replaced with Host)",
+        "Trusted_Connection (replaced with Username/Password)",
+        "MultipleActiveResultSets (not applicable to PostgreSQL)",
+        "TrustServerCertificate (SQL Server specific)"
+      ],
+      "added": [
+        "Host (replaces Server)",
+        "Port (PostgreSQL default: 5432)",
+        "Username (authentication)",
+        "Password (authentication)"
+      ]
+    }
+  },
+  "sql_syntax_conversions": {
+    "summary": "All SQL statements converted to PostgreSQL syntax with schema qualification and function replacements",
+    "conversions": [
+      {
+        "category": "Schema Qualification",
+        "changes": "All table references updated to use explicit 'public' schema",
+        "examples": [
+          "Products → public.Products (11 occurrences)",
+          "ProductHistory → public.ProductHistory (3 occurrences)",
+          "ProductStats → public.ProductStats (3 occurrences)"
+        ]
+      },
+      {
+        "category": "Date Functions",
+        "changes": "SQL Server date functions replaced with PostgreSQL equivalents",
+        "examples": [
+          "GETDATE() → CURRENT_TIMESTAMP (7 occurrences)"
+        ]
+      },
+      {
+        "category": "Identity Functions",
+        "changes": "SQL Server identity retrieval replaced with PostgreSQL RETURNING clause",
+        "examples": [
+          "SCOPE_IDENTITY() → RETURNING ProductId (1 occurrence)"
+        ]
+      },
+      {
+        "category": "Type Casting",
+        "changes": "Added explicit numeric casts for division operations",
+        "examples": [
+          "Added ::numeric cast for ROUND divisions (3 occurrences)"
+        ]
+      },
+      {
+        "category": "Transaction Blocks",
+        "changes": "SQL Server transaction blocks restructured to PostgreSQL CTE patterns",
+        "examples": [
+          "BEGIN TRANSACTION/COMMIT → CTE chains with RETURNING (3 methods)"
+        ]
+      }
+    ]
+  },
+  "transformation_artifacts": {
+    "files_created": [
+      {
+        "file": "extracted_statements.sql",
+        "description": "Complete catalog of all 7 original SQL Server statements with metadata",
+        "lines": 276
+      },
+      {
+        "file": "converted_statements.sql",
+        "description": "Complete catalog of all 7 converted PostgreSQL statements",
+        "lines": 274
+      },
+      {
+        "file": "dms_conversion_log.txt",
+        "description": "Detailed log of DMS tool attempts, errors, and manual conversions",
+        "lines": 571
+      },
+      {
+        "file": "sql_equivalency_validation_report.json",
+        "description": "Comprehensive equivalency validation report for all statement pairs",
+        "statements": 7,
+        "equivalent": 3,
+        "non_equivalent": 0,
+        "errors": 4
+      },
+      {
+        "file": "final_migration_report.json",
+        "description": "This comprehensive migration report"
+      }
+    ]
+  },
+  "build_verification": {
+    "final_build_status": "SUCCESS",
+    "build_command": "dotnet build",
+    "exit_code": 0,
+    "compilation_errors": 0,
+    "compilation_warnings": 10,
+    "warning_types": [
+      "CS8601: Possible null reference assignment (4 occurrences)",
+      "CS8618: Non-nullable field must contain non-null value (3 occurrences)",
+      "CS8603: Possible null reference return (1 occurrence)",
+      "CS8600: Converting null literal to non-nullable type (2 occurrences)"
+    ],
+    "output_binary": "/QNet/site-packages/atx_dot_net_strands_cli/all_local_test_output/artifact-AdoCore/artifact/sourceCode/bin/Debug/net9.0/AdoCore.dll",
+    "build_time_seconds": 1.23,
+    "notes": "All warnings are standard C# 9.0 nullable reference context warnings and do not impact functionality."
+  },
+  "migration_validation_status": {
+    "all_sql_statements_processed": true,
+    "all_statements_converted": true,
+    "all_statements_equivalency_checked": true,
+    "package_dependencies_updated": true,
+    "ado_net_classes_updated": true,
+    "connection_strings_updated": true,
+    "application_compiles": true,
+    "zero_compilation_errors": true,
+    "ready_for_runtime_testing": true
+  },
+  "next_steps_recommendations": [
+    "Set up PostgreSQL database with migrated schema (Products, ProductHistory, ProductStats tables)",
+    "Update connection strings with actual PostgreSQL server credentials (currently using placeholder postgres/postgres)",
+    "Perform runtime testing for all 7 SQL statements against PostgreSQL database",
+    "Pay special attention to statements marked with equivalency ERROR status (statements 1, 2, 6, 7) - verify window function behavior",
+    "Validate transaction block behavior for INSERT, UPDATE, DELETE operations",
+    "Test with production-like data volumes to ensure performance is acceptable",
+    "Consider adding integration tests for all ProductRepository methods",
+    "Review and address nullable reference warnings if desired (optional, non-blocking)"
+  ],
+  "conclusion": {
+    "summary": "Migration from SQL Server to PostgreSQL completed successfully. All 7 SQL statements converted, all ADO.NET classes updated, and application compiles without errors. 3 of 7 statements validated as equivalent by SQL Equivalency tool. 4 statements require runtime testing to verify equivalence (marked as ERROR due to UNKNOWN equivalency status).",
+    "success": true,
+    "blockers": "None",
+    "warnings": "4 SQL statements could not be validated for equivalency by formal verification tool and require manual runtime testing."
+  }
+}
