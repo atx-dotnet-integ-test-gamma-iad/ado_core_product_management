@@ -1,0 +1,83 @@
+================================================================================
+SCHEMA OBJECT NAME CHANGES
+Purpose: Document any schema object name changes made during SQL conversion
+Date: 2026-02-04
+Source: converted_statements.sql
+================================================================================
+
+SCHEMA NAME CHANGES: NONE
+
+All table names remain unchanged during the T-SQL to PostgreSQL conversion:
+- Products → Products (no change)
+- ProductHistory → ProductHistory (no change)
+- ProductStats → ProductStats (no change)
+
+REASON:
+The DMS MCP tool encountered metadata model creation errors and was unable to
+perform automated conversions. Manual conversions were applied following 
+PostgreSQL best practices, maintaining all original schema object names.
+
+No schema prefix changes were applied (e.g., dbo.Products → public.products)
+as the manual conversion preserved existing naming conventions.
+
+================================================================================
+SQL SYNTAX CHANGES APPLIED
+================================================================================
+
+The following SQL syntax changes were applied during conversion:
+
+1. GETDATE() → CURRENT_TIMESTAMP
+   - Statement 3: InsertProductAsync
+   - Statement 4: UpdateProductAsync
+   - Statement 5: DeleteProductAsync
+
+2. SCOPE_IDENTITY() → RETURNING clause
+   - Statement 3: InsertProductAsync
+   - Changed from: SET @NewProductId = SCOPE_IDENTITY(); SELECT @NewProductId;
+   - Changed to: RETURNING ProductId
+
+3. Transaction Variable Declarations → Application-level handling
+   - Statement 4: UpdateProductAsync
+   - Statement 5: DeleteProductAsync
+   - Changed from: DECLARE @OldPrice, @OldStock + SELECT into variables
+   - Changed to: Separate SELECT query to capture old values in application code
+
+4. No Changes Required (PostgreSQL Compatible)
+   - Statement 1: GetAllProductsAsync (CTE + window functions)
+   - Statement 2: GetProductByIdAsync (LAG window function)
+   - Statement 6: GetProductsByPriceRangeAsync (RANK, PERCENT_RANK)
+   - Statement 7: GetLowStockProductsAsync (AVG, MIN, MAX window functions)
+
+================================================================================
+CODE STRUCTURE CHANGES
+================================================================================
+
+The following code structure changes were applied to ProductRepository.cs:
+
+1. InsertProductAsync:
+   - Split transaction into separate statements
+   - Use RETURNING clause to capture new ProductId
+   - Execute history and stats updates as separate commands
+
+2. UpdateProductAsync:
+   - Added separate SELECT query to capture old values before update
+   - Split transaction into: SELECT old → UPDATE → INSERT history → UPDATE stats
+
+3. DeleteProductAsync:
+   - Added separate SELECT query to capture old values before delete
+   - Split transaction into: SELECT old → INSERT history → DELETE → UPDATE stats
+
+4. No Changes Required:
+   - GetAllProductsAsync (statement already PostgreSQL compatible)
+   - GetProductByIdAsync (statement already PostgreSQL compatible)
+   - GetProductsByPriceRangeAsync (statement already PostgreSQL compatible)
+   - GetLowStockProductsAsync (statement already PostgreSQL compatible)
+
+================================================================================
+PARAMETER SYNTAX: NO CHANGES
+
+All parameter references maintain @ParameterName syntax, which is supported by
+the Npgsql provider for PostgreSQL. No conversion to positional parameters 
+($1, $2, etc.) was required.
+
+================================================================================

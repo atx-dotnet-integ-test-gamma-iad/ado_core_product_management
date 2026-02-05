@@ -1,0 +1,61 @@
+================================================================================
+PACKAGE DEPENDENCY MIGRATION LOG
+Purpose: Document NuGet package changes for SQL Server to PostgreSQL migration
+Date: 2026-02-04
+Migration Type: Database Provider Replacement
+================================================================================
+
+PACKAGE REMOVED:
+================================================================================
+Package Name: Microsoft.Data.SqlClient
+Version: 5.1.4
+Purpose: SQL Server database provider for ADO.NET
+Reason for Removal: Migrating from SQL Server to PostgreSQL
+
+PACKAGE ADDED:
+================================================================================
+Package Name: Npgsql
+Version: 8.0.0
+Purpose: PostgreSQL database provider for ADO.NET
+Reason for Addition: Enable PostgreSQL database connectivity
+
+UNCHANGED PACKAGES:
+================================================================================
+The following packages remain unchanged as they are database-agnostic:
+
+1. Microsoft.Extensions.Configuration
+   Version: 8.0.0
+   Purpose: Configuration abstractions for dependency injection
+
+2. Microsoft.Extensions.Configuration.Json
+   Version: 8.0.0
+   Purpose: JSON file configuration provider
+
+3. Microsoft.Extensions.DependencyInjection
+   Version: 8.0.0
+   Purpose: Dependency injection container
+
+COMPATIBILITY NOTES:
+================================================================================
+- Npgsql 8.0.0 is the latest stable version compatible with .NET 9.0
+- Npgsql provides ADO.NET compatibility similar to Microsoft.Data.SqlClient
+- API surface is similar: NpgsqlConnection, NpgsqlCommand, NpgsqlDataReader, etc.
+- Parameter syntax: Npgsql supports both @ParameterName and $1, $2 positional syntax
+- Connection string format differs (Host vs Server, different auth parameters)
+
+MIGRATION STEPS COMPLETED:
+================================================================================
+1. ✓ Removed Microsoft.Data.SqlClient package reference from AdoCore.csproj
+2. ✓ Added Npgsql package reference to AdoCore.csproj
+3. ✓ Preserved all other package references unchanged
+4. Next steps: Update using statements and class references in code
+
+POST-MIGRATION VALIDATION:
+================================================================================
+- Package restore: Will be validated during dotnet build
+- Compilation: Will verify Npgsql package is correctly referenced
+- No breaking changes expected for configuration/DI packages
+
+================================================================================
+END OF MIGRATION LOG
+================================================================================
