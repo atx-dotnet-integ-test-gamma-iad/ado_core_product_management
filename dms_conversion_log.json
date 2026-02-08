@@ -1,0 +1,213 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "dms_tool_attempted": 7,
+    "dms_tool_successful": 0,
+    "dms_tool_failed": 7,
+    "manual_conversion_required": 7,
+    "conversion_date": "2026-02-08T02:46:00Z",
+    "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": 1,
+      "statement_name": "GetAllProductsAsync",
+      "method_name": "GetAllProductsAsync()",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "39-69",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:38.644434",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied based on PostgreSQL compatibility analysis.",
+      "sql_features_converted": [
+        "CTE - Compatible with PostgreSQL, no changes needed",
+        "AVG() OVER() - Compatible with PostgreSQL, no changes needed",
+        "COUNT(*) OVER() - Compatible with PostgreSQL, no changes needed",
+        "CASE statements - Compatible with PostgreSQL, no changes needed",
+        "ROUND() - Compatible with PostgreSQL, no changes needed"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Statement is fully compatible with PostgreSQL syntax. No modifications needed."
+    },
+    {
+      "statement_id": 2,
+      "statement_name": "GetProductByIdAsync",
+      "method_name": "GetProductByIdAsync(int productId)",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "76-106",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:52.522203",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied based on PostgreSQL compatibility analysis.",
+      "sql_features_converted": [
+        "LAG() OVER() - Compatible with PostgreSQL, no changes needed",
+        "CTE - Compatible with PostgreSQL, no changes needed",
+        "Parameter @ProductId - Compatible with PostgreSQL/Npgsql, no changes needed",
+        "CASE statements - Compatible with PostgreSQL, no changes needed",
+        "ROUND() - Compatible with PostgreSQL, no changes needed"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Statement is fully compatible with PostgreSQL syntax. CTE name ProductHistory shadows actual table - this is intentional design."
+    },
+    {
+      "statement_id": 3,
+      "statement_name": "InsertProductAsync",
+      "method_name": "InsertProductAsync(Product product)",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "115-141",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:XX.XXXXXX",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied to transform SQL Server transaction syntax to PostgreSQL.",
+      "sql_features_converted": [
+        "DECLARE @NewProductId - Removed, replaced with RETURNING clause",
+        "BEGIN TRANSACTION - Removed, will be handled by ADO.NET connection",
+        "SCOPE_IDENTITY() - Replaced with RETURNING ProductId in INSERT statement",
+        "GETDATE() - Changed to CURRENT_TIMESTAMP",
+        "COMMIT - Removed, will be handled by ADO.NET connection",
+        "Multi-statement transaction - Split into separate statements for C# transaction handling",
+        "CURRVAL('products_productid_seq') - Used to reference last inserted ID"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Significant restructuring required. Transaction control moved to C# code level. INSERT now uses RETURNING clause to get new ID. Multi-statement transaction split into 3 separate statements to be executed within C# transaction."
+    },
+    {
+      "statement_id": 4,
+      "statement_name": "UpdateProductAsync",
+      "method_name": "UpdateProductAsync(Product product)",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "149-182",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:XX.XXXXXX",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied to transform SQL Server transaction and variable syntax to PostgreSQL.",
+      "sql_features_converted": [
+        "BEGIN TRANSACTION - Removed, will be handled by ADO.NET connection",
+        "DECLARE statements - Removed, replaced with subqueries",
+        "Variable assignments (SELECT INTO) - Replaced with subqueries in INSERT and UPDATE",
+        "GETDATE() - Changed to CURRENT_TIMESTAMP",
+        "COMMIT - Removed, will be handled by ADO.NET connection"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Transaction control moved to C# code level. Variables eliminated by using subqueries. Multi-statement transaction split into 3 separate statements."
+    },
+    {
+      "statement_id": 5,
+      "statement_name": "DeleteProductAsync",
+      "method_name": "DeleteProductAsync(int productId)",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "190-220",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:XX.XXXXXX",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied to transform SQL Server transaction syntax to PostgreSQL.",
+      "sql_features_converted": [
+        "BEGIN TRANSACTION - Removed, will be handled by ADO.NET connection",
+        "DECLARE statements - Removed, history insert uses subquery",
+        "GETDATE() - Changed to CURRENT_TIMESTAMP",
+        "COMMIT - Removed, will be handled by ADO.NET connection",
+        "Statement order - History logging moved before DELETE to capture values"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Transaction control moved to C# code level. History logging must occur before DELETE since the row will be removed. Multi-statement transaction split into 3 separate statements."
+    },
+    {
+      "statement_id": 6,
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "method_name": "GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "228-257",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:XX.XXXXXX",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied based on PostgreSQL compatibility analysis.",
+      "sql_features_converted": [
+        "RANK() OVER() - Compatible with PostgreSQL, no changes needed",
+        "PERCENT_RANK() OVER() - Compatible with PostgreSQL, no changes needed",
+        "CTE - Compatible with PostgreSQL, no changes needed",
+        "BETWEEN - Compatible with PostgreSQL, no changes needed",
+        "Parameters @MinPrice, @MaxPrice - Compatible with PostgreSQL/Npgsql, no changes needed"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Statement is fully compatible with PostgreSQL syntax. No modifications needed."
+    },
+    {
+      "statement_id": 7,
+      "statement_name": "GetLowStockProductsAsync",
+      "method_name": "GetLowStockProductsAsync(int threshold)",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "265-293",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "ERROR",
+      "dms_tool_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_tool_timestamp": "2026-02-08T02:46:XX.XXXXXX",
+      "manual_conversion_applied": true,
+      "manual_conversion_justification": "DMS tool failed with metadata model creation error. Manual conversion applied based on PostgreSQL compatibility analysis.",
+      "sql_features_converted": [
+        "AVG() OVER() - Compatible with PostgreSQL, no changes needed",
+        "MIN() OVER() - Compatible with PostgreSQL, no changes needed",
+        "MAX() OVER() - Compatible with PostgreSQL, no changes needed",
+        "CTE - Compatible with PostgreSQL, no changes needed",
+        "ROUND() - Compatible with PostgreSQL, no changes needed",
+        "Parameter @Threshold - Compatible with PostgreSQL/Npgsql, no changes needed"
+      ],
+      "schema_object_changes": "No changes required",
+      "notes": "Statement is fully compatible with PostgreSQL syntax. No modifications needed."
+    }
+  ],
+  "key_transformation_patterns": {
+    "scope_identity": {
+      "sql_server": "SCOPE_IDENTITY()",
+      "postgresql": "RETURNING clause in INSERT or CURRVAL('sequence_name')",
+      "affected_statements": [3]
+    },
+    "getdate": {
+      "sql_server": "GETDATE()",
+      "postgresql": "CURRENT_TIMESTAMP or NOW()",
+      "affected_statements": [3, 4, 5]
+    },
+    "transactions": {
+      "sql_server": "BEGIN TRANSACTION ... COMMIT",
+      "postgresql": "Handled at ADO.NET connection level via BeginTransaction()",
+      "affected_statements": [3, 4, 5]
+    },
+    "variables": {
+      "sql_server": "DECLARE @VarName ... SELECT @VarName = ...",
+      "postgresql": "Eliminated using RETURNING clause or subqueries",
+      "affected_statements": [3, 4, 5]
+    },
+    "window_functions": {
+      "sql_server": "AVG() OVER(), COUNT() OVER(), LAG(), RANK(), PERCENT_RANK(), MIN() OVER(), MAX() OVER()",
+      "postgresql": "Fully compatible - no changes needed",
+      "affected_statements": [1, 2, 6, 7]
+    },
+    "ctes": {
+      "sql_server": "WITH ... AS (...) SELECT ...",
+      "postgresql": "Fully compatible - no changes needed",
+      "affected_statements": [1, 2, 6, 7]
+    },
+    "parameters": {
+      "sql_server": "@ParamName",
+      "postgresql": "@ParamName (Npgsql supports this syntax)",
+      "affected_statements": [2, 3, 4, 5, 6, 7]
+    }
+  },
+  "compatibility_analysis": {
+    "fully_compatible_statements": [1, 2, 6, 7],
+    "required_conversion_statements": [3, 4, 5],
+    "statements_requiring_code_restructuring": [3, 4, 5],
+    "notes": "Statements 1, 2, 6, 7 are fully compatible with PostgreSQL and require no SQL syntax changes. Statements 3, 4, 5 require significant restructuring to move transaction control to C# code level and eliminate SQL Server-specific transaction syntax."
+  }
+}
