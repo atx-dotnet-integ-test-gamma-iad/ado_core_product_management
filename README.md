@@ -195,7 +195,7 @@ If you encounter errors:
 
 ## Required NuGet Packages
 
-- Microsoft.Data.SqlClient
+- Npgsql (PostgreSQL data provider - migrated from Microsoft.Data.SqlClient)
 - Microsoft.Extensions.Configuration
 - Microsoft.Extensions.Configuration.Json
 - Microsoft.Extensions.DependencyInjection
