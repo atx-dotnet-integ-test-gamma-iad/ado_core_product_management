@@ -1,0 +1,109 @@
+{
+  "conversion_log": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:50:57.239527",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:51:01.372457"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Query uses standard CTEs and window functions (AVG, COUNT OVER) which are compatible with PostgreSQL. No SQL Server specific syntax elements present. Conversion is straightforward with no changes needed."
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:51:11.761178",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:51:15.936389"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Query uses CTE with LAG window function which is supported in PostgreSQL. Parameter syntax (@ProductId) is compatible with Npgsql. No changes required."
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:51:25.864308",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:51:29.743207"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Original statement used SQL Server specific syntax: DECLARE/SET for variables, SCOPE_IDENTITY() to get inserted ID, GETDATE() for timestamps, and explicit BEGIN TRANSACTION/COMMIT. Converted using PostgreSQL best practices: CTE with RETURNING clause instead of SCOPE_IDENTITY(), CURRENT_TIMESTAMP instead of GETDATE(), removed explicit transaction control (handled by ADO.NET BeginTransaction in C# code)."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:51:38.993690",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:51:43.269032"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Original used DECLARE statements for variables and GETDATE() function. Converted using CTE to capture old values, CURRENT_TIMESTAMP instead of GETDATE(), removed explicit transaction control."
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:51:55.373224",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:51:59.476412"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Original used DECLARE statements and GETDATE(). Converted using CTE pattern to capture old values before deletion, CURRENT_TIMESTAMP instead of GETDATE(), removed explicit transaction control."
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:52:08.878446",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:52:12.804886"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Query uses RANK() and PERCENT_RANK() window functions which are standard SQL and supported in PostgreSQL. No changes required."
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "dms_invocation_timestamp": "2026-02-08T14:52:22.202018",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_output": {
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-08T14:52:26.230628"
+      },
+      "manual_conversion_applied": true,
+      "manual_conversion_reasoning": "DMS tool failed with metadata model error. Query uses window aggregate functions (AVG, MIN, MAX OVER) which are standard SQL and supported in PostgreSQL. No changes required."
+    }
+  ],
+  "summary": {
+    "total_statements": 7,
+    "dms_successful_conversions": 0,
+    "manual_conversions_after_dms_failure": 7,
+    "all_statements_passed_through_dms": true,
+    "common_dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+  }
+}
