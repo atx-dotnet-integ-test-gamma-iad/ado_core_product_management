@@ -1,0 +1,246 @@
+{
+  "conversion_metadata": {
+    "conversion_date": "2025-02-09",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "total_statements_converted": 7,
+    "dms_tool_successes": 0,
+    "dms_tool_failures": 7,
+    "manual_conversions_required": 7,
+    "dms_tool_version": "AWS DMS MCP Tool",
+    "dms_migration_project": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+  },
+  "conversion_summary": {
+    "common_dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+    "error_analysis": "All 7 statements failed DMS conversion with the same metadata model creation error. This appears to be an infrastructure or configuration issue with the DMS service, not related to SQL statement complexity.",
+    "fallback_strategy": "Manual conversion applied to all statements using PostgreSQL best practices and ADO.NET compatibility requirements"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:21:58.472832",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "CTE (Common Table Expression)",
+        "Window functions (AVG OVER, COUNT OVER)",
+        "CASE expressions",
+        "INNER JOIN",
+        "ORDER BY with CASE"
+      ],
+      "manual_conversion_notes": "No SQL Server-specific functions in this query. CTEs, window functions, and CASE expressions are all compatible with PostgreSQL. Query can be used as-is.",
+      "postgresql_changes_required": "None - query is fully compatible",
+      "conversion_confidence": "HIGH"
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:22:13.269886",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "CTE (Common Table Expression)",
+        "LAG window function",
+        "LEFT JOIN",
+        "CASE expression",
+        "Parameterized query (@ProductId)"
+      ],
+      "manual_conversion_notes": "LAG window function syntax is identical in PostgreSQL. LEFT JOIN and CASE expressions are compatible. Parameter syntax @ProductId is supported by Npgsql.",
+      "postgresql_changes_required": "None - query is fully compatible",
+      "conversion_confidence": "HIGH"
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:22:26.232352",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "Multi-statement transaction",
+        "DECLARE variable",
+        "BEGIN TRANSACTION/COMMIT",
+        "SCOPE_IDENTITY()",
+        "GETDATE()",
+        "Multiple INSERT and UPDATE statements"
+      ],
+      "manual_conversion_notes": "Key conversion: SCOPE_IDENTITY() replaced with RETURNING clause. GETDATE() replaced with CURRENT_TIMESTAMP. Transaction management moved to C# code using NpgsqlTransaction. Multi-statement batch refactored to execute sequentially in C# transaction context.",
+      "postgresql_changes_required": [
+        "Replace SCOPE_IDENTITY() with RETURNING ProductId",
+        "Replace GETDATE() with CURRENT_TIMESTAMP",
+        "Remove BEGIN TRANSACTION/COMMIT (handled in C# code)",
+        "Execute as separate commands within C# transaction"
+      ],
+      "conversion_confidence": "HIGH",
+      "integration_notes": "C# code must use ExecuteScalarAsync() on INSERT to retrieve returned ProductId, then use that value in subsequent INSERT into ProductHistory and UPDATE ProductStats"
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:22:43.572810",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "DECLARE variables (DECIMAL, INT)",
+        "SELECT into variables (@var = col)",
+        "GETDATE()",
+        "Multiple UPDATE and INSERT statements"
+      ],
+      "manual_conversion_notes": "Converted by refactoring to execute as separate statements in C# transaction. Old values (Price, StockQuantity) retrieved with separate SELECT in C# code before executing UPDATE. GETDATE() replaced with CURRENT_TIMESTAMP.",
+      "postgresql_changes_required": [
+        "Replace GETDATE() with CURRENT_TIMESTAMP",
+        "Remove DECLARE statements (use C# variables)",
+        "Remove BEGIN TRANSACTION/COMMIT (handled in C# code)",
+        "Extract SELECT for old values to C# code",
+        "Execute statements sequentially in C# transaction"
+      ],
+      "conversion_confidence": "HIGH",
+      "integration_notes": "C# code must SELECT old values first, store in variables, then execute UPDATE Products, INSERT into ProductHistory, and UPDATE ProductStats using the stored old values"
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:22:56.456401",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "BEGIN TRANSACTION/COMMIT",
+        "DECLARE variables",
+        "SELECT into variables",
+        "GETDATE()",
+        "INSERT, DELETE, UPDATE statements",
+        "CASE expression in UPDATE"
+      ],
+      "manual_conversion_notes": "Similar to statement 4 - refactored to execute as separate statements in C# transaction. Old values retrieved first. GETDATE() replaced with CURRENT_TIMESTAMP. CASE expression in UPDATE is compatible with PostgreSQL.",
+      "postgresql_changes_required": [
+        "Replace GETDATE() with CURRENT_TIMESTAMP",
+        "Remove DECLARE statements (use C# variables)",
+        "Remove BEGIN TRANSACTION/COMMIT (handled in C# code)",
+        "Extract SELECT for old values to C# code",
+        "Execute statements sequentially in C# transaction"
+      ],
+      "conversion_confidence": "HIGH",
+      "integration_notes": "C# code must SELECT old values first, store in variables, then execute INSERT into ProductHistory, DELETE from Products, and UPDATE ProductStats with CASE expression"
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:23:12.693796",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "CTE (Common Table Expression)",
+        "RANK() window function",
+        "PERCENT_RANK() window function",
+        "BETWEEN clause",
+        "CASE expression",
+        "Parameterized query (@MinPrice, @MaxPrice)"
+      ],
+      "manual_conversion_notes": "All window functions (RANK, PERCENT_RANK) are standard SQL and fully compatible with PostgreSQL. BETWEEN clause, CASE expression, and parameter syntax all compatible.",
+      "postgresql_changes_required": "None - query is fully compatible",
+      "conversion_confidence": "HIGH"
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED",
+      "dms_tool_timestamp": "2026-02-09T21:23:25.599286",
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_workflow_step": "create_metadata_model",
+      "original_sql_features": [
+        "CTE (Common Table Expression)",
+        "AVG/MIN/MAX window functions",
+        "CASE expression",
+        "ROUND function",
+        "Parameterized query (@Threshold)"
+      ],
+      "manual_conversion_notes": "All window functions (AVG OVER, MIN OVER, MAX OVER) are standard SQL and fully compatible with PostgreSQL. ROUND, CASE expression, and parameter syntax all compatible.",
+      "postgresql_changes_required": "None - query is fully compatible",
+      "conversion_confidence": "HIGH"
+    }
+  ],
+  "sql_server_to_postgresql_mappings": {
+    "functions": {
+      "SCOPE_IDENTITY()": "RETURNING clause on INSERT",
+      "GETDATE()": "CURRENT_TIMESTAMP or NOW()",
+      "ROUND()": "ROUND() (compatible)"
+    },
+    "transaction_syntax": {
+      "BEGIN TRANSACTION": "BEGIN (or handled in application code)",
+      "COMMIT": "COMMIT (or handled in application code)",
+      "ROLLBACK": "ROLLBACK (or handled in application code)"
+    },
+    "variable_syntax": {
+      "DECLARE @var TYPE": "DECLARE var TYPE (in DO blocks) or use application variables",
+      "SET @var = value": "var := value (in DO blocks) or use application variables",
+      "SELECT @var = col FROM": "SELECT col INTO var FROM (in DO blocks) or use application SELECT"
+    },
+    "window_functions": {
+      "AVG() OVER()": "Compatible - no change",
+      "COUNT() OVER()": "Compatible - no change",
+      "LAG() OVER()": "Compatible - no change",
+      "RANK() OVER()": "Compatible - no change",
+      "PERCENT_RANK() OVER()": "Compatible - no change",
+      "MIN() OVER()": "Compatible - no change",
+      "MAX() OVER()": "Compatible - no change"
+    },
+    "other_syntax": {
+      "CTEs (WITH)": "Compatible - no change",
+      "CASE expressions": "Compatible - no change",
+      "BETWEEN": "Compatible - no change",
+      "Parameterized queries (@param)": "Supported by Npgsql - no change needed"
+    }
+  },
+  "integration_strategy": {
+    "select_queries": {
+      "statements": [1, 2, 6, 7],
+      "approach": "Direct replacement - update SQL string in C# code",
+      "complexity": "LOW"
+    },
+    "insert_with_identity": {
+      "statements": [3],
+      "approach": "Use RETURNING clause with ExecuteScalarAsync()",
+      "complexity": "MEDIUM",
+      "steps": [
+        "Execute INSERT with RETURNING using ExecuteScalarAsync()",
+        "Capture returned ProductId in C# variable",
+        "Execute subsequent INSERT into ProductHistory",
+        "Execute UPDATE ProductStats"
+      ]
+    },
+    "update_delete_transactions": {
+      "statements": [4, 5],
+      "approach": "Multi-statement execution within explicit transaction",
+      "complexity": "MEDIUM",
+      "steps": [
+        "Begin NpgsqlTransaction",
+        "Execute SELECT to get old values into C# variables",
+        "Execute UPDATE/DELETE statement",
+        "Execute INSERT into ProductHistory with old values",
+        "Execute UPDATE ProductStats",
+        "Commit transaction"
+      ]
+    }
+  },
+  "quality_assurance": {
+    "all_statements_converted": true,
+    "all_dms_attempts_documented": true,
+    "manual_conversions_follow_postgresql_best_practices": true,
+    "ado_net_compatibility_verified": true,
+    "parameter_syntax_preserved": true
+  }
+}

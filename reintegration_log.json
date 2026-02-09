@@ -1,0 +1,237 @@
+{
+  "reintegration_metadata": {
+    "reintegration_date": "2025-02-09",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "application_framework": ".NET 9.0",
+    "file_modified": "DataAccess/ProductRepository.cs",
+    "total_methods_updated": 7,
+    "backup_created": "DataAccess/ProductRepository.cs.backup"
+  },
+  "conversion_summary": {
+    "select_statements_unchanged": 4,
+    "transaction_statements_refactored": 3,
+    "total_conversions": 7
+  },
+  "statement_reintegrations": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "conversion_type": "NO_CHANGES",
+      "before_summary": "CTE with window functions (AVG OVER, COUNT OVER), CASE expressions",
+      "after_summary": "Same SQL - fully compatible with PostgreSQL",
+      "changes_applied": [],
+      "notes": "Statement uses standard SQL syntax that is identical in both SQL Server and PostgreSQL. No conversion required."
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "conversion_type": "NO_CHANGES",
+      "before_summary": "CTE with LAG window function, LEFT JOIN, parameterized query",
+      "after_summary": "Same SQL - fully compatible with PostgreSQL",
+      "changes_applied": [],
+      "notes": "Statement uses standard SQL syntax that is identical in both SQL Server and PostgreSQL. No conversion required."
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "conversion_type": "MAJOR_REFACTORING",
+      "before_summary": "Single multi-statement SQL batch with DECLARE, BEGIN TRANSACTION, SCOPE_IDENTITY(), GETDATE(), COMMIT",
+      "after_summary": "C#-managed transaction with separate SQL statements using RETURNING clause and CURRENT_TIMESTAMP",
+      "changes_applied": [
+        {
+          "change": "Removed DECLARE @NewProductId INT",
+          "reason": "Variable handling moved to C# code"
+        },
+        {
+          "change": "Removed BEGIN TRANSACTION and COMMIT from SQL",
+          "reason": "Transaction management moved to C# using BeginTransactionAsync()/CommitAsync()"
+        },
+        {
+          "change": "Replaced SCOPE_IDENTITY() with RETURNING ProductId",
+          "reason": "PostgreSQL standard for returning auto-generated IDs"
+        },
+        {
+          "change": "Replaced GETDATE() with CURRENT_TIMESTAMP (3 occurrences)",
+          "reason": "PostgreSQL standard function for current timestamp"
+        },
+        {
+          "change": "Split single SQL batch into 3 separate statements",
+          "reason": "ADO.NET compatibility - execute separately within C# transaction"
+        },
+        {
+          "change": "Added try-catch with RollbackAsync()",
+          "reason": "Proper error handling for C#-managed transactions"
+        }
+      ],
+      "code_structure_changes": {
+        "before": "Single ExecuteScalarAsync() call with complex SQL batch",
+        "after": "BeginTransactionAsync(), 3 separate command executions, CommitAsync()/RollbackAsync()"
+      },
+      "notes": "Major refactoring required to convert from SQL Server's monolithic transaction block to PostgreSQL-compatible C#-managed transaction. Maintains same business logic and atomicity."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "conversion_type": "MAJOR_REFACTORING",
+      "before_summary": "Single multi-statement SQL batch with BEGIN TRANSACTION, DECLARE variables, SELECT into variables, GETDATE(), COMMIT",
+      "after_summary": "C#-managed transaction with separate SQL statements, old values retrieved in C#, CURRENT_TIMESTAMP",
+      "changes_applied": [
+        {
+          "change": "Removed DECLARE @OldPrice and @OldStock",
+          "reason": "Variables moved to C# (decimal oldPrice, int oldStock)"
+        },
+        {
+          "change": "Removed BEGIN TRANSACTION and COMMIT from SQL",
+          "reason": "Transaction management moved to C# using BeginTransactionAsync()/CommitAsync()"
+        },
+        {
+          "change": "Replaced SELECT @var = col with separate SELECT query in C#",
+          "reason": "C# variable assignment pattern for ADO.NET"
+        },
+        {
+          "change": "Replaced GETDATE() with CURRENT_TIMESTAMP (3 occurrences)",
+          "reason": "PostgreSQL standard function for current timestamp"
+        },
+        {
+          "change": "Split single SQL batch into 4 separate statements",
+          "reason": "SELECT old values, UPDATE Products, INSERT ProductHistory, UPDATE ProductStats"
+        },
+        {
+          "change": "Added try-catch with RollbackAsync()",
+          "reason": "Proper error handling for C#-managed transactions"
+        }
+      ],
+      "code_structure_changes": {
+        "before": "Single ExecuteNonQueryAsync() call with complex SQL batch",
+        "after": "BeginTransactionAsync(), SELECT for old values, 3 separate UPDATE/INSERT executions, CommitAsync()/RollbackAsync()"
+      },
+      "notes": "Major refactoring required. Old values (price, stock) now retrieved with separate SELECT and stored in C# variables before executing UPDATE and subsequent statements."
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "conversion_type": "MAJOR_REFACTORING",
+      "before_summary": "Single multi-statement SQL batch with BEGIN TRANSACTION, DECLARE variables, SELECT into variables, GETDATE(), UPDATE with CASE, COMMIT",
+      "after_summary": "C#-managed transaction with separate SQL statements, old values retrieved in C#, CURRENT_TIMESTAMP",
+      "changes_applied": [
+        {
+          "change": "Removed DECLARE @OldPrice and @OldStock",
+          "reason": "Variables moved to C# (decimal oldPrice, int oldStock)"
+        },
+        {
+          "change": "Removed BEGIN TRANSACTION and COMMIT from SQL",
+          "reason": "Transaction management moved to C# using BeginTransactionAsync()/CommitAsync()"
+        },
+        {
+          "change": "Replaced SELECT @var = col with separate SELECT query in C#",
+          "reason": "C# variable assignment pattern for ADO.NET"
+        },
+        {
+          "change": "Replaced GETDATE() with CURRENT_TIMESTAMP (2 occurrences)",
+          "reason": "PostgreSQL standard function for current timestamp"
+        },
+        {
+          "change": "Split single SQL batch into 4 separate statements",
+          "reason": "SELECT old values, INSERT ProductHistory, DELETE Products, UPDATE ProductStats"
+        },
+        {
+          "change": "Added try-catch with RollbackAsync()",
+          "reason": "Proper error handling for C#-managed transactions"
+        },
+        {
+          "change": "CASE expression in UPDATE retained as-is",
+          "reason": "CASE expressions are compatible between SQL Server and PostgreSQL"
+        }
+      ],
+      "code_structure_changes": {
+        "before": "Single ExecuteNonQueryAsync() call with complex SQL batch",
+        "after": "BeginTransactionAsync(), SELECT for old values, 3 separate INSERT/DELETE/UPDATE executions, CommitAsync()/RollbackAsync()"
+      },
+      "notes": "Major refactoring required. Similar to UpdateProductAsync but includes DELETE operation. CASE expression in ProductStats UPDATE is compatible and unchanged."
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "conversion_type": "NO_CHANGES",
+      "before_summary": "CTE with RANK() and PERCENT_RANK() window functions, BETWEEN clause, CASE expression",
+      "after_summary": "Same SQL - fully compatible with PostgreSQL",
+      "changes_applied": [],
+      "notes": "Statement uses standard SQL window functions (RANK, PERCENT_RANK) that are identical in both SQL Server and PostgreSQL. No conversion required."
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "conversion_type": "NO_CHANGES",
+      "before_summary": "CTE with AVG/MIN/MAX window functions, CASE expression, ROUND function",
+      "after_summary": "Same SQL - fully compatible with PostgreSQL",
+      "changes_applied": [],
+      "notes": "Statement uses standard SQL window functions (AVG OVER, MIN OVER, MAX OVER) that are identical in both SQL Server and PostgreSQL. No conversion required."
+    }
+  ],
+  "sql_server_to_postgresql_conversions": {
+    "functions": {
+      "SCOPE_IDENTITY()": {
+        "postgresql_equivalent": "RETURNING clause",
+        "occurrences": 1,
+        "statements_affected": [3],
+        "implementation": "INSERT ... RETURNING ProductId executed with ExecuteScalarAsync()"
+      },
+      "GETDATE()": {
+        "postgresql_equivalent": "CURRENT_TIMESTAMP",
+        "occurrences": 8,
+        "statements_affected": [3, 4, 5],
+        "notes": "Direct replacement - both return current date/time"
+      }
+    },
+    "transaction_syntax": {
+      "BEGIN_TRANSACTION": {
+        "postgresql_equivalent": "await connection.BeginTransactionAsync()",
+        "occurrences": 3,
+        "statements_affected": [3, 4, 5],
+        "implementation": "C# transaction management instead of SQL commands"
+      },
+      "COMMIT": {
+        "postgresql_equivalent": "await transaction.CommitAsync()",
+        "occurrences": 3,
+        "statements_affected": [3, 4, 5],
+        "implementation": "C# transaction management"
+      }
+    },
+    "variable_syntax": {
+      "DECLARE_variables": {
+        "postgresql_equivalent": "C# local variables",
+        "occurrences": 4,
+        "statements_affected": [3, 4, 5],
+        "implementation": "int newProductId, decimal oldPrice, int oldStock declared in C#"
+      },
+      "SELECT_into_variables": {
+        "postgresql_equivalent": "C# ExecuteReaderAsync with data extraction",
+        "occurrences": 2,
+        "statements_affected": [4, 5],
+        "implementation": "Separate SELECT query executed before UPDATE/DELETE"
+      }
+    }
+  },
+  "code_quality_improvements": {
+    "transaction_management": "Explicit C# transaction management provides better error handling and clearer code flow",
+    "separation_of_concerns": "Separating SQL statements makes code more maintainable and easier to debug",
+    "error_handling": "Added try-catch blocks with rollback ensure transactional integrity",
+    "compatibility": "C#-managed transactions work identically with both SqlClient and Npgsql"
+  },
+  "testing_recommendations": [
+    "Unit test each refactored method (InsertProductAsync, UpdateProductAsync, DeleteProductAsync)",
+    "Integration test transaction rollback scenarios",
+    "Verify RETURNING clause returns correct ProductId",
+    "Validate CURRENT_TIMESTAMP produces correct timestamps in PostgreSQL",
+    "Test concurrent transaction scenarios",
+    "Verify ProductHistory and ProductStats are updated correctly within transactions"
+  ],
+  "compatibility_notes": {
+    "parameter_syntax": "@ parameter markers work with both SqlClient and Npgsql - no changes needed",
+    "window_functions": "All window functions (AVG, COUNT, LAG, RANK, PERCENT_RANK, MIN, MAX OVER) have identical syntax",
+    "cte_syntax": "Common Table Expressions (WITH) have identical syntax",
+    "case_expressions": "CASE expressions have identical syntax",
+    "data_types": "DECIMAL, INT, NVARCHAR, DATETIME types compatible between both databases"
+  }
+}

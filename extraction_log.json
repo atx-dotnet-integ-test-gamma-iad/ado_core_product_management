@@ -1,0 +1,295 @@
+{
+  "extraction_metadata": {
+    "extraction_date": "2025-02-09",
+    "source_project": "AdoCore",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "total_statements_extracted": 7,
+    "extraction_method": "Manual code analysis with automated pattern detection"
+  },
+  "source_files_analyzed": [
+    {
+      "file_path": "DataAccess/ProductRepository.cs",
+      "total_lines": 341,
+      "statements_found": 7,
+      "using_statements": [
+        "System",
+        "System.Collections.Generic",
+        "System.Data",
+        "System.Threading.Tasks",
+        "Microsoft.Data.SqlClient",
+        "Microsoft.Extensions.Configuration",
+        "AdoCore.Models"
+      ]
+    }
+  ],
+  "extracted_statements": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "39-66",
+      "statement_type": "SELECT",
+      "complexity": "medium",
+      "features": [
+        "CTE (Common Table Expression)",
+        "Window Functions (AVG OVER, COUNT OVER)",
+        "CASE expressions",
+        "INNER JOIN",
+        "ORDER BY with CASE"
+      ],
+      "parameters": [],
+      "tables_referenced": ["Products"],
+      "cte_names": ["ProductStats"],
+      "notes": "Complex query with window functions for calculating average price and total product count"
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "80-108",
+      "statement_type": "SELECT",
+      "complexity": "medium",
+      "features": [
+        "CTE (Common Table Expression)",
+        "LAG Window Function",
+        "LEFT JOIN",
+        "CASE expression",
+        "Parameterized query"
+      ],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "description": "Product identifier for lookup"
+        }
+      ],
+      "tables_referenced": ["Products"],
+      "cte_names": ["ProductHistory"],
+      "notes": "Uses LAG window function to retrieve previous price and stock values"
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "122-148",
+      "statement_type": "TRANSACTION",
+      "complexity": "high",
+      "features": [
+        "Multi-statement transaction",
+        "DECLARE variable",
+        "BEGIN TRANSACTION/COMMIT",
+        "INSERT statements",
+        "SCOPE_IDENTITY()",
+        "GETDATE()",
+        "UPDATE statement"
+      ],
+      "parameters": [
+        {
+          "name": "@Name",
+          "type": "string",
+          "description": "Product name"
+        },
+        {
+          "name": "@Description",
+          "type": "string",
+          "description": "Product description"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal",
+          "description": "Product price"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "description": "Initial stock quantity"
+        }
+      ],
+      "tables_referenced": ["Products", "ProductHistory", "ProductStats"],
+      "critical_conversions": [
+        "SCOPE_IDENTITY() must be converted to RETURNING clause or currval()",
+        "GETDATE() must be converted to CURRENT_TIMESTAMP or NOW()"
+      ],
+      "notes": "Transaction inserts product, logs history, and updates statistics. Returns new product ID."
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "163-196",
+      "statement_type": "TRANSACTION",
+      "complexity": "high",
+      "features": [
+        "Transaction block",
+        "DECLARE variables (multiple)",
+        "SELECT into variables",
+        "UPDATE statement",
+        "INSERT statement",
+        "GETDATE()"
+      ],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "description": "Product identifier"
+        },
+        {
+          "name": "@Name",
+          "type": "string",
+          "description": "Updated product name"
+        },
+        {
+          "name": "@Description",
+          "type": "string",
+          "description": "Updated product description"
+        },
+        {
+          "name": "@Price",
+          "type": "decimal",
+          "description": "Updated product price"
+        },
+        {
+          "name": "@StockQuantity",
+          "type": "int",
+          "description": "Updated stock quantity"
+        }
+      ],
+      "tables_referenced": ["Products", "ProductHistory", "ProductStats"],
+      "critical_conversions": [
+        "DECLARE variable syntax differs in PostgreSQL",
+        "SELECT into variables needs PostgreSQL syntax",
+        "GETDATE() must be converted"
+      ],
+      "notes": "Transaction stores old values, updates product, logs changes, and updates statistics"
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "211-245",
+      "statement_type": "TRANSACTION",
+      "complexity": "high",
+      "features": [
+        "Transaction block",
+        "DECLARE variables",
+        "SELECT into variables",
+        "INSERT statement",
+        "DELETE statement",
+        "UPDATE with CASE expression",
+        "GETDATE()"
+      ],
+      "parameters": [
+        {
+          "name": "@ProductId",
+          "type": "int",
+          "description": "Product identifier to delete"
+        }
+      ],
+      "tables_referenced": ["Products", "ProductHistory", "ProductStats"],
+      "critical_conversions": [
+        "DECLARE variable syntax",
+        "CASE expression in UPDATE",
+        "GETDATE() conversion"
+      ],
+      "notes": "Transaction logs deletion before removing product and updating statistics with conditional logic"
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "253-276",
+      "statement_type": "SELECT",
+      "complexity": "medium",
+      "features": [
+        "CTE (Common Table Expression)",
+        "RANK() Window Function",
+        "PERCENT_RANK() Window Function",
+        "BETWEEN clause",
+        "CASE expression",
+        "Parameterized query"
+      ],
+      "parameters": [
+        {
+          "name": "@MinPrice",
+          "type": "decimal",
+          "description": "Minimum price filter"
+        },
+        {
+          "name": "@MaxPrice",
+          "type": "decimal",
+          "description": "Maximum price filter"
+        }
+      ],
+      "tables_referenced": ["Products"],
+      "cte_names": ["RankedProducts"],
+      "notes": "Uses ranking window functions to categorize products by price percentiles"
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "line_range": "291-318",
+      "statement_type": "SELECT",
+      "complexity": "medium",
+      "features": [
+        "CTE (Common Table Expression)",
+        "AVG Window Function",
+        "MIN Window Function",
+        "MAX Window Function",
+        "CASE expression",
+        "Parameterized query"
+      ],
+      "parameters": [
+        {
+          "name": "@Threshold",
+          "type": "int",
+          "description": "Stock threshold for low stock filtering"
+        }
+      ],
+      "tables_referenced": ["Products"],
+      "cte_names": ["StockAnalysis"],
+      "notes": "Uses multiple window functions to analyze stock levels against averages"
+    }
+  ],
+  "sql_server_features_found": {
+    "window_functions": [
+      "AVG() OVER()",
+      "COUNT() OVER()",
+      "LAG() OVER()",
+      "RANK() OVER()",
+      "PERCENT_RANK() OVER()",
+      "MIN() OVER()",
+      "MAX() OVER()"
+    ],
+    "server_specific_functions": [
+      "SCOPE_IDENTITY()",
+      "GETDATE()"
+    ],
+    "transaction_syntax": [
+      "BEGIN TRANSACTION",
+      "COMMIT"
+    ],
+    "variable_declarations": [
+      "DECLARE @variable TYPE",
+      "SET @variable = value",
+      "SELECT @variable = column"
+    ],
+    "cte_usage": [
+      "WITH CTE_NAME AS (SELECT ...)"
+    ]
+  },
+  "extraction_validation": {
+    "all_methods_with_sql_analyzed": true,
+    "statements_preserve_parameters": true,
+    "transaction_boundaries_preserved": true,
+    "comments_preserved": true,
+    "line_numbers_documented": true
+  },
+  "next_steps": [
+    "Pass each statement through DMS MCP tool for PostgreSQL conversion",
+    "Create converted_statements.sql with PostgreSQL versions",
+    "Validate equivalency of each statement pair using SQL Equivalency MCP tool",
+    "Re-integrate converted statements into ProductRepository.cs"
+  ]
+}
