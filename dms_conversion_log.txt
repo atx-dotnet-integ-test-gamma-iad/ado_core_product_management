@@ -1,0 +1,300 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+SQL Server to PostgreSQL Statement Conversion
+Date: 2026-02-09
+Time: 07:31:19 - 07:32:54 UTC
+================================================================================
+
+SUMMARY
+================================================================================
+Total Statements Processed: 7
+DMS Tool Success Count: 0
+DMS Tool Failure Count: 7
+Manual Conversion Required: 7
+
+DMS Tool Configuration:
+- Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+- Database Name: ProductManagement
+- Schema Name: dbo
+- Region: us-east-1
+- Server Name: 172.31.83.165
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:31:19.703240
+Status: ERROR
+Method: GetAllProductsAsync()
+Parameters: None
+
+Original SQL (First 100 chars):
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) ...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:31:24.586627",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:31:22.447376",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- CTE syntax is fully compatible between SQL Server and PostgreSQL
+- Window functions AVG() OVER() and COUNT() OVER() are identical
+- ROUND() function works the same
+- No structural changes needed - statement is PostgreSQL compatible as-is
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:31:38.649831
+Status: ERROR
+Method: GetProductByIdAsync(int productId)
+Parameters: @ProductId (INT)
+
+Original SQL (First 100 chars):
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as Pr...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:31:43.190211",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:31:40.859643",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- LAG() window function is fully compatible with PostgreSQL
+- Parameter binding @ProductId works with Npgsql (converted to positional params internally)
+- CTE and CASE expressions are identical
+- No changes needed for PostgreSQL compatibility
+
+================================================================================
+STATEMENT 3: InsertProductAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:31:53.210160
+Status: ERROR
+Method: InsertProductAsync(Product product)
+Parameters: @Name (VARCHAR), @Description (VARCHAR), @Price (DECIMAL), @StockQuantity (INT)
+
+Original SQL (First 100 chars):
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, Stock...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:31:57.273227",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:31:55.371400",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- SCOPE_IDENTITY() replaced with RETURNING clause (PostgreSQL pattern)
+- GETDATE() replaced with CURRENT_TIMESTAMP (3 occurrences)
+- BEGIN TRANSACTION simplified to BEGIN
+- Transaction structure needs refactoring to use RETURNING properly
+- This requires code-level changes to handle RETURNING in ADO.NET
+
+================================================================================
+STATEMENT 4: UpdateProductAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:32:07.764622
+Status: ERROR
+Method: UpdateProductAsync(Product product)
+Parameters: @ProductId (INT), @Name (VARCHAR), @Description (VARCHAR), @Price (DECIMAL), @StockQuantity (INT)
+
+Original SQL (First 100 chars):
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldP...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:32:11.802174",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:32:09.981394",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- BEGIN TRANSACTION changed to DO $$ block for PostgreSQL
+- GETDATE() replaced with CURRENT_TIMESTAMP (3 occurrences)
+- Variable declarations changed to PostgreSQL syntax (v_OldPrice, v_OldStock)
+- SELECT ... INTO syntax for variable assignment
+- Requires DO block or splitting into multiple ADO.NET commands
+
+================================================================================
+STATEMENT 5: DeleteProductAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:32:21.673974
+Status: ERROR
+Method: DeleteProductAsync(int productId)
+Parameters: @ProductId (INT)
+
+Original SQL (First 100 chars):
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldP...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:32:25.965763",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:32:23.936805",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- Similar to UpdateProductAsync - requires DO block
+- GETDATE() replaced with CURRENT_TIMESTAMP (2 occurrences)
+- Variable declarations changed to PostgreSQL syntax
+- CASE expression remains compatible
+- Can be split into multiple ADO.NET commands within transaction
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:32:35.491038
+Status: ERROR
+Method: GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+Parameters: @MinPrice (DECIMAL), @MaxPrice (DECIMAL)
+
+Original SQL (First 100 chars):
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+   ...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:32:39.586372",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:32:37.650266",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- RANK() and PERCENT_RANK() window functions are fully compatible
+- CTE syntax is identical
+- BETWEEN operator works the same
+- No changes needed - statement is PostgreSQL compatible as-is
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync
+================================================================================
+Conversion Timestamp: 2026-02-09T07:32:50.193716
+Status: ERROR
+Method: GetLowStockProductsAsync(int threshold)
+Parameters: @Threshold (INT)
+
+Original SQL (First 100 chars):
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(...
+
+DMS Tool Response:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T07:32:54.478030",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-09T07:32:52.436499",
+      "status": "started"
+    }
+  ]
+}
+
+Manual Conversion Applied: Yes
+Manual Conversion Notes:
+- Window functions AVG(), MIN(), MAX() OVER() are fully compatible
+- ROUND() function syntax is identical
+- CTE and CASE expressions work the same
+- No changes needed - statement is PostgreSQL compatible as-is
+
+================================================================================
+CONCLUSION
+================================================================================
+
+All 7 SQL statements were passed through the DMS MCP tool as required by the
+transformation definition. All attempts resulted in metadata model creation
+errors with status "RECEIVED".
+
+Following the transformation guidelines, manual PostgreSQL conversions were
+created for all statements while documenting the DMS tool attempts.
+
+Key Conversion Patterns Applied:
+1. GETDATE() → CURRENT_TIMESTAMP
+2. SCOPE_IDENTITY() → RETURNING clause
+3. BEGIN TRANSACTION → BEGIN (or DO blocks for complex transactions)
+4. Variable declarations → PostgreSQL syntax
+5. Window functions and CTEs are largely compatible
+
+Statements 1, 2, 6, 7: Fully compatible, no changes needed
+Statements 3, 4, 5: Require transaction restructuring for PostgreSQL
+
+All conversions documented in converted_statements.sql
+
+================================================================================
+END OF DMS CONVERSION LOG
+================================================================================
