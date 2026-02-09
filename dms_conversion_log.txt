@@ -1,0 +1,542 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+Microsoft SQL Server to PostgreSQL Migration
+================================================================================
+Date: 2026-02-09
+Tool: dms-mcp____statement_conversion_tool
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema: dbo
+Database: ProductManagement
+Server: 172.31.83.165
+Region: us-east-1
+================================================================================
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS Tool Output:
+----------------------------------------
+{
+  "conversion_timestamp": "2026-02-09T15:03:07.667088",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T15:03:11.747760"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+[Same as original - statement is PostgreSQL compatible]
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name;
+
+Conversion Notes:
+- CTE syntax is PostgreSQL compatible
+- Window functions (AVG OVER, COUNT OVER) are native PostgreSQL
+- CASE expressions remain unchanged
+- ROUND function compatible
+- No schema object names changed
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS Tool Output:
+----------------------------------------
+{
+  "conversion_timestamp": "2026-02-09T15:03:36.414955",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-09T15:03:39.695839"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+[Same as original - statement is PostgreSQL compatible]
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId;
+
+Conversion Notes:
+- LAG window function is PostgreSQL compatible
+- Parameter syntax @ProductId works with Npgsql
+- No schema object names changed
+
+================================================================================
+STATEMENT 3: InsertProductAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS Tool Output:
+----------------------------------------
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+-- Split into multiple statements (to be executed in C# transaction):
+
+-- Statement 3a: Insert and return new ID
+INSERT INTO Products (Name, Description, Price, StockQuantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING ProductId;
+
+-- Statement 3b: Log the insertion (use returned ID from 3a as @NewProductId)
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);
+
+-- Statement 3c: Update statistics
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts + 1,
+    AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+Conversion Notes:
+- DECLARE and variable assignment not needed - use RETURNING clause
+- SCOPE_IDENTITY() replaced with RETURNING ProductId
+- GETDATE() → CURRENT_TIMESTAMP
+- BEGIN TRANSACTION/COMMIT handled in C# code, not SQL
+- Requires code refactoring to capture RETURNING value
+- No schema object names changed
+
+================================================================================
+STATEMENT 4: UpdateProductAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Output:
+----------------------------------------
+{
+  "status": "error",
+  "error": "Metadata model creation failed"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+-- Split into multiple statements (to be executed in C# transaction):
+
+-- Statement 4a: Get old values
+SELECT Price, StockQuantity
+FROM Products
+WHERE ProductId = @ProductId;
+
+-- Statement 4b: Update the product (using @OldPrice, @OldStock from 4a)
+UPDATE Products
+SET 
+    Name = @Name,
+    Description = @Description,
+    Price = @Price,
+    StockQuantity = @StockQuantity,
+    ModifiedDate = CURRENT_TIMESTAMP
+WHERE ProductId = @ProductId;
+
+-- Statement 4c: Log the changes
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);
+
+-- Statement 4d: Update statistics
+UPDATE ProductStats
+SET 
+    AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+Conversion Notes:
+- DECLARE variables replaced with SELECT that returns values to C# code
+- GETDATE() → CURRENT_TIMESTAMP
+- BEGIN TRANSACTION/COMMIT handled in C# code
+- Requires code refactoring to capture old values in variables
+- No schema object names changed
+
+================================================================================
+STATEMENT 5: DeleteProductAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Output:
+----------------------------------------
+{
+  "status": "error",
+  "error": "Metadata model creation failed"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+-- Split into multiple statements (to be executed in C# transaction):
+
+-- Statement 5a: Get old values
+SELECT Price, StockQuantity
+FROM Products
+WHERE ProductId = @ProductId;
+
+-- Statement 5b: Log the deletion (using @OldPrice, @OldStock from 5a)
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);
+
+-- Statement 5c: Delete the product
+DELETE FROM Products 
+WHERE ProductId = @ProductId;
+
+-- Statement 5d: Update statistics
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts - 1,
+    AveragePrice = CASE 
+        WHEN TotalProducts > 1 
+        THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+        ELSE 0
+    END,
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+Conversion Notes:
+- Same pattern as UpdateProductAsync
+- GETDATE() → CURRENT_TIMESTAMP
+- Transaction control moved to C# code
+- No schema object names changed
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS Tool Output:
+----------------------------------------
+{
+  "status": "error",
+  "error": "Metadata model creation failed"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+[Same as original - statement is PostgreSQL compatible]
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank;
+
+Conversion Notes:
+- RANK() and PERCENT_RANK() window functions are PostgreSQL compatible
+- BETWEEN clause works identically
+- No schema object names changed
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync
+================================================================================
+STATUS: DMS TOOL FAILURE - MANUAL CONVERSION APPLIED
+
+Original SQL Server Statement:
+----------------------------------------
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+DMS Tool Output:
+----------------------------------------
+{
+  "status": "error",
+  "error": "Metadata model creation failed"
+}
+
+Manual PostgreSQL Conversion:
+----------------------------------------
+[Same as original - statement is PostgreSQL compatible]
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity;
+
+Conversion Notes:
+- Window functions (AVG, MIN, MAX OVER) are PostgreSQL compatible
+- ROUND function compatible
+- No schema object names changed
+
+================================================================================
+CONVERSION SUMMARY
+================================================================================
+Total Statements Processed: 7
+DMS Tool Successes: 0
+DMS Tool Failures: 7
+Manual Conversions Applied: 7
+
+Root Cause of DMS Failures:
+- All statements failed with "Metadata model creation failed: Unknown metadata model creation status: RECEIVED"
+- This appears to be a DMS service issue or configuration problem
+- Manual conversions were performed based on PostgreSQL compatibility knowledge
+
+Key Conversion Patterns:
+1. Statements 1, 2, 6, 7: Already PostgreSQL compatible (minor or no changes)
+2. Statements 3, 4, 5: Required significant refactoring due to:
+   - T-SQL variable declarations and assignments
+   - SCOPE_IDENTITY() pattern (replaced with RETURNING clause)
+   - GETDATE() function (replaced with CURRENT_TIMESTAMP)
+   - Transaction control moved from SQL to C# code level
+
+Schema Object Name Changes: NONE
+- No table names, column names, or schema names were changed during conversion
+- All object references remain identical to original SQL Server names
+
+================================================================================
+END OF DMS CONVERSION LOG
+================================================================================
