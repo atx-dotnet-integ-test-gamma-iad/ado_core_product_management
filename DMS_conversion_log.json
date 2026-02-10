@@ -1,0 +1,210 @@
+{
+  "conversion_log_metadata": {
+    "conversion_date": "2026-02-10",
+    "total_statements": 7,
+    "dms_tool_used": true,
+    "dms_tool_success_count": 0,
+    "dms_tool_failure_count": 7,
+    "manual_conversion_count": 7,
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "dms_migration_project": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4"
+  },
+  "statement_conversions": [
+    {
+      "statement_number": 1,
+      "statement_name": "GetAllProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetAllProductsAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "attempt_timestamp": "2026-02-10T14:16:21.190336",
+        "success": false,
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-10T14:16:25.188590",
+        "dms_input": {
+          "sql_text": "WITH ProductStats AS (\\n    SELECT \\n        ProductId,\\n        AVG(Price) OVER() as AvgPrice,\\n        COUNT(*) OVER() as TotalProducts\\n    FROM Products\\n)\\nSELECT \\n    p.ProductId,\\n    p.Name,\\n    p.Description,\\n    p.Price,\\n    p.StockQuantity,\\n    p.CreatedDate,\\n    p.ModifiedDate,\\n    CASE \\n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\\n        ELSE 'Average'\\n    END as PriceCategory,\\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\\nFROM Products p\\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\\nORDER BY \\n    CASE \\n        WHEN p.Price > ps.AvgPrice THEN 1\\n        ELSE 2\\n    END,\\n    p.Name",
+          "schema_name": "public",
+          "database_name": null
+        }
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "CTEs are PostgreSQL compatible (no changes needed)",
+          "Window functions AVG() OVER() and COUNT() OVER() are compatible",
+          "CASE expressions are compatible",
+          "ROUND() function is compatible",
+          "Tables remain unqualified (use public schema by default)"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    },
+    {
+      "statement_number": 2,
+      "statement_name": "GetProductByIdAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetProductByIdAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "attempt_timestamp": "2026-02-10T14:16:39.133189",
+        "success": false,
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "error_timestamp": "2026-02-10T14:16:42.879601",
+        "dms_input": {
+          "sql_text": "WITH ProductHistory AS (\\n    SELECT \\n        ProductId,\\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\\n    FROM Products\\n    WHERE ProductId = @ProductId\\n)\\nSELECT \\n    p.ProductId,\\n    p.Name,\\n    p.Description,\\n    p.Price,\\n    p.StockQuantity,\\n    p.CreatedDate,\\n    p.ModifiedDate,\\n    ph.PreviousPrice,\\n    ph.PreviousStock,\\n    CASE \\n        WHEN ph.PreviousPrice IS NOT NULL THEN \\n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\\n        ELSE NULL\\n    END as PriceChangePercentage\\nFROM Products p\\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\\nWHERE p.ProductId = @ProductId",
+          "schema_name": "dbo",
+          "database_name": "ProductManagement"
+        }
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "Changed @ProductId to $1 (PostgreSQL positional parameter)",
+          "LAG() OVER() window function is compatible",
+          "CTE syntax is compatible",
+          "LEFT JOIN is compatible",
+          "CASE expression and ROUND() compatible"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    },
+    {
+      "statement_number": 3,
+      "statement_name": "InsertProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "InsertProductAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "success": false,
+        "error": "Metadata model creation failed consistently - same error pattern as statements 1 and 2"
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "Removed DECLARE @NewProductId INT (not needed with RETURNING clause)",
+          "Removed explicit BEGIN TRANSACTION/COMMIT (handled by NpgsqlTransaction)",
+          "Replaced SCOPE_IDENTITY() with RETURNING ProductId in INSERT",
+          "Changed @Name, @Description, @Price, @StockQuantity to $1, $2, $3, $4",
+          "Replaced GETDATE() with NOW()",
+          "Split into separate statements for transaction handling"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    },
+    {
+      "statement_number": 4,
+      "statement_name": "UpdateProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "UpdateProductAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "success": false,
+        "error": "Metadata model creation failed - consistent pattern across all statements"
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "Removed explicit BEGIN TRANSACTION/COMMIT (handled by NpgsqlTransaction)",
+          "Removed DECLARE statements (use subquery or separate SELECT)",
+          "Changed parameters to $1, $2, $3, $4, $5",
+          "Replaced GETDATE() with NOW()",
+          "Split into separate statements with CTEs"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    },
+    {
+      "statement_number": 5,
+      "statement_name": "DeleteProductAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "DeleteProductAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "success": false,
+        "error": "Metadata model creation failed - consistent pattern"
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "Removed explicit BEGIN TRANSACTION/COMMIT (handled by NpgsqlTransaction)",
+          "Removed DECLARE statements",
+          "Changed @ProductId to $1",
+          "Replaced GETDATE() with NOW()",
+          "Split into separate statements with subqueries"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    },
+    {
+      "statement_number": 6,
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetProductsByPriceRangeAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "success": false,
+        "error": "Metadata model creation failed - consistent pattern"
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "Changed @MinPrice and @MaxPrice to $1 and $2",
+          "RANK() OVER() and PERCENT_RANK() OVER() are compatible",
+          "CTE syntax is compatible",
+          "BETWEEN operator is compatible"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    },
+    {
+      "statement_number": 7,
+      "statement_name": "GetLowStockProductsAsync",
+      "source_file": "DataAccess/ProductRepository.cs",
+      "source_method": "GetLowStockProductsAsync",
+      "complexity": "HARD",
+      "dms_attempt": {
+        "attempted": true,
+        "success": false,
+        "error": "Metadata model creation failed - consistent pattern"
+      },
+      "manual_conversion": {
+        "applied": true,
+        "reason": "DMS tool metadata model creation failed",
+        "changes_applied": [
+          "Changed @Threshold to $1",
+          "AVG() OVER(), MIN() OVER(), MAX() OVER() are compatible",
+          "CTE syntax is compatible",
+          "ROUND() and CASE expressions are compatible"
+        ],
+        "conversion_method": "MANUAL_AFTER_DMS_FAILURE"
+      }
+    }
+  ],
+  "summary": {
+    "all_statements_processed_through_dms": true,
+    "dms_tool_functional": false,
+    "dms_error_pattern": "Metadata model creation failed with 'Unknown metadata model creation status: RECEIVED'",
+    "fallback_applied": "Manual conversion using PostgreSQL syntax best practices",
+    "key_conversion_patterns": {
+      "parameters": "Changed from @param to $n (positional)",
+      "identity": "Replaced SCOPE_IDENTITY() with RETURNING clause",
+      "datetime": "Replaced GETDATE() with NOW()",
+      "transactions": "Removed explicit BEGIN/COMMIT (handled by NpgsqlTransaction)",
+      "window_functions": "Compatible between SQL Server and PostgreSQL",
+      "ctes": "Compatible between SQL Server and PostgreSQL"
+    }
+  }
+}
