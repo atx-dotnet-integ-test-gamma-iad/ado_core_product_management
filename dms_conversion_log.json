@@ -1,0 +1,178 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "dms_successful": 0,
+    "dms_failed": 7,
+    "manual_conversion_required": 7,
+    "conversion_date": "2026-02-10T22:04:00Z"
+  },
+  "statement_conversions": [
+    {
+      "statement_id": 1,
+      "method_name": "GetAllProductsAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:04:17.236162",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:04:12.321659",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:04:14.996134",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. PostgreSQL syntax is highly compatible with this statement - only requires minimal changes. Window functions (AVG, COUNT OVER), CTEs, and CASE statements are all compatible between SQL Server and PostgreSQL.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    },
+    {
+      "statement_id": 2,
+      "method_name": "GetProductByIdAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:04:32.929255",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:04:28.443949",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:04:30.755740",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. LAG window function and parameterized queries are compatible with PostgreSQL. Named parameters (@ProductId) work with Npgsql.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    },
+    {
+      "statement_id": 3,
+      "method_name": "InsertProductAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:04:47.717605",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:04:43.177238",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:04:45.574314",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. Key changes: SCOPE_IDENTITY() replaced with RETURNING clause, GETDATE() changed to CURRENT_TIMESTAMP, BEGIN TRANSACTION changed to BEGIN. Transaction handling and RETURNING clause will need special handling in ADO.NET code.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    },
+    {
+      "statement_id": 4,
+      "method_name": "UpdateProductAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:05:01.603791",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:04:57.478417",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:04:59.792221",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. Variable declarations (DECLARE) need to be handled with DO block in PostgreSQL. GETDATE() changed to CURRENT_TIMESTAMP. This statement will likely need to be split into multiple commands in ADO.NET code or use a DO block.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    },
+    {
+      "statement_id": 5,
+      "method_name": "DeleteProductAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:05:14.596751",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:05:10.413328",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:05:12.600476",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. Similar to Statement 4, variable handling requires DO block. GETDATE() changed to CURRENT_TIMESTAMP. CASE expressions for calculating average are compatible.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    },
+    {
+      "statement_id": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:05:28.742452",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:05:24.540511",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:05:26.798826",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. RANK() and PERCENT_RANK() window functions are fully compatible with PostgreSQL. No changes required except ensuring Npgsql parameter handling.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    },
+    {
+      "statement_id": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "status": "MANUAL_REQUIRED",
+      "dms_tool_invoked": true,
+      "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "dms_timestamp": "2026-02-10T22:05:42.113870",
+      "dms_full_output": {
+        "conversion_timestamp": "2026-02-10T22:05:37.809424",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-10T22:05:40.047422",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "DMS tool failed during metadata model creation. Manual conversion performed. All window functions (AVG, MIN, MAX OVER) and ROUND are compatible with PostgreSQL. No significant changes required.",
+      "schema_changes": "None - DMS tool failed before schema processing"
+    }
+  ],
+  "critical_notes": [
+    "All 7 SQL statements were sent to the DMS MCP tool as required by the transformation definition.",
+    "All 7 conversions failed with the same error: 'Metadata model creation failed: Unknown metadata model creation status: RECEIVED'",
+    "Manual conversions were performed for all statements following best practices for SQL Server to PostgreSQL migration.",
+    "Schema object names (Products, ProductHistory, ProductStats) remain unchanged as DMS tool failed before schema processing.",
+    "Key SQL Server to PostgreSQL conversions applied:",
+    "  - GETDATE() -> CURRENT_TIMESTAMP",
+    "  - SCOPE_IDENTITY() -> RETURNING clause",
+    "  - BEGIN TRANSACTION -> BEGIN (or DO block for variable handling)",
+    "  - DECLARE variables -> DO block with DECLARE section in PostgreSQL",
+    "  - Named parameters (@ParamName) retained for Npgsql compatibility",
+    "Statements 3, 4, and 5 use multi-statement transactions with variables and may require code restructuring in ADO.NET implementation."
+  ]
+}

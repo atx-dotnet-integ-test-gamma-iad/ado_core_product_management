@@ -1,0 +1,58 @@
+# Schema Object Name Mapping
+# SQL Server to PostgreSQL Migration
+# Date: 2026-02-10
+
+## Overview
+This document tracks any schema object name changes that occurred during the DMS conversion process.
+
+## Table Names
+| Original SQL Server Name | PostgreSQL Name | Notes |
+|-------------------------|-----------------|-------|
+| Products                | Products        | No change - DMS tool failed before schema processing |
+| ProductHistory          | ProductHistory  | No change - DMS tool failed before schema processing |
+| ProductStats            | ProductStats    | No change - DMS tool failed before schema processing |
+
+## Column Names
+All column names remain unchanged as the DMS tool encountered errors before schema object processing.
+
+## Schema Names
+- **Original**: dbo (SQL Server default schema)
+- **Target**: public (PostgreSQL default schema)
+- **In Code**: Schema names are not explicitly specified in queries, relying on default schema resolution
+
+## DMS Tool Status
+The DMS MCP tool encountered metadata model creation errors for all statements, preventing any automated schema object name transformations. As a result:
+- All table names remain as originally defined
+- No schema prefix changes were applied
+- Default schema resolution will apply (dbo → public)
+
+## Conversion Notes
+1. Table names (Products, ProductHistory, ProductStats) are used without schema qualification in all SQL statements
+2. PostgreSQL will resolve unqualified table names to the 'public' schema by default
+3. If tables are created in a different schema, queries will need to be updated with schema qualification
+4. Named parameters (@ParameterName) are supported by Npgsql and remain unchanged
+
+## SQL Syntax Changes Applied
+The following SQL syntax changes were applied during manual conversion:
+- `GETDATE()` → `CURRENT_TIMESTAMP` (7 occurrences)
+- `SCOPE_IDENTITY()` → `LASTVAL()` or RETURNING clause pattern
+- `BEGIN TRANSACTION` → `BEGIN` (PostgreSQL standard, though not changed in ADO.NET code as it's handled by transaction objects)
+
+## Verification
+To verify schema object names in the target PostgreSQL database:
+```sql
+-- List all tables
+SELECT table_schema, table_name 
+FROM information_schema.tables 
+WHERE table_schema NOT IN ('pg_catalog', 'information_schema');
+
+-- Check specific tables
+SELECT table_name, table_schema 
+FROM information_schema.tables 
+WHERE table_name IN ('Products', 'ProductHistory', 'ProductStats');
+```
+
+## Recommendations
+1. Ensure PostgreSQL database has tables in the 'public' schema or update queries with appropriate schema qualification
+2. Verify that all table and column names match between SQL Server source and PostgreSQL target
+3. Test all queries against the PostgreSQL database to confirm schema resolution works as expected
