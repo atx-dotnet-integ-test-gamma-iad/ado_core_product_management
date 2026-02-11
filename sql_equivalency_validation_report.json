@@ -1,0 +1,120 @@
+{
+  "number_of_statements_processed": 7,
+  "number_of_statements_equivalent": 0,
+  "number_of_statements_non_equivalent": 0,
+  "number_of_statements_with_equivalency_error": 7,
+  "statement_details": [
+    {
+      "statement_number": 1,
+      "method_name": "GetAllProductsAsync",
+      "original_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "converted_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required - CTEs and window functions are PostgreSQL compatible",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:10:33.765432\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    },
+    {
+      "statement_number": 2,
+      "method_name": "GetProductByIdAsync",
+      "original_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "converted_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required - CTEs, LAG window function, and LEFT JOIN are PostgreSQL compatible",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:10:47.471944\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    },
+    {
+      "statement_number": 3,
+      "method_name": "InsertProductAsync",
+      "original_statement": "INSERT INTO Products (Name, Description, Price, StockQuantity)\nVALUES (@Name, @Description, @Price, @StockQuantity);\nSELECT SCOPE_IDENTITY() AS NewProductId;",
+      "converted_statement": "INSERT INTO Products (Name, Description, Price, StockQuantity)\nVALUES (@Name, @Description, @Price, @StockQuantity)\nRETURNING ProductId AS NewProductId;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "SCOPE_IDENTITY() converted to RETURNING clause. Full transaction block was simplified for equivalency testing to focus on the core INSERT operation.",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:10:58.125702\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    },
+    {
+      "statement_number": 4,
+      "method_name": "UpdateProductAsync",
+      "original_statement": "UPDATE Products\nSET \n    Name = @Name,\n    Description = @Description,\n    Price = @Price,\n    StockQuantity = @StockQuantity,\n    ModifiedDate = GETDATE()\nWHERE ProductId = @ProductId;",
+      "converted_statement": "UPDATE Products\nSET \n    Name = @Name,\n    Description = @Description,\n    Price = @Price,\n    StockQuantity = @StockQuantity,\n    ModifiedDate = CURRENT_TIMESTAMP\nWHERE ProductId = @ProductId;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "GETDATE() converted to CURRENT_TIMESTAMP. Full transaction block was simplified for equivalency testing to focus on the core UPDATE operation.",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:11:09.743458\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    },
+    {
+      "statement_number": 5,
+      "method_name": "DeleteProductAsync",
+      "original_statement": "DELETE FROM Products WHERE ProductId = @ProductId;",
+      "converted_statement": "DELETE FROM Products WHERE ProductId = @ProductId;",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required for core DELETE operation. Full transaction block was simplified for equivalency testing.",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:11:18.933114\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    },
+    {
+      "statement_number": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "original_statement": "WITH RankedProducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.Price) as PriceRank,\n        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p\n    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'\n        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as PriceSegment\nFROM RankedProducts rp\nORDER BY rp.PriceRank",
+      "converted_statement": "WITH RankedProducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.Price) as PriceRank,\n        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p\n    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'\n        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as PriceSegment\nFROM RankedProducts rp\nORDER BY rp.PriceRank",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required - CTEs, RANK(), and PERCENT_RANK() window functions are PostgreSQL compatible",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:11:31.138610\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    },
+    {
+      "statement_number": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "original_statement": "WITH StockAnalysis AS (\n    SELECT \n        p.*,\n        AVG(StockQuantity) OVER() as AvgStock,\n        MIN(StockQuantity) OVER() as MinStock,\n        MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN StockQuantity <= @Threshold THEN 'Critical'\n        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as StockStatus,\n    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa\nWHERE StockQuantity <= @Threshold\nORDER BY StockQuantity",
+      "converted_statement": "WITH StockAnalysis AS (\n    SELECT \n        p.*,\n        AVG(StockQuantity) OVER() as AvgStock,\n        MIN(StockQuantity) OVER() as MinStock,\n        MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN StockQuantity <= @Threshold THEN 'Critical'\n        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as StockStatus,\n    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa\nWHERE StockQuantity <= @Threshold\nORDER BY StockQuantity",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_notes": "No changes required - CTEs and all window functions (AVG, MIN, MAX OVER) are PostgreSQL compatible",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-02-11T02:11:43.872965\"}",
+      "equivalency_tool_error": "The SQL Equivalency tool encountered an internal error (uniqueID) during validation"
+    }
+  ],
+  "summary": {
+    "total_statements": 7,
+    "statements_unchanged": 4,
+    "statements_with_conversions": 3,
+    "critical_finding": "All SQL Equivalency tool invocations failed with identical internal error ('uniqueID'). This indicates a systematic tool issue, not statement-specific validation problems.",
+    "tool_failure_analysis": "The SQL Equivalency MCP tool encountered an internal error for all 7 statement pairs. The error message 'uniqueID' suggests a missing or improperly configured parameter in the tool's execution environment. This is independent of the DMS tool failures encountered in Step 2.",
+    "validation_approach": "Per transformation definition, all equivalency_status values were set to ERROR as returned by the tool. No agent judgment was used to determine equivalency status. Each statement pair was validated independently, and all failures were documented with exact tool output.",
+    "statements_likely_equivalent": "Based on SQL syntax analysis (not equivalency tool): Statements 1, 2, 6, 7 are identical between SQL Server and PostgreSQL. Statements 3, 4, 5 have appropriate conversions (SCOPE_IDENTITY→RETURNING, GETDATE→CURRENT_TIMESTAMP).",
+    "manual_review_required": true,
+    "manual_review_reason": "Tool failures prevent automated equivalency validation. Manual testing in actual database environments is recommended to verify converted statements produce identical results."
+  },
+  "tool_execution_details": {
+    "tool_name": "sql-equivalency___validate_sql_equivalence",
+    "tool_status": "ERROR - Systematic failure across all invocations",
+    "error_pattern": "All 7 invocations returned: {\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\"}",
+    "execution_timestamps": [
+      "2026-02-11T02:10:33.765432",
+      "2026-02-11T02:10:47.471944",
+      "2026-02-11T02:10:58.125702",
+      "2026-02-11T02:11:09.743458",
+      "2026-02-11T02:11:18.933114",
+      "2026-02-11T02:11:31.138610",
+      "2026-02-11T02:11:43.872965"
+    ],
+    "independent_validation_per_statement": true,
+    "agent_judgment_used": false
+  },
+  "metadata": {
+    "report_generated": "2026-02-11T02:12:00",
+    "migration_project": "AdoCore - SQL Server to PostgreSQL",
+    "transformation_step": "Step 3: Validate SQL Equivalency for All Statement Pairs",
+    "dms_tool_status": "All conversions failed (Step 2)",
+    "equivalency_tool_status": "All validations failed with internal error",
+    "compliance_note": "All equivalency_status values sourced from tool output only, never from agent judgment, as required by transformation definition"
+  }
+}
