@@ -1,0 +1,200 @@
+========================================
+CODE CHANGES LOG
+SQL Statement Re-integration
+SQL Server to PostgreSQL Migration
+========================================
+
+File: DataAccess/ProductRepository.cs
+Total Methods Updated: 7
+Total SQL Statements Converted: 7
+
+========================================
+METHOD 1: GetAllProductsAsync
+----------------------------------------
+Lines: 38-81
+SQL Statement Type: SELECT with CTE and Window Functions
+Changes Applied: NONE
+Reason: PostgreSQL fully supports this syntax identically to SQL Server
+- CTE (WITH clause) supported
+- Window functions (AVG OVER, COUNT OVER) supported
+- CASE statements supported
+- ROUND function supported
+- Complex ORDER BY supported
+Schema Object Changes: None
+
+========================================
+METHOD 2: GetProductByIdAsync
+----------------------------------------
+Lines: 83-128
+SQL Statement Type: SELECT with CTE and LAG Window Function
+Changes Applied: NONE
+Reason: PostgreSQL fully supports this syntax identically to SQL Server
+- CTE (WITH clause) supported
+- LAG window function supported
+- LEFT JOIN supported
+- CASE with NULL handling supported
+Schema Object Changes: None
+
+========================================
+METHOD 3: InsertProductAsync
+----------------------------------------
+Lines: 130-198
+SQL Statement Type: Multi-statement Transaction (INSERT + INSERT + UPDATE)
+Changes Applied:
+1. Removed DECLARE @NewProductId INT - managed at application level
+2. Removed BEGIN TRANSACTION/COMMIT - managed at application level using BeginTransactionAsync/CommitAsync
+3. SCOPE_IDENTITY() -> RETURNING ProductId clause on INSERT
+4. GETDATE() -> NOW() (2 occurrences)
+5. Split single multi-statement SQL into 3 separate SQL commands
+6. Wrapped in try-catch with transaction management
+
+Key Conversions:
+- SQL Server: SCOPE_IDENTITY() + SET variable
+- PostgreSQL: RETURNING ProductId (captured in C# code)
+
+- SQL Server: GETDATE()
+- PostgreSQL: NOW()
+
+- SQL Server: BEGIN TRANSACTION ... COMMIT in SQL
+- PostgreSQL: Application-level transaction using BeginTransactionAsync/CommitAsync
+
+Implementation Notes:
+- newProductId captured from RETURNING clause via ExecuteScalarAsync()
+- Transaction managed at ADO.NET level for better error handling
+- All parameters preserved (@Name, @Description, @Price, @StockQuantity)
+
+Schema Object Changes: None
+
+========================================
+METHOD 4: UpdateProductAsync
+----------------------------------------
+Lines: 200-289
+SQL Statement Type: Multi-statement Transaction (SELECT + UPDATE + INSERT + UPDATE)
+Changes Applied:
+1. Removed DECLARE @OldPrice, @OldStock - managed as C# variables
+2. Removed BEGIN TRANSACTION/COMMIT - managed at application level
+3. GETDATE() -> NOW() (3 occurrences)
+4. Split single multi-statement SQL into 4 separate SQL commands
+5. Wrapped in try-catch with transaction management
+6. SELECT into variables converted to ExecuteReaderAsync with C# variable assignment
+
+Key Conversions:
+- SQL Server: DECLARE variables in SQL
+- PostgreSQL: C# variables (decimal oldPrice, int oldStock)
+
+- SQL Server: SELECT @Var = Column FROM Table
+- PostgreSQL: SELECT Column FROM Table + reader.GetDecimal/GetInt32
+
+- SQL Server: GETDATE()
+- PostgreSQL: NOW()
+
+Implementation Notes:
+- Old values retrieved via separate SELECT query
+- All SQL statements execute within single transaction scope
+- Transaction rollback on any error
+
+Schema Object Changes: None
+
+========================================
+METHOD 5: DeleteProductAsync
+----------------------------------------
+Lines: 291-372
+SQL Statement Type: Multi-statement Transaction (SELECT + INSERT + DELETE + UPDATE)
+Changes Applied:
+1. Removed DECLARE @OldPrice, @OldStock - managed as C# variables
+2. Removed BEGIN TRANSACTION/COMMIT - managed at application level
+3. GETDATE() -> NOW() (1 occurrence)
+4. Split single multi-statement SQL into 4 separate SQL commands
+5. Wrapped in try-catch with transaction management
+6. SELECT into variables converted to ExecuteReaderAsync with C# variable assignment
+
+Key Conversions:
+- SQL Server: DECLARE variables in SQL
+- PostgreSQL: C# variables (decimal oldPrice, int oldStock)
+
+- SQL Server: SELECT @Var = Column FROM Table
+- PostgreSQL: SELECT Column FROM Table + reader.GetDecimal/GetInt32
+
+- SQL Server: GETDATE()
+- PostgreSQL: NOW()
+
+Implementation Notes:
+- Old values retrieved before deletion
+- History logged before product deletion
+- Transaction ensures atomicity
+- Statistics updated after deletion
+
+Schema Object Changes: None
+
+========================================
+METHOD 6: GetProductsByPriceRangeAsync
+----------------------------------------
+Lines: 374-405
+SQL Statement Type: SELECT with CTE and Window Functions
+Changes Applied: NONE
+Reason: PostgreSQL fully supports this syntax identically to SQL Server
+- RANK() window function supported
+- PERCENT_RANK() window function supported
+- BETWEEN clause supported
+Schema Object Changes: None
+
+========================================
+METHOD 7: GetLowStockProductsAsync
+----------------------------------------
+Lines: 407-440
+SQL Statement Type: SELECT with CTE and Multiple Window Functions
+Changes Applied: NONE
+Reason: PostgreSQL fully supports this syntax identically to SQL Server
+- AVG, MIN, MAX window functions supported
+- OVER() clause supported
+- Complex CASE statement supported
+Schema Object Changes: None
+
+========================================
+SUMMARY OF CHANGES
+========================================
+
+SQL Server-Specific Syntax Removed:
+1. SCOPE_IDENTITY() -> RETURNING clause (1 occurrence)
+2. GETDATE() -> NOW() (6 occurrences total)
+3. DECLARE statements in SQL -> C# variables (4 variable declarations)
+4. BEGIN TRANSACTION/COMMIT in SQL -> Application-level transaction management (3 occurrences)
+5. SELECT @Var = Column -> SELECT Column with C# assignment (4 conversions)
+
+PostgreSQL Conversions Applied:
+1. RETURNING ProductId for INSERT operations
+2. NOW() for current timestamp
+3. Application-level transaction management using BeginTransactionAsync/CommitAsync
+4. Separated multi-statement transactions into individual SQL commands
+
+Code Structure Changes:
+- InsertProductAsync: Single SQL block -> 3 separate SQL commands with transaction
+- UpdateProductAsync: Single SQL block -> 4 separate SQL commands with transaction  
+- DeleteProductAsync: Single SQL block -> 4 separate SQL commands with transaction
+- All methods preserved original parameter bindings
+- All methods preserved method signatures (no breaking changes to public API)
+
+Schema Object Integrity:
+- NO schema object name changes from DMS conversion
+- All table names remain unchanged (Products, ProductHistory, ProductStats)
+- All column names remain unchanged
+- All parameter names remain unchanged
+
+Preserved Elements:
+✓ Method signatures unchanged
+✓ Parameter bindings maintained
+✓ Error handling enhanced with try-catch blocks
+✓ Transaction atomicity preserved
+✓ Business logic unchanged
+✓ Code structure and flow maintained
+
+Guardrail Compliance:
+✓ Public API preserved (method names and signatures unchanged)
+✓ No test files modified
+✓ No security controls removed
+✓ Business logic functionality unchanged
+✓ All SQL statements successfully converted
+
+========================================
+END OF CODE CHANGES LOG
+========================================
