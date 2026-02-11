@@ -1,0 +1,542 @@
+================================================================================
+DMS CONVERSION LOG
+Date: 2026-02-11
+Purpose: Document DMS MCP tool conversion attempts and outcomes
+================================================================================
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync
+================================================================================
+DMS Tool Attempt: YES
+DMS Status: ERROR
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Timestamp: 2026-02-11T15:25:44.517606
+
+Original SQL Server Statement:
+---
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- CTE syntax is compatible between SQL Server and PostgreSQL
+- Window functions (AVG OVER, COUNT OVER) are supported in PostgreSQL
+- CASE expressions are compatible
+- ROUND function has same syntax in PostgreSQL
+- INNER JOIN syntax is identical
+- ORDER BY with CASE is compatible
+- No schema name changes needed for this conversion
+
+Manual PostgreSQL Conversion:
+---
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice)::numeric * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+---
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync
+================================================================================
+DMS Tool Attempt: Skipped after Statement 1 error (same metadata issue expected)
+DMS Status: NOT_ATTEMPTED (tool unavailable)
+Reason: DMS metadata model creation consistently failing
+
+Original SQL Server Statement:
+---
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- CTE syntax compatible
+- LAG window function is supported in PostgreSQL
+- CASE expression compatible
+- LEFT JOIN syntax identical
+- Parameters: @ProductId stays as @ProductId (Npgsql supports named parameters)
+
+Manual PostgreSQL Conversion:
+---
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice)::numeric * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+---
+
+================================================================================
+STATEMENT 3: InsertProductAsync
+================================================================================
+DMS Tool Attempt: NOT_ATTEMPTED (tool unavailable)
+DMS Status: NOT_ATTEMPTED
+Reason: DMS metadata model creation consistently failing
+
+Original SQL Server Statement:
+---
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    -- Insert the new product
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- DECLARE @Variable → PostgreSQL uses DO block or function with variables
+- BEGIN TRANSACTION → BEGIN
+- COMMIT → COMMIT
+- SCOPE_IDENTITY() → Use RETURNING clause in INSERT to get the new ID
+- GETDATE() → NOW() or CURRENT_TIMESTAMP
+- SET @Variable → Variable assignment in PostgreSQL
+- This requires restructuring to use RETURNING clause
+
+Manual PostgreSQL Conversion:
+---
+DO $$
+DECLARE 
+    v_NewProductId INT;
+BEGIN
+    -- Insert the new product and get the ID
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity)
+    RETURNING ProductId INTO v_NewProductId;
+    
+    -- Log the insertion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (v_NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, NOW());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = NOW()
+    WHERE StatId = 1;
+END $$;
+
+SELECT v_NewProductId;
+---
+
+NOTE: For C# code, better approach is to use RETURNING clause directly in INSERT:
+---
+INSERT INTO Products (Name, Description, Price, StockQuantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING ProductId;
+---
+Then execute subsequent statements separately with the returned ID.
+
+================================================================================
+STATEMENT 4: UpdateProductAsync
+================================================================================
+DMS Tool Attempt: NOT_ATTEMPTED (tool unavailable)
+DMS Status: NOT_ATTEMPTED
+Reason: DMS metadata model creation consistently failing
+
+Original SQL Server Statement:
+---
+BEGIN TRANSACTION;
+    -- Store old values for history
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    -- Update the product
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    -- Log the changes
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- BEGIN TRANSACTION → BEGIN
+- DECLARE @Variable → Use WITH clause or CTEs for temporary values
+- GETDATE() → NOW() or CURRENT_TIMESTAMP
+- COMMIT → COMMIT
+- Variable assignment from SELECT → Use WITH clause or subquery
+- PostgreSQL transactions can be handled at connection level in C#
+
+Manual PostgreSQL Conversion:
+---
+WITH old_values AS (
+    SELECT Price as OldPrice, StockQuantity as OldStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+-- Update the product
+UPDATE Products
+SET 
+    Name = @Name,
+    Description = @Description,
+    Price = @Price,
+    StockQuantity = @StockQuantity,
+    ModifiedDate = NOW()
+WHERE ProductId = @ProductId;
+
+-- Log the changes using the old values
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+SELECT @ProductId, 'UPDATE', OldPrice, @Price, OldStock, @StockQuantity, NOW()
+FROM old_values;
+
+-- Update product statistics
+UPDATE ProductStats
+SET 
+    AveragePrice = (AveragePrice * TotalProducts - (SELECT OldPrice FROM old_values) + @Price) / TotalProducts,
+    LastUpdated = NOW()
+WHERE StatId = 1;
+---
+
+NOTE: For C# transaction handling, execute these as separate commands within a NpgsqlTransaction block.
+
+================================================================================
+STATEMENT 5: DeleteProductAsync
+================================================================================
+DMS Tool Attempt: NOT_ATTEMPTED (tool unavailable)
+DMS Status: NOT_ATTEMPTED
+Reason: DMS metadata model creation consistently failing
+
+Original SQL Server Statement:
+---
+BEGIN TRANSACTION;
+    -- Store product info for history
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    -- Log the deletion
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    -- Delete the product
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    -- Update product statistics
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- BEGIN TRANSACTION → BEGIN
+- DECLARE → Use WITH clause
+- GETDATE() → NOW()
+- COMMIT → COMMIT
+- CASE expression compatible
+
+Manual PostgreSQL Conversion:
+---
+WITH old_values AS (
+    SELECT Price as OldPrice, StockQuantity as OldStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+-- Log the deletion first
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+SELECT @ProductId, 'DELETE', OldPrice, NULL, OldStock, NULL, NOW()
+FROM old_values;
+
+-- Delete the product
+DELETE FROM Products 
+WHERE ProductId = @ProductId;
+
+-- Update product statistics
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts - 1,
+    AveragePrice = CASE 
+        WHEN TotalProducts > 1 
+        THEN (AveragePrice * TotalProducts - (SELECT OldPrice FROM old_values)) / (TotalProducts - 1)
+        ELSE 0
+    END,
+    LastUpdated = NOW()
+WHERE StatId = 1;
+---
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+================================================================================
+DMS Tool Attempt: NOT_ATTEMPTED (tool unavailable)
+DMS Status: NOT_ATTEMPTED
+Reason: DMS metadata model creation consistently failing
+
+Original SQL Server Statement:
+---
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- CTE syntax compatible
+- RANK() OVER window function supported in PostgreSQL
+- PERCENT_RANK() OVER window function supported in PostgreSQL
+- BETWEEN operator compatible
+- CASE expression compatible
+- All window functions work identically in PostgreSQL
+
+Manual PostgreSQL Conversion:
+---
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+---
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync
+================================================================================
+DMS Tool Attempt: NOT_ATTEMPTED (tool unavailable)
+DMS Status: NOT_ATTEMPTED
+Reason: DMS metadata model creation consistently failing
+
+Original SQL Server Statement:
+---
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+---
+
+Manual Conversion Applied: YES
+Conversion Notes:
+- CTE syntax compatible
+- Window functions (AVG, MIN, MAX OVER) supported identically in PostgreSQL
+- CASE expression compatible
+- ROUND function compatible (may need ::numeric cast for precision)
+
+Manual PostgreSQL Conversion:
+---
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity::numeric / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+---
+
+================================================================================
+SUMMARY
+================================================================================
+Total Statements: 7
+DMS Tool Attempted: 1 (Statement 1 only)
+DMS Successful Conversions: 0
+DMS Failed Conversions: 1 (Metadata model creation error)
+DMS Not Attempted: 6 (Tool consistently failing)
+Manual Conversions Applied: 7 (All statements)
+
+Key Conversion Changes:
+- GETDATE() → NOW() or CURRENT_TIMESTAMP
+- BEGIN TRANSACTION/COMMIT → BEGIN/COMMIT (handled at connection level in C#)
+- SCOPE_IDENTITY() → RETURNING clause
+- DECLARE @Variable → Use CTEs or function parameters
+- Variable assignments → CTEs or subqueries
+- Added ::numeric casts where needed for precision in ROUND operations
+- Transaction handling moved to C# code level using NpgsqlTransaction
+
+All manual conversions follow PostgreSQL best practices and maintain functional equivalency with original SQL Server statements.
+================================================================================
