@@ -1,0 +1,102 @@
+==================================================================================
+CONNECTION STRING MIGRATION LOG
+SQL Server to PostgreSQL Migration - appsettings.json
+==================================================================================
+Date: 2026-02-11
+Target File: appsettings.json
+==================================================================================
+
+CONNECTION STRING TRANSFORMATIONS
+==================================================================================
+
+ORIGINAL SQL SERVER CONNECTION STRINGS:
+
+DevConnection (Development):
+"Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+
+ProdConnection (Production):
+"Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+
+CONVERTED POSTGRESQL CONNECTION STRINGS:
+
+DevConnection (Development):
+"Host=localhost;Database=ProductManagement;Username=postgres;Password=postgres;Port=5432"
+
+ProdConnection (Production):
+"Host=localhost;Database=ProductManagement;Username=postgres;Password=postgres;Port=5432"
+
+==================================================================================
+PARAMETER MAPPING DETAILS
+==================================================================================
+
+SQL Server Parameter → PostgreSQL Parameter:
+
+1. Server=localhost → Host=localhost
+   - SQL Server uses "Server" parameter
+   - PostgreSQL uses "Host" parameter
+   - Value unchanged (localhost)
+
+2. Database=ProductManagement → Database=ProductManagement
+   - Parameter name and value unchanged
+   - Both databases use same "Database" parameter
+
+3. Trusted_Connection=True → Username=postgres;Password=postgres
+   - SQL Server: Windows Authentication via Trusted_Connection
+   - PostgreSQL: Explicit username/password authentication
+   - Default PostgreSQL user: "postgres"
+   - Default password: "postgres" (SHOULD BE CHANGED FOR PRODUCTION)
+
+4. MultipleActiveResultSets=true → REMOVED
+   - SQL Server specific feature
+   - Not applicable to PostgreSQL
+   - PostgreSQL handles multiple result sets differently
+
+5. TrustServerCertificate=True → REMOVED
+   - SQL Server SSL/TLS certificate validation bypass
+   - Not needed for local development
+   - For production, use: SSL Mode=Require or SSL Mode=Prefer
+
+6. (Added) Port=5432
+   - Default PostgreSQL port
+   - Explicitly specified for clarity
+   - Can be omitted (defaults to 5432)
+
+==================================================================================
+SECURITY NOTES
+==================================================================================
+
+CRITICAL - Password Management:
+⚠ The default password "postgres" is used for development convenience
+⚠ MUST be changed for production deployments
+⚠ Use strong passwords or certificate-based authentication
+⚠ Consider using environment variables or secure configuration providers
+
+Recommended Production Configuration:
+"Host=<prod-host>;Database=ProductManagement;Username=<app-user>;Password=<strong-password>;Port=5432;SSL Mode=Require;Trust Server Certificate=false"
+
+Connection Pooling:
+✓ Npgsql enables connection pooling by default
+✓ Can be configured with: Pooling=true;Minimum Pool Size=0;Maximum Pool Size=100
+
+Timeout Settings:
+✓ Default timeout: 30 seconds
+✓ Can be configured with: Timeout=30;Command Timeout=30
+
+==================================================================================
+DEPLOYMENT CHECKLIST
+==================================================================================
+
+Before Deploying to Production:
+[ ] Change default "postgres" password
+[ ] Create dedicated application user with minimal privileges
+[ ] Configure SSL/TLS for encrypted connections
+[ ] Set appropriate connection pool sizes
+[ ] Configure connection and command timeouts
+[ ] Test connectivity to PostgreSQL server
+[ ] Verify database "ProductManagement" exists
+[ ] Ensure tables (Products, ProductHistory, ProductStats) are created
+[ ] Grant appropriate permissions to application user
+
+==================================================================================
+END OF CONNECTION STRING MIGRATION LOG
+==================================================================================

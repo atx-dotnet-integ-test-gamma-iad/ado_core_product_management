@@ -1,0 +1,61 @@
+==================================================================================
+PACKAGE MIGRATION LOG
+SQL Server to PostgreSQL Migration - AdoCore Project
+==================================================================================
+Date: 2026-02-11
+File Modified: AdoCore.csproj
+==================================================================================
+
+PACKAGE CHANGES
+==================================================================================
+
+REMOVED Package:
+- Name: Microsoft.Data.SqlClient
+- Version: 5.1.4
+- Purpose: SQL Server database connectivity for ADO.NET
+- Reason for Removal: Migrating from SQL Server to PostgreSQL
+
+ADDED Package:
+- Name: Npgsql
+- Version: 8.0.1
+- Purpose: PostgreSQL database connectivity for ADO.NET
+- Compatibility: .NET 9.0
+- Features: Full async/await support, named parameters, bulk operations
+
+UNCHANGED Packages (Retained):
+- Microsoft.Extensions.Configuration (Version: 8.0.0)
+- Microsoft.Extensions.Configuration.Json (Version: 8.0.0)
+- Microsoft.Extensions.DependencyInjection (Version: 8.0.0)
+
+==================================================================================
+COMPATIBILITY NOTES
+==================================================================================
+
+Npgsql 8.0.1 Compatibility:
+✓ Supports .NET 9.0 (TargetFramework)
+✓ Provides NpgsqlConnection, NpgsqlCommand, NpgsqlDataReader, NpgsqlParameter
+✓ Supports AddWithValue() parameter binding method
+✓ Supports named parameters (@ParamName syntax)
+✓ Supports all async methods: OpenAsync, ExecuteReaderAsync, ExecuteNonQueryAsync, ExecuteScalarAsync
+✓ Supports transactions with BeginTransactionAsync
+✓ Compatible with DBNull.Value handling
+
+API Differences from Microsoft.Data.SqlClient:
+- Namespace: Microsoft.Data.SqlClient → Npgsql
+- Classes: Sql* → Npgsql* (e.g., SqlConnection → NpgsqlConnection)
+- Most method signatures remain identical
+- Parameter syntax @ParamName is supported (no conversion needed)
+
+==================================================================================
+NEXT STEPS
+==================================================================================
+
+1. Run 'dotnet restore' to download Npgsql package
+2. Update using statements in source files (Step 6)
+3. Replace Sql* class references with Npgsql* equivalents (Step 6)
+4. Update connection strings to PostgreSQL format (Step 7)
+5. Test compilation and runtime connectivity
+
+==================================================================================
+END OF PACKAGE MIGRATION LOG
+==================================================================================

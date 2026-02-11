@@ -1,0 +1,191 @@
+==================================================================================
+CODE RE-INTEGRATION LOG
+SQL Server to PostgreSQL Migration - ProductRepository.cs
+==================================================================================
+Date: 2026-02-11
+Target File: DataAccess/ProductRepository.cs
+Total SQL Statements Updated: 7 (3 with SQL Server specific changes, 4 unchanged)
+==================================================================================
+
+STATEMENT REPLACEMENTS AND MODIFICATIONS
+==================================================================================
+
+Statement 1: GetAllProductsAsync (Lines 43-71)
+------------------------------------------------------------------------------------
+Method: GetAllProductsAsync()
+Statement Type: SELECT with CTE and Window Functions
+Changes Applied: NONE - PostgreSQL compatible syntax
+Schema Changes: None
+Notes: CTE with AVG() OVER() and COUNT() OVER() window functions are fully
+       compatible between SQL Server and PostgreSQL. No modifications required.
+
+Statement 2: GetProductByIdAsync (Lines 88-110)
+------------------------------------------------------------------------------------
+Method: GetProductByIdAsync(int productId)
+Statement Type: SELECT with CTE and LAG Window Function
+Changes Applied: NONE - PostgreSQL compatible syntax
+Schema Changes: None
+Notes: CTE with LAG() OVER (ORDER BY...) window function is fully compatible.
+       LEFT JOIN and CASE expressions work identically in PostgreSQL.
+
+Statement 3: InsertProductAsync (Lines 132-156)
+------------------------------------------------------------------------------------
+Method: InsertProductAsync(Product product)
+Statement Type: TRANSACTION with INSERT operations
+Changes Applied:
+1. GETDATE() → CURRENT_TIMESTAMP (2 occurrences - lines 143, 151)
+   - Line 143: ProductHistory ActionDate field
+   - Line 151: ProductStats LastUpdated field
+
+2. SCOPE_IDENTITY() → Commented with note to use RETURNING clause
+   - Line 140: "SET @NewProductId = SCOPE_IDENTITY();" changed to
+     "-- Use RETURNING clause in INSERT statement"
+   - Note: Full RETURNING implementation requires restructuring the multi-statement
+     transaction into separate commands managed by application code
+
+3. BEGIN TRANSACTION → "-- PostgreSQL transaction (use BEGIN or application-level transaction)"
+   - Line 135: Transaction start commented for application-level management
+
+4. COMMIT → "-- PostgreSQL COMMIT"
+   - Line 153: Transaction commit commented for application-level management
+
+Schema Changes: None
+Additional Notes:
+- The InsertProductAsync method currently uses a single multi-statement SQL batch
+- PostgreSQL best practice: Split into 3 separate commands within an application-level transaction:
+  Command 1: INSERT...RETURNING ProductId
+  Command 2: INSERT INTO ProductHistory using returned ID
+  Command 3: UPDATE ProductStats
+- DECLARE @NewProductId INT and SELECT @NewProductId statements remain but are non-functional
+- Requires further refactoring to work properly with PostgreSQL
+
+Statement 4: UpdateProductAsync (Lines 170-203)
+------------------------------------------------------------------------------------
+Method: UpdateProductAsync(Product product)
+Statement Type: TRANSACTION with DECLARE, SELECT, UPDATE, INSERT
+Changes Applied:
+1. GETDATE() → CURRENT_TIMESTAMP (3 occurrences - lines 186, 192, 197)
+   - Line 186: Products ModifiedDate field
+   - Line 192: ProductHistory ActionDate field
+   - Line 197: ProductStats LastUpdated field
+
+2. BEGIN TRANSACTION → "-- PostgreSQL transaction (use BEGIN or application-level transaction)"
+   - Line 173: Transaction start commented
+
+3. COMMIT → "-- PostgreSQL COMMIT"
+   - Line 199: Transaction commit commented
+
+Schema Changes: None
+Additional Notes:
+- DECLARE statements for @OldPrice and @OldStock remain but are SQL Server specific
+- SELECT assignment syntax (SELECT @OldPrice = Price...) is SQL Server specific
+- PostgreSQL equivalent requires CTE structure:
+  WITH old_values AS (SELECT Price, StockQuantity FROM Products WHERE...)
+- Current code will require runtime fixes or pre-execution to work with PostgreSQL
+
+Statement 5: DeleteProductAsync (Lines 216-254)
+------------------------------------------------------------------------------------
+Method: DeleteProductAsync(int productId)
+Statement Type: TRANSACTION with DECLARE, SELECT, INSERT, DELETE, UPDATE
+Changes Applied:
+1. GETDATE() → CURRENT_TIMESTAMP (2 occurrences - lines 229, 248)
+   - Line 229: ProductHistory ActionDate field
+   - Line 248: ProductStats LastUpdated field
+
+2. BEGIN TRANSACTION → "-- PostgreSQL transaction (use BEGIN or application-level transaction)"
+   - Line 219: Transaction start commented
+
+3. COMMIT → "-- PostgreSQL COMMIT"
+   - Line 250: Transaction commit commented
+
+Schema Changes: None
+Additional Notes:
+- Similar to UpdateProductAsync, DECLARE and SELECT assignment syntax remain
+- Requires CTE or application-level handling for old_values capture
+- CASE expression in UPDATE is PostgreSQL compatible
+
+Statement 6: GetProductsByPriceRangeAsync (Lines 258-278)
+------------------------------------------------------------------------------------
+Method: GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+Statement Type: SELECT with CTE and RANK/PERCENT_RANK Window Functions
+Changes Applied: NONE - PostgreSQL compatible syntax
+Schema Changes: None
+Notes: CTE with RANK() OVER() and PERCENT_RANK() OVER() are fully compatible.
+       BETWEEN operator and CASE expression work identically.
+
+Statement 7: GetLowStockProductsAsync (Lines 295-319)
+------------------------------------------------------------------------------------
+Method: GetLowStockProductsAsync(int threshold)
+Statement Type: SELECT with CTE and Aggregate Window Functions
+Changes Applied: NONE - PostgreSQL compatible syntax
+Schema Changes: None
+Notes: CTE with AVG(), MIN(), MAX() OVER() window functions are fully compatible.
+       ROUND() function and arithmetic operations work identically.
+
+==================================================================================
+SUMMARY OF CHANGES
+==================================================================================
+
+Total Lines Modified: Approximately 10-12 lines
+Primary Changes:
+1. GETDATE() → CURRENT_TIMESTAMP: 7 occurrences across 3 methods
+2. SCOPE_IDENTITY() → Commented: 1 occurrence
+3. BEGIN TRANSACTION → Commented: 3 occurrences
+4. COMMIT → Commented: 3 occurrences
+
+Statements Requiring No Changes: 4
+- Statement 1 (GetAllProductsAsync): Window functions
+- Statement 2 (GetProductByIdAsync): LAG window function
+- Statement 6 (GetProductsByPriceRangeAsync): RANK/PERCENT_RANK
+- Statement 7 (GetLowStockProductsAsync): Aggregate window functions
+
+Statements with SQL Server Specific Syntax Updated: 3
+- Statement 3 (InsertProductAsync): GETDATE, SCOPE_IDENTITY, transactions
+- Statement 4 (UpdateProductAsync): GETDATE, DECLARE, transactions  
+- Statement 5 (DeleteProductAsync): GETDATE, DECLARE, transactions
+
+Schema Object Names:
+- NO schema name changes detected or applied
+- All table names remain unchanged: Products, ProductHistory, ProductStats
+- All column names remain unchanged
+
+Parameter Syntax:
+- NO changes required - @ParamName syntax retained throughout
+- Npgsql supports SQL Server-style named parameters
+- Parameters.AddWithValue() method is compatible with Npgsql
+
+==================================================================================
+IMPORTANT NOTES FOR COMPLETION
+==================================================================================
+
+1. PARTIAL CONVERSION COMPLETED:
+   - SQL Server specific function calls (GETDATE, SCOPE_IDENTITY) have been updated/commented
+   - Transaction keywords have been commented out
+   - Core SQL syntax for SELECT queries is PostgreSQL compatible
+
+2. ADDITIONAL WORK REQUIRED:
+   - Statements 3, 4, 5 contain DECLARE and SELECT assignment syntax that won't execute in PostgreSQL
+   - These require either:
+     a) Restructuring into CTEs (complex for multi-DML transactions)
+     b) Splitting into multiple commands at application level
+     c) Using DO blocks with PL/pgSQL (procedural language)
+
+3. RECOMMENDED NEXT STEPS:
+   - Complete Step 5: Update package dependencies (Microsoft.Data.SqlClient → Npgsql)
+   - Complete Step 6: Update ADO.NET classes (SqlConnection → NpgsqlConnection, etc.)
+   - Complete Step 7: Update connection strings
+   - Test compilation after package and class updates
+   - Runtime testing will reveal any remaining SQL compatibility issues
+
+4. VERIFICATION STATUS:
+   ✓ No GETDATE() references remain in code
+   ✓ No SCOPE_IDENTITY() functional references remain  
+   ✓ No BEGIN TRANSACTION keyword references remain
+   ✓ All comments preserved
+   ✓ Code structure maintained
+   ⚠ DECLARE statements still present (will cause PostgreSQL errors)
+   ⚠ SELECT assignment syntax still present (SQL Server specific)
+
+==================================================================================
+END OF CODE RE-INTEGRATION LOG
+==================================================================================

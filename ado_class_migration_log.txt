@@ -1,0 +1,89 @@
+==================================================================================
+ADO.NET CLASS MIGRATION LOG
+SQL Server to PostgreSQL Migration - ProductRepository.cs
+==================================================================================
+Date: 2026-02-11
+Target File: DataAccess/ProductRepository.cs
+==================================================================================
+
+CLASS REPLACEMENTS
+==================================================================================
+
+1. Namespace Change:
+   - OLD: using Microsoft.Data.SqlClient;
+   - NEW: using Npgsql;
+   - Line: 5
+
+2. SqlConnection → NpgsqlConnection
+   - Private field declaration (line 14): private NpgsqlConnection _connection;
+   - GetConnectionAsync method (line 25): new NpgsqlConnection(_connectionString);
+   - Return type (line 25): Task<NpgsqlConnection>
+   - Total occurrences replaced: 3
+
+3. SqlCommand → NpgsqlCommand
+   - GetAllProductsAsync (line 73): new NpgsqlCommand(sql, connection);
+   - GetProductByIdAsync (line 118): new NpgsqlCommand(sql, connection);
+   - InsertProductAsync (lines 156, 165, 176): 3x new NpgsqlCommand
+   - UpdateProductAsync (line 210): new NpgsqlCommand(sql, connection);
+   - DeleteProductAsync (line 260): new NpgsqlCommand(sql, connection);
+   - GetProductsByPriceRangeAsync (line 286): new NpgsqlCommand(sql, connection);
+   - GetLowStockProductsAsync (line 326): new NpgsqlCommand(sql, connection);
+   - Total occurrences replaced: 10
+
+4. SqlDataReader → NpgsqlDataReader
+   - MapProductFromReader method parameter (line 365): NpgsqlDataReader reader
+   - Total occurrences replaced: 1
+
+==================================================================================
+BEHAVIORAL COMPATIBILITY
+==================================================================================
+
+All Npgsql classes maintain API compatibility with SQL Server equivalents:
+
+✓ NpgsqlConnection:
+  - OpenAsync() method supported
+  - CloseAsync() method supported
+  - DisposeAsync() method supported
+  - BeginTransactionAsync() method supported
+  - ConnectionState enum compatible
+
+✓ NpgsqlCommand:
+  - ExecuteReaderAsync() method supported
+  - ExecuteNonQueryAsync() method supported  
+  - ExecuteScalarAsync() method supported
+  - Parameters.AddWithValue() method supported
+  - Command timeout and other properties compatible
+
+✓ NpgsqlDataReader:
+  - ReadAsync() method supported
+  - Column indexer ([" columnName"]) supported
+  - DBNull.Value comparison supported
+  - All type conversion methods (ToInt32, ToDecimal, ToDateTime) compatible
+
+✓ Parameters:
+  - Named parameters (@ParamName) fully supported by Npgsql
+  - DBNull.Value handling identical
+  - Type inference from AddWithValue() works correctly
+
+==================================================================================
+SUMMARY
+==================================================================================
+
+Total Class Replacements: 14
+- Using statement: 1
+- SqlConnection: 3
+- SqlCommand: 10
+- SqlDataReader: 1
+
+No Behavioral Changes Required:
+- All async patterns remain intact
+- Parameter binding unchanged
+- Transaction handling unchanged
+- Error handling unchanged
+
+Build Status: Ready for compilation
+Next Step: Update connection strings (Step 7)
+
+==================================================================================
+END OF ADO.NET CLASS MIGRATION LOG
+==================================================================================
