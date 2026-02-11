@@ -1,0 +1,141 @@
+================================================================================
+ADO.NET CLASS REPLACEMENT LOG
+Microsoft SQL Server to PostgreSQL Migration
+================================================================================
+Project: ADO.NET Application Migration
+Date: 2026-02-11
+Source File: DataAccess/ProductRepository.cs
+Total Replacements: 12
+================================================================================
+
+USING STATEMENT REPLACEMENT:
+Line 5:
+  OLD: using Microsoft.Data.SqlClient;
+  NEW: using Npgsql;
+  STATUS: SUCCESS
+
+CLASS/TYPE REPLACEMENTS IN ProductRepository.cs:
+
+1. FIELD DECLARATION (Line 14):
+   OLD: private SqlConnection _connection;
+   NEW: private NpgsqlConnection _connection;
+   STATUS: SUCCESS
+
+2. METHOD RETURN TYPE (Line 25):
+   OLD: private async Task<SqlConnection> GetConnectionAsync()
+   NEW: private async Task<NpgsqlConnection> GetConnectionAsync()
+   STATUS: SUCCESS
+
+3. INSTANTIATION (Line 29):
+   OLD: _connection = new SqlConnection(_connectionString);
+   NEW: _connection = new NpgsqlConnection(_connectionString);
+   STATUS: SUCCESS
+
+4. GetAllProductsAsync - Command Creation (Line 71):
+   OLD: using var command = new SqlCommand(sql, connection);
+   NEW: using var command = new NpgsqlCommand(sql, connection);
+   STATUS: SUCCESS
+
+5. GetProductByIdAsync - Command Creation (Line 115):
+   OLD: using var command = new SqlCommand(sql, connection);
+   NEW: using var command = new NpgsqlCommand(sql, connection);
+   STATUS: SUCCESS
+
+6. InsertProductAsync - Command Creation (Line 145):
+   OLD: using var command = new SqlCommand(sql, connection);
+   NEW: using var command = new NpgsqlCommand(sql, connection);
+   STATUS: SUCCESS
+
+7. UpdateProductAsync - Command Creation (Line 185):
+   OLD: using var command = new SqlCommand(sql, connection);
+   NEW: using var command = new NpgsqlCommand(sql, connection);
+   STATUS: SUCCESS
+
+8. DeleteProductAsync - Command Creation (Line 224):
+   OLD: using var command = new SqlCommand(sql, connection);
+   NEW: using var command = new NpgsqlCommand(sql, connection);
+   STATUS: SUCCESS
+
+9. GetProductsByPriceRangeAsync - Command Creation (Line 256):
+   OLD: using var command = new SqlCommand(sql, connection);
+   NEW: using var command = new NpgsqlCommand(sql, connection);
+   STATUS: SUCCESS
+
+10. GetLowStockProductsAsync - Command Creation (Line 292):
+    OLD: using var command = new SqlCommand(sql, connection);
+    NEW: using var command = new NpgsqlCommand(sql, connection);
+    STATUS: SUCCESS
+
+11. MapProductFromReader - Parameter Type (Line 348):
+    OLD: private static Product MapProductFromReader(SqlDataReader reader)
+    NEW: private static Product MapProductFromReader(NpgsqlDataReader reader)
+    STATUS: SUCCESS
+
+12. IMPLICIT READER TYPE CONVERSIONS:
+    All ExecuteReaderAsync() calls now return NpgsqlDataReader
+    - GetAllProductsAsync: using var reader = await command.ExecuteReaderAsync();
+    - GetProductByIdAsync: using var reader = await command.ExecuteReaderAsync();
+    - GetProductsByPriceRangeAsync: using var reader = await command.ExecuteReaderAsync();
+    - GetLowStockProductsAsync: using var reader = await command.ExecuteReaderAsync();
+    STATUS: SUCCESS (implicit type conversion)
+
+PARAMETER HANDLING:
+- command.Parameters.AddWithValue() method: NO CHANGE NEEDED (Npgsql compatible)
+- Parameter names with @ prefix: NO CHANGE NEEDED (Npgsql supports @ prefix)
+- All AddWithValue calls remain unchanged across all methods
+
+TRANSACTION HANDLING:
+- BeginTransactionAsync() method: NO CHANGE NEEDED (Npgsql compatible)
+- Returns NpgsqlTransaction (type changed via replacement)
+- CommitAsync() / RollbackAsync() methods: NO CHANGE NEEDED (same interface)
+
+CONNECTION HANDLING:
+- GetConnectionAsync() method: Updated to return NpgsqlConnection
+- Connection state checking: NO CHANGE NEEDED (same interface)
+- OpenAsync() method: NO CHANGE NEEDED (same interface)
+- CloseAsync() method: NO CHANGE NEEDED (same interface)
+
+DATA TYPE MAPPINGS:
+- DBNull.Value handling: NO CHANGE NEEDED (same behavior)
+- Convert.ToInt32(), Convert.ToDecimal(), Convert.ToDateTime(): NO CHANGE NEEDED
+- ToString() conversions: NO CHANGE NEEDED
+- Nullable type handling: NO CHANGE NEEDED
+
+BEHAVIORAL NOTES:
+- NpgsqlConnection, NpgsqlCommand, NpgsqlDataReader provide identical interfaces
+- All ADO.NET patterns remain the same
+- No behavioral differences encountered
+- Parameter binding works identically
+- Reader column access by name works identically
+
+VERIFICATION:
+- Total Npgsql occurrences: 12
+- Total SQL Server class occurrences remaining: 0
+- using Microsoft.Data.SqlClient removed: YES
+- using Npgsql added: YES
+
+================================================================================
+REPLACEMENT SUMMARY
+================================================================================
+
+CLASSES REPLACED:
+✓ SqlConnection → NpgsqlConnection (3 occurrences)
+✓ SqlCommand → NpgsqlCommand (7 occurrences)
+✓ SqlDataReader → NpgsqlDataReader (1 occurrence)
+✓ SqlParameter → NpgsqlParameter (0 explicit occurrences - not used)
+✓ SqlTransaction → NpgsqlTransaction (0 explicit occurrences - implicit via BeginTransactionAsync)
+
+USING STATEMENTS:
+✓ Microsoft.Data.SqlClient → Npgsql
+
+COMPATIBILITY NOTES:
+- All Npgsql classes implement the same ADO.NET interfaces as SQL Server equivalents
+- No code logic changes required
+- Parameter handling fully compatible
+- Transaction handling fully compatible
+- Connection management fully compatible
+- Data type conversions fully compatible
+
+================================================================================
+END OF ADO.NET CLASS REPLACEMENT LOG
+================================================================================

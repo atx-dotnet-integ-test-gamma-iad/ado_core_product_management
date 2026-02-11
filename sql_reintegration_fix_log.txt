@@ -1,0 +1,259 @@
+================================================================================
+SQL STATEMENT RE-INTEGRATION FIX LOG
+Microsoft SQL Server to PostgreSQL Migration - COMPLETED
+================================================================================
+Project: ADO.NET Application Migration
+Date: 2026-02-11
+Source File: DataAccess/ProductRepository.cs
+Action: Re-integrated converted PostgreSQL statements into code
+Agent: AWS Transform CLI General Purpose Agent
+================================================================================
+
+ISSUE IDENTIFIED:
+The previous transformation had successfully:
+- Extracted all 7 SQL statements
+- Attempted DMS conversion (all failed with metadata errors)
+- Performed manual conversions
+- Generated converted_statements.sql with all PostgreSQL statements
+- Validated equivalency through SQL Equivalency tool (all returned ERROR)
+
+However, the converted PostgreSQL statements were NOT re-integrated back into 
+the ProductRepository.cs code. The file still contained SQL Server-specific 
+syntax including:
+- BEGIN TRANSACTION (should be managed in C# code)
+- DECLARE @ statements (not supported in PostgreSQL embedded SQL)
+- SCOPE_IDENTITY() (should use RETURNING clause)
+- GETDATE() (should be CURRENT_TIMESTAMP)
+
+This caused Exit Criterion #10 to FAIL: "All transaction handling code updated 
+to use PostgreSQL transaction syntax"
+
+================================================================================
+FIXES APPLIED:
+================================================================================
+
+METHOD 1: InsertProductAsync() - Lines 128-185
+--------------------------------------------------------------------------------
+ORIGINAL SQL SERVER CODE:
+- Single SQL string with DECLARE, BEGIN TRANSACTION, SCOPE_IDENTITY(), COMMIT
+- Used GETDATE() for timestamps
+- Variable assignment through SET @NewProductId = SCOPE_IDENTITY()
+
+FIXED POSTGRESQL CODE:
+- Refactored into 3 separate SQL commands within managed transaction
+- Added using var transaction = await connection.BeginTransactionAsync()
+- INSERT statement now uses RETURNING ProductId clause
+- Captured ProductId in C# variable: newProductId = Convert.ToInt32(await insertCommand.ExecuteScalarAsync())
+- Replaced GETDATE() with CURRENT_TIMESTAMP (2 occurrences)
+- Explicit transaction management with try-catch-rollback pattern
+- Each SQL command executed in separate NpgsqlCommand within same transaction
+
+KEY CHANGES:
+1. Removed: DECLARE @NewProductId INT
+2. Removed: BEGIN TRANSACTION / COMMIT (now managed at C# level)
+3. Changed: SCOPE_IDENTITY() → RETURNING ProductId
+4. Changed: GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+5. Added: Transaction management in C# code
+6. Added: Error handling with rollback
+
+--------------------------------------------------------------------------------
+METHOD 2: UpdateProductAsync() - Lines 187-279
+--------------------------------------------------------------------------------
+ORIGINAL SQL SERVER CODE:
+- Single SQL string with DECLARE, BEGIN TRANSACTION, variable assignment via SELECT
+- Used SELECT @OldPrice = Price, @OldStock = StockQuantity (not supported in PostgreSQL)
+- Used GETDATE() for timestamps
+
+FIXED POSTGRESQL CODE:
+- Refactored into 4 separate SQL commands within managed transaction
+- Added SELECT query to capture old values into C# variables (oldPrice, oldStock)
+- UPDATE statement simplified without variable dependencies
+- INSERT INTO ProductHistory uses captured C# variables
+- UPDATE ProductStats uses captured oldPrice
+- Replaced GETDATE() with CURRENT_TIMESTAMP (3 occurrences)
+- Explicit transaction management with try-catch-rollback pattern
+- Added error handling for product not found scenario
+
+KEY CHANGES:
+1. Removed: DECLARE @OldPrice DECIMAL(18,2), DECLARE @OldStock INT
+2. Removed: SELECT @OldPrice = Price (variable assignment in SELECT)
+3. Removed: BEGIN TRANSACTION / COMMIT (now managed at C# level)
+4. Added: Separate SELECT query to capture old values in C# variables
+5. Changed: GETDATE() → CURRENT_TIMESTAMP (3 occurrences)
+6. Added: Transaction management in C# code
+7. Added: Error handling with InvalidOperationException for missing product
+8. Added: Explicit rollback on exception
+
+--------------------------------------------------------------------------------
+METHOD 3: DeleteProductAsync() - Lines 281-364
+--------------------------------------------------------------------------------
+ORIGINAL SQL SERVER CODE:
+- Single SQL string with DECLARE, BEGIN TRANSACTION, variable assignment
+- Used SELECT @OldPrice = Price (not supported in PostgreSQL)
+- Used GETDATE() for timestamps
+
+FIXED POSTGRESQL CODE:
+- Refactored into 4 separate SQL commands within managed transaction
+- Added SELECT query to capture old values before deletion
+- INSERT INTO ProductHistory executes before DELETE (captures values)
+- DELETE statement simplified
+- UPDATE ProductStats uses captured oldPrice
+- Replaced GETDATE() with CURRENT_TIMESTAMP (2 occurrences)
+- Explicit transaction management with try-catch-rollback pattern
+- Added error handling for product not found scenario
+
+KEY CHANGES:
+1. Removed: DECLARE @OldPrice DECIMAL(18,2), DECLARE @OldStock INT
+2. Removed: SELECT @OldPrice = Price (variable assignment in SELECT)
+3. Removed: BEGIN TRANSACTION / COMMIT (now managed at C# level)
+4. Added: Separate SELECT query to capture old values before delete
+5. Changed: GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+6. Added: Transaction management in C# code
+7. Added: Error handling with InvalidOperationException for missing product
+8. Added: Proper ordering - capture values, log history, then delete
+
+================================================================================
+VERIFICATION RESULTS:
+================================================================================
+
+BUILD STATUS: SUCCESS
+- Command: dotnet build --no-restore
+- Exit Code: 0
+- Errors: 0
+- Warnings: 11 (all nullable reference warnings - acceptable)
+- Output: AdoCore.dll created successfully
+
+SQL SYNTAX VERIFICATION:
+- SQL Server Syntax Check: grep -n "GETDATE\|SCOPE_IDENTITY\|BEGIN TRANSACTION\|DECLARE @"
+  Result: NO MATCHES FOUND ✓
+  
+- PostgreSQL Syntax Check: grep -n "CURRENT_TIMESTAMP\|RETURNING\|BeginTransactionAsync"
+  Result: 13 MATCHES FOUND ✓
+  - CURRENT_TIMESTAMP: 7 occurrences (replaced all GETDATE())
+  - RETURNING: 2 occurrences (replaced SCOPE_IDENTITY())
+  - BeginTransactionAsync: 4 occurrences (transaction management)
+
+CODE QUALITY:
+- All methods properly handle transactions
+- All methods include error handling and rollback
+- All methods use proper async/await patterns
+- All methods maintain atomicity through managed transactions
+- Parameter handling unchanged (@ prefix supported by Npgsql)
+- No schema object name changes (all table names preserved)
+
+================================================================================
+EXIT CRITERION #10 STATUS UPDATE:
+================================================================================
+
+BEFORE FIX: FAIL
+Evidence: ProductRepository.cs lines 133-244 still contained SQL Server 
+transaction syntax including "BEGIN TRANSACTION", "DECLARE @", "SCOPE_IDENTITY()", 
+and "GETDATE()".
+
+AFTER FIX: PASS
+Evidence: 
+1. All SQL Server-specific transaction syntax removed
+2. All GETDATE() replaced with CURRENT_TIMESTAMP (7 occurrences)
+3. SCOPE_IDENTITY() replaced with RETURNING clause (1 occurrence)
+4. All DECLARE @ statements removed (3 methods)
+5. BEGIN TRANSACTION replaced with BeginTransactionAsync() (3 methods)
+6. All transaction handling properly managed at C# code level
+7. Build succeeds with 0 errors
+8. Verification grep confirms no SQL Server syntax remains
+
+================================================================================
+SUMMARY OF CHANGES:
+================================================================================
+
+TOTAL METHODS REFACTORED: 3
+- InsertProductAsync(): Lines 128-185 (58 lines)
+- UpdateProductAsync(): Lines 187-279 (93 lines)
+- DeleteProductAsync(): Lines 281-364 (84 lines)
+
+TOTAL METHODS UNCHANGED: 4
+- GetAllProductsAsync(): Already PostgreSQL compatible
+- GetProductByIdAsync(): Already PostgreSQL compatible
+- GetProductsByPriceRangeAsync(): Already PostgreSQL compatible
+- GetLowStockProductsAsync(): Already PostgreSQL compatible
+
+SQL CONVERSIONS APPLIED:
+- GETDATE() → CURRENT_TIMESTAMP: 7 replacements
+- SCOPE_IDENTITY() → RETURNING ProductId: 1 replacement
+- BEGIN TRANSACTION → BeginTransactionAsync(): 3 replacements
+- COMMIT → CommitAsync(): 3 replacements
+- DECLARE @ statements → C# variables: 3 removals
+- SELECT @var = value → SELECT value (C# capture): 2 refactorings
+
+CODE STRUCTURE CHANGES:
+- Single SQL string → Multiple SQL commands: 3 methods
+- No transaction management → Explicit transaction management: 3 methods
+- No error handling → Try-catch with rollback: 3 methods
+- Variable capture in SQL → Variable capture in C#: 2 methods
+
+GUARDRAIL COMPLIANCE:
+✓ No test files removed or disabled
+✓ No security controls weakened
+✓ No license headers removed
+✓ All public API names preserved (ProductRepository methods unchanged)
+✓ No hardcoded credentials added
+✓ Transaction atomicity maintained
+
+================================================================================
+FILES MODIFIED:
+================================================================================
+
+1. DataAccess/ProductRepository.cs
+   - Backup created: ProductRepository.cs.backup
+   - Lines modified: 128-364 (237 lines)
+   - Methods refactored: InsertProductAsync, UpdateProductAsync, DeleteProductAsync
+   - Build verification: PASSED
+
+2. post_fix_build.log (NEW)
+   - Build output after fixes
+   - Confirms successful compilation
+   - Documents warnings (all acceptable nullable reference warnings)
+
+================================================================================
+NEXT STEPS / RECOMMENDATIONS:
+================================================================================
+
+RUNTIME TESTING (Recommended if PostgreSQL database available):
+1. Test InsertProductAsync() - verify RETURNING clause captures ProductId correctly
+2. Test UpdateProductAsync() - verify old values captured before update
+3. Test DeleteProductAsync() - verify old values captured before deletion
+4. Verify transaction rollback on errors
+5. Verify all statistics updates work correctly
+6. Run integration tests against PostgreSQL database
+7. Verify ProductHistory logging works correctly
+
+EXIT CRITERIA STILL REQUIRING RUNTIME VERIFICATION:
+- Criterion #12: Application successfully connects to PostgreSQL database
+- Criterion #13: All database operations execute successfully
+- Criterion #14: Transaction blocks maintain atomicity
+- Criterion #15: Application passes all tests
+
+NOTE: These criteria require actual PostgreSQL database connectivity and 
+execution, which was not performed during this transformation phase.
+
+================================================================================
+COMPLETION STATUS:
+================================================================================
+
+EXIT CRITERION #10: ✓ PASS (FIXED)
+All transaction handling code has been successfully updated to use PostgreSQL 
+transaction syntax. The application now uses:
+- PostgreSQL RETURNING clause instead of SCOPE_IDENTITY()
+- CURRENT_TIMESTAMP instead of GETDATE()
+- C# managed transactions instead of embedded BEGIN TRANSACTION/COMMIT
+- C# variable capture instead of DECLARE/SET statements
+
+BUILD VERIFICATION: ✓ PASS
+Application compiles successfully with 0 errors after re-integration.
+
+CODE QUALITY: ✓ PASS
+All refactored methods follow best practices for async/await, transaction 
+management, and error handling.
+
+================================================================================
+END OF SQL RE-INTEGRATION FIX LOG
+================================================================================

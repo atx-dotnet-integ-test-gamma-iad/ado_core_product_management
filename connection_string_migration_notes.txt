@@ -1,0 +1,196 @@
+================================================================================
+CONNECTION STRING MIGRATION NOTES
+Microsoft SQL Server to PostgreSQL
+================================================================================
+Project: ADO.NET Application Migration
+Date: 2026-02-11
+Configuration File: appsettings.json
+Total Connection Strings Updated: 2
+================================================================================
+
+ORIGINAL SQL SERVER CONNECTION STRINGS:
+----------------------------------------
+
+DevConnection (SQL Server):
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+ProdConnection (SQL Server):
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+CONVERTED POSTGRESQL CONNECTION STRINGS:
+-----------------------------------------
+
+DevConnection (PostgreSQL):
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true
+
+ProdConnection (PostgreSQL):
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true
+
+PARAMETER MAPPINGS:
+-------------------
+
+SQL Server → PostgreSQL Conversions:
+
+1. Server Parameter:
+   OLD: Server=localhost
+   NEW: Host=localhost
+   NOTES: PostgreSQL uses "Host" instead of "Server"
+
+2. Port Parameter:
+   OLD: (not specified, defaults to 1433)
+   NEW: Port=5432
+   NOTES: PostgreSQL default port is 5432, explicitly specified
+
+3. Database Parameter:
+   OLD: Database=ProductManagement
+   NEW: Database=ProductManagement
+   NOTES: Database name unchanged, parameter name same
+
+4. Authentication:
+   OLD: Trusted_Connection=True (Windows Integrated Authentication)
+   NEW: Username=postgres;Password=postgres
+   NOTES: PostgreSQL uses username/password authentication
+         Passwords should be secured via environment variables in production
+
+5. MultipleActiveResultSets:
+   OLD: MultipleActiveResultSets=true
+   NEW: (removed)
+   NOTES: PostgreSQL handles multiple result sets differently
+          This parameter is SQL Server specific and not needed
+
+6. TrustServerCertificate:
+   OLD: TrustServerCertificate=True
+   NEW: (removed)
+   NOTES: SSL/TLS handled differently in PostgreSQL
+          Can add SslMode=Require if SSL is needed
+
+7. Connection Pooling:
+   OLD: (not specified, enabled by default)
+   NEW: Pooling=true
+   NOTES: Explicitly enabled for clarity, though it's default behavior
+
+SECURITY CONSIDERATIONS:
+------------------------
+
+1. DEVELOPMENT ENVIRONMENT:
+   - Username: postgres (default PostgreSQL superuser)
+   - Password: postgres (example password in cleartext)
+   - WARNING: These are example credentials for development only
+
+2. PRODUCTION ENVIRONMENT:
+   - Username: postgres (or dedicated application user)
+   - Password: postgres (SHOULD BE CHANGED IN PRODUCTION)
+   - RECOMMENDED: Use environment variables for credentials
+   - RECOMMENDED: Create dedicated database user with limited privileges
+   - RECOMMENDED: Enable SSL/TLS: Add "SslMode=Require"
+
+3. ENVIRONMENT VARIABLE APPROACH (Recommended for Production):
+   Connection string template:
+   Host=localhost;Port=5432;Database=ProductManagement;Username=${PG_USERNAME};Password=${PG_PASSWORD};Pooling=true;SslMode=Require
+
+4. CONNECTION POOLING:
+   - Pooling=true enables connection pooling
+   - Default pool size: typically 20 connections
+   - Can be tuned with: MinPoolSize and MaxPoolSize parameters
+
+ADDITIONAL POSTGRESQL CONNECTION STRING OPTIONS:
+------------------------------------------------
+
+Optional parameters that can be added:
+
+1. SSL/TLS Security:
+   SslMode=Require          - Require SSL connection
+   SslMode=Prefer           - Prefer SSL if available
+   SslMode=Disable          - No SSL (not recommended for production)
+
+2. Connection Timeout:
+   Timeout=30               - Connection timeout in seconds
+
+3. Command Timeout:
+   CommandTimeout=30        - Command execution timeout in seconds
+
+4. Pool Configuration:
+   MinPoolSize=5            - Minimum connections in pool
+   MaxPoolSize=100          - Maximum connections in pool
+
+5. Application Name:
+   ApplicationName=AdoCore  - Identifies connection in PostgreSQL logs
+
+EXAMPLE ENHANCED PRODUCTION CONNECTION STRING:
+-----------------------------------------------
+
+Host=localhost;Port=5432;Database=ProductManagement;Username=adocore_app;Password=${PG_PASSWORD};Pooling=true;MinPoolSize=5;MaxPoolSize=50;SslMode=Require;ApplicationName=AdoCore;Timeout=30
+
+VERIFICATION CHECKLIST:
+-----------------------
+
+✓ Server → Host parameter conversion
+✓ Port 5432 added
+✓ Database name preserved
+✓ Trusted_Connection removed
+✓ Username/Password authentication added
+✓ MultipleActiveResultSets removed
+✓ TrustServerCertificate removed
+✓ Pooling=true explicitly added
+✓ Both DevConnection and ProdConnection updated
+✓ JSON format preserved
+✓ No SQL Server specific parameters remain
+
+TESTING NOTES:
+--------------
+
+Before deployment:
+1. Verify PostgreSQL server is running on localhost:5432
+2. Verify database "ProductManagement" exists
+3. Verify username/password credentials are correct
+4. Test connection from application
+5. Verify connection pooling is working
+6. For production: Implement environment variable credentials
+7. For production: Enable SSL/TLS
+8. For production: Create dedicated application user (not postgres superuser)
+
+POST-MIGRATION RECOMMENDATIONS:
+-------------------------------
+
+1. CREATE DEDICATED USER:
+   -- Execute in PostgreSQL:
+   CREATE USER adocore_app WITH PASSWORD 'secure_password';
+   GRANT CONNECT ON DATABASE ProductManagement TO adocore_app;
+   GRANT USAGE ON SCHEMA public TO adocore_app;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO adocore_app;
+
+2. UPDATE CONNECTION STRING:
+   Replace Username=postgres with Username=adocore_app
+   Use secure password for production
+
+3. ENABLE SSL:
+   Add SslMode=Require to connection string
+   Configure PostgreSQL server for SSL
+
+4. ENVIRONMENT VARIABLES:
+   Set PG_USERNAME and PG_PASSWORD environment variables
+   Update application configuration to read from environment
+
+5. MONITORING:
+   Monitor connection pool usage
+   Monitor query performance
+   Set up PostgreSQL logging
+   Configure application name for easier tracking
+
+================================================================================
+MIGRATION SUMMARY
+================================================================================
+
+CONNECTION STRINGS MIGRATED: 2 (DevConnection, ProdConnection)
+SQL SERVER PARAMETERS REMOVED: 3 (Trusted_Connection, MultipleActiveResultSets, TrustServerCertificate)
+POSTGRESQL PARAMETERS ADDED: 4 (Host, Port, Username, Password, Pooling)
+DATABASE NAME PRESERVED: ProductManagement
+AUTHENTICATION METHOD: Username/Password (PostgreSQL standard)
+CONNECTION POOLING: Enabled (Pooling=true)
+
+CONFIGURATION FILE STATUS: Updated successfully
+BACKUP RECOMMENDED: Store original appsettings.json before deployment
+
+================================================================================
+END OF CONNECTION STRING MIGRATION NOTES
+================================================================================

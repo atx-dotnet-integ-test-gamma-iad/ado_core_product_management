@@ -1,0 +1,523 @@
+================================================================================
+SQL STATEMENT RE-INTEGRATION LOG
+Microsoft SQL Server to PostgreSQL Migration
+================================================================================
+Project: ADO.NET Application Migration
+Date: 2026-02-11
+Source File: DataAccess/ProductRepository.cs
+Total Statements Re-integrated: 7
+================================================================================
+
+--------------------------------------------------------------------------------
+STATEMENT 1: GetAllProductsAsync() - Lines 42-70
+--------------------------------------------------------------------------------
+METHOD: public async Task<List<Product>> GetAllProductsAsync()
+ORIGINAL SQL SERVER STATEMENT:
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+POSTGRESQL STATEMENT:
+(IDENTICAL - NO CHANGES NEEDED)
+PostgreSQL fully supports CTEs, window functions (AVG, COUNT OVER), CASE expressions, ROUND function
+
+CHANGES MADE:
+- NO SQL syntax changes required
+- Statement is already PostgreSQL compatible
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- No parameters in this statement
+
+NOTES:
+- Window functions syntax is identical between SQL Server and PostgreSQL
+- CTE syntax is fully compatible
+- Statement requires no modification
+
+--------------------------------------------------------------------------------
+STATEMENT 2: GetProductByIdAsync() - Lines 86-111
+--------------------------------------------------------------------------------
+METHOD: public async Task<Product> GetProductByIdAsync(int productId)
+ORIGINAL SQL SERVER STATEMENT:
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+POSTGRESQL STATEMENT:
+(IDENTICAL - NO CHANGES NEEDED)
+PostgreSQL fully supports LAG window function, CTEs, CASE expressions
+
+CHANGES MADE:
+- NO SQL syntax changes required
+- Statement is already PostgreSQL compatible
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products, ProductHistory (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- @ProductId parameter retained (Npgsql supports @ prefix)
+- command.Parameters.AddWithValue("@ProductId", productId) works unchanged
+
+NOTES:
+- LAG window function syntax is identical
+- CTE and LEFT JOIN fully compatible
+- Statement requires no modification
+
+--------------------------------------------------------------------------------
+STATEMENT 3: InsertProductAsync() - Lines 128-156
+--------------------------------------------------------------------------------
+METHOD: public async Task<int> InsertProductAsync(Product product)
+ORIGINAL SQL SERVER STATEMENT:
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+POSTGRESQL STATEMENT (Conversion Required):
+-- PostgreSQL does not support SCOPE_IDENTITY() or DECLARE/SET variable syntax in embedded SQL
+-- Must be refactored to use RETURNING clause and separate commands
+
+INSERT INTO Products (Name, Description, Price, StockQuantity)
+VALUES (@Name, @Description, @Price, @StockQuantity)
+RETURNING ProductId;
+
+-- Then use the returned ProductId for subsequent statements:
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);
+
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts + 1,
+    AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+CHANGES MADE (Code-Level Refactoring Required):
+- Removed DECLARE @NewProductId INT (PostgreSQL doesn't support in embedded SQL)
+- Removed BEGIN TRANSACTION / COMMIT (handled at code level with connection.BeginTransactionAsync())
+- Changed SCOPE_IDENTITY() to RETURNING ProductId clause
+- Changed GETDATE() to CURRENT_TIMESTAMP (2 occurrences)
+- Split into 3 separate SQL commands executed within a transaction
+- Capture RETURNING ProductId result in C# code: newProductId = Convert.ToInt32(await insertCommand.ExecuteScalarAsync())
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products, ProductHistory, ProductStats (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- All parameters retain @ prefix: @Name, @Description, @Price, @StockQuantity, @NewProductId
+- command.Parameters.AddWithValue() calls remain unchanged
+
+CODE-LEVEL CHANGES REQUIRED:
+1. Start transaction explicitly: using var transaction = await connection.BeginTransactionAsync()
+2. Execute INSERT with RETURNING and capture result
+3. Use captured ProductId for subsequent INSERT INTO ProductHistory
+4. Execute UPDATE ProductStats
+5. Commit or rollback transaction
+
+NOTES:
+- This statement requires significant code refactoring
+- Cannot be converted as single SQL string
+- Must split into multiple command executions within managed transaction
+- RETURNING clause is PostgreSQL's equivalent to SCOPE_IDENTITY()
+
+--------------------------------------------------------------------------------
+STATEMENT 4: UpdateProductAsync() - Lines 165-199
+--------------------------------------------------------------------------------
+METHOD: public async Task UpdateProductAsync(Product product)
+ORIGINAL SQL SERVER STATEMENT:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+POSTGRESQL STATEMENT (Conversion Required):
+-- PostgreSQL doesn't support variable assignment in SELECT statements in embedded SQL
+-- Must capture old values in C# code before UPDATE or use subqueries
+
+-- Option 1: Capture in C# code first
+SELECT Price, StockQuantity
+FROM Products
+WHERE ProductId = @ProductId;
+-- (capture in C# as oldPrice, oldStock)
+
+UPDATE Products
+SET 
+    Name = @Name,
+    Description = @Description,
+    Price = @Price,
+    StockQuantity = @StockQuantity,
+    ModifiedDate = CURRENT_TIMESTAMP
+WHERE ProductId = @ProductId;
+
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);
+
+UPDATE ProductStats
+SET 
+    AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+CHANGES MADE (Code-Level Refactoring Required):
+- Removed BEGIN TRANSACTION / COMMIT (handled at code level)
+- Removed DECLARE @OldPrice, @OldStock (captured in C# variables)
+- Removed SELECT @Var = Value syntax (not supported in PostgreSQL embedded SQL)
+- Changed GETDATE() to CURRENT_TIMESTAMP (3 occurrences)
+- Split into separate commands: SELECT old values, UPDATE, INSERT history, UPDATE stats
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products, ProductHistory, ProductStats (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- All parameters retain @ prefix
+- Parameters remain unchanged: @ProductId, @Name, @Description, @Price, @StockQuantity
+- Old values passed as additional parameters after capturing
+
+CODE-LEVEL CHANGES REQUIRED:
+1. Start transaction explicitly
+2. Execute SELECT to get old Price and StockQuantity, capture in C# variables
+3. Execute UPDATE Products
+4. Execute INSERT INTO ProductHistory with old and new values
+5. Execute UPDATE ProductStats
+6. Commit or rollback transaction
+
+NOTES:
+- PostgreSQL doesn't support SELECT @var = column syntax
+- Must capture values in application code
+- Requires transaction to ensure atomicity
+- Alternative: Use CTEs with RETURNING clauses (more complex)
+
+--------------------------------------------------------------------------------
+STATEMENT 5: DeleteProductAsync() - Lines 207-244
+--------------------------------------------------------------------------------
+METHOD: public async Task DeleteProductAsync(int productId)
+ORIGINAL SQL SERVER STATEMENT:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+POSTGRESQL STATEMENT (Conversion Required):
+-- Similar to UpdateProductAsync, must capture old values first
+
+SELECT Price, StockQuantity
+FROM Products
+WHERE ProductId = @ProductId;
+-- (capture in C# as oldPrice, oldStock)
+
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);
+
+DELETE FROM Products 
+WHERE ProductId = @ProductId;
+
+UPDATE ProductStats
+SET 
+    TotalProducts = TotalProducts - 1,
+    AveragePrice = CASE 
+        WHEN TotalProducts > 1 
+        THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+        ELSE 0
+    END,
+    LastUpdated = CURRENT_TIMESTAMP
+WHERE StatId = 1;
+
+CHANGES MADE (Code-Level Refactoring Required):
+- Removed BEGIN TRANSACTION / COMMIT (handled at code level)
+- Removed DECLARE @OldPrice, @OldStock (captured in C# variables)
+- Removed SELECT @Var = Value syntax
+- Changed GETDATE() to CURRENT_TIMESTAMP (2 occurrences)
+- Split into separate commands: SELECT old values, INSERT history, DELETE, UPDATE stats
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products, ProductHistory, ProductStats (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- @ProductId parameter retained
+- Old values captured and passed as parameters
+
+CODE-LEVEL CHANGES REQUIRED:
+1. Start transaction explicitly
+2. Execute SELECT to get old Price and StockQuantity
+3. Execute INSERT INTO ProductHistory with old values
+4. Execute DELETE FROM Products
+5. Execute UPDATE ProductStats
+6. Commit or rollback transaction
+
+NOTES:
+- Must capture old values before DELETE
+- PostgreSQL doesn't support variable assignment in embedded SQL
+- Requires managed transaction for atomicity
+- CASE expression for AveragePrice calculation is fully compatible
+
+--------------------------------------------------------------------------------
+STATEMENT 6: GetProductsByPriceRangeAsync() - Lines 251-277
+--------------------------------------------------------------------------------
+METHOD: public async Task<List<Product>> GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
+ORIGINAL SQL SERVER STATEMENT:
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+POSTGRESQL STATEMENT:
+(IDENTICAL - NO CHANGES NEEDED)
+PostgreSQL fully supports RANK(), PERCENT_RANK() window functions, CTEs
+
+CHANGES MADE:
+- NO SQL syntax changes required
+- Statement is already PostgreSQL compatible
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- @MinPrice and @MaxPrice parameters retained
+- command.Parameters.AddWithValue() calls unchanged
+
+NOTES:
+- RANK() and PERCENT_RANK() window functions are identical
+- BETWEEN operator fully compatible
+- Statement requires no modification
+
+--------------------------------------------------------------------------------
+STATEMENT 7: GetLowStockProductsAsync() - Lines 284-317
+--------------------------------------------------------------------------------
+METHOD: public async Task<List<Product>> GetLowStockProductsAsync(int threshold)
+ORIGINAL SQL SERVER STATEMENT:
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+POSTGRESQL STATEMENT:
+(IDENTICAL - NO CHANGES NEEDED)
+PostgreSQL fully supports AVG, MIN, MAX window functions, CTEs, ROUND
+
+CHANGES MADE:
+- NO SQL syntax changes required
+- Statement is already PostgreSQL compatible
+
+SCHEMA OBJECT CHANGES:
+- Tables: Products (unchanged)
+- No schema qualifiers added
+
+PARAMETER HANDLING:
+- @Threshold parameter retained
+- command.Parameters.AddWithValue() call unchanged
+
+NOTES:
+- AVG(), MIN(), MAX() window functions identical
+- ROUND() function works the same
+- Statement requires no modification
+
+================================================================================
+SUMMARY
+================================================================================
+
+TOTAL STATEMENTS: 7
+
+STATEMENTS REQUIRING NO CHANGES (Already PostgreSQL Compatible): 4
+- Statement 1: GetAllProductsAsync() - CTEs, window functions
+- Statement 2: GetProductByIdAsync() - LAG window function
+- Statement 6: GetProductsByPriceRangeAsync() - RANK, PERCENT_RANK
+- Statement 7: GetLowStockProductsAsync() - AVG/MIN/MAX window functions
+
+STATEMENTS REQUIRING SQL SYNTAX CHANGES: 3
+- Statement 3: InsertProductAsync() - SCOPE_IDENTITY() → RETURNING, GETDATE() → CURRENT_TIMESTAMP
+- Statement 4: UpdateProductAsync() - DECLARE/SET removal, GETDATE() → CURRENT_TIMESTAMP
+- Statement 5: DeleteProductAsync() - DECLARE/SET removal, GETDATE() → CURRENT_TIMESTAMP
+
+STATEMENTS REQUIRING CODE-LEVEL REFACTORING: 3
+- Statement 3: InsertProductAsync() - Split into multiple commands, capture RETURNING value
+- Statement 4: UpdateProductAsync() - Capture old values in C# before UPDATE
+- Statement 5: DeleteProductAsync() - Capture old values in C# before DELETE
+
+SCHEMA OBJECT NAME CHANGES: None
+- All table names unchanged: Products, ProductHistory, ProductStats
+- No schema qualifiers added (dbo. or public.)
+
+COMMON CONVERSIONS APPLIED:
+- GETDATE() → CURRENT_TIMESTAMP (7 occurrences across statements 3, 4, 5)
+- SCOPE_IDENTITY() → RETURNING ProductId (statement 3)
+- BEGIN TRANSACTION / COMMIT → Managed transactions in C# code (statements 3, 4, 5)
+- DECLARE / SET variable syntax → C# variable capture (statements 4, 5)
+- SELECT @var = value → SELECT value (capture in C# code) (statements 4, 5)
+
+PARAMETER MARKERS:
+- All parameters retain @ prefix (Npgsql supports this)
+- No conversion to $1, $2 positional parameters needed
+- All command.Parameters.AddWithValue() calls remain unchanged
+
+================================================================================
+IMPLEMENTATION STATUS
+================================================================================
+
+COMPLETED:
+✓ Analyzed all 7 SQL statements
+✓ Identified PostgreSQL compatibility for each statement
+✓ Documented required SQL syntax changes
+✓ Documented required code-level refactoring
+✓ Created comprehensive re-integration log
+
+PENDING (Requires C# Code Changes):
+- Refactor InsertProductAsync() to handle RETURNING clause
+- Refactor UpdateProductAsync() to capture old values before update
+- Refactor DeleteProductAsync() to capture old values before delete
+- Update all SQL strings in ProductRepository.cs with converted statements
+- Test all methods with PostgreSQL database
+
+NOTES:
+- 4 out of 7 statements are already PostgreSQL compatible
+- 3 statements require code refactoring (cannot be simple string replacement)
+- No schema object name changes needed
+- All parameter handling remains compatible
+- Transaction management moves from SQL to C# code level
+
+================================================================================
+END OF SQL RE-INTEGRATION LOG
+================================================================================
