@@ -1,0 +1,355 @@
+================================================================================
+SQL STATEMENT RE-INTEGRATION LOG
+================================================================================
+Migration Project: SQL Server to PostgreSQL - ADO.NET Application
+Re-integration Date: 2026-02-11
+Source File: DataAccess/ProductRepository.cs
+================================================================================
+
+SUMMARY:
+- Total SQL statements re-integrated: 7
+- Statements requiring changes: 3 (InsertProductAsync, UpdateProductAsync, DeleteProductAsync)
+- Statements unchanged (PostgreSQL-compatible): 4 (GetAllProductsAsync, GetProductByIdAsync, GetProductsByPriceRangeAsync, GetLowStockProductsAsync)
+- Global replacements applied:
+  * GETDATE() → CURRENT_TIMESTAMP (7 occurrences)
+  * BEGIN TRANSACTION; → BEGIN; (3 occurrences)
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync
+================================================================================
+Method: GetAllProductsAsync
+Line Range: 38-77
+Status: NO CHANGES NEEDED - PostgreSQL Compatible
+
+Original SQL (SQL Server):
+- CTE with window functions (AVG, COUNT)
+- CASE expressions
+- ROUND function
+- Complex ordering
+
+Converted SQL (PostgreSQL):
+- Identical to original
+- All constructs are PostgreSQL-compatible
+
+Changes Applied: NONE
+Notes: Window functions, CTEs, and CASE expressions work identically in PostgreSQL
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync
+================================================================================
+Method: GetProductByIdAsync
+Line Range: 79-124
+Status: NO CHANGES NEEDED - PostgreSQL Compatible
+
+Original SQL (SQL Server):
+- CTE with LAG window function
+- LEFT JOIN
+- CASE expression with NULL handling
+- Parameter binding (@ProductId)
+
+Converted SQL (PostgreSQL):
+- Identical to original
+- LAG window function is PostgreSQL-compatible
+
+Changes Applied: NONE
+Notes: LAG() window function syntax is identical between SQL Server and PostgreSQL
+
+================================================================================
+STATEMENT 3: InsertProductAsync
+================================================================================
+Method: InsertProductAsync
+Line Range: 126-160
+Status: PARTIALLY UPDATED - Full Refactoring Deferred to Step 6
+
+Original SQL (SQL Server):
+---
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+---
+
+Converted SQL (PostgreSQL):
+---
+DECLARE @NewProductId INT;
+
+BEGIN;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+---
+
+Changes Applied:
+1. BEGIN TRANSACTION; → BEGIN;
+2. GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+
+Pending Changes (Step 6 - ADO.NET Class Updates):
+- Replace SCOPE_IDENTITY() with RETURNING clause
+- Refactor transaction handling to use NpgsqlTransaction in application code
+- Split SQL into separate statements for INSERT, History, and Stats updates
+
+Notes:
+- SCOPE_IDENTITY() is SQL Server-specific and will be replaced with PostgreSQL RETURNING in Step 6
+- Current changes ensure syntax compatibility while maintaining structure for ADO.NET updates
+
+================================================================================
+STATEMENT 4: UpdateProductAsync
+================================================================================
+Method: UpdateProductAsync
+Line Range: 162-195
+Status: PARTIALLY UPDATED - Full Refactoring Deferred to Step 6
+
+Original SQL (SQL Server):
+---
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+---
+
+Converted SQL (PostgreSQL):
+---
+BEGIN;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = CURRENT_TIMESTAMP
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, CURRENT_TIMESTAMP);
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+COMMIT;
+---
+
+Changes Applied:
+1. BEGIN TRANSACTION; → BEGIN;
+2. GETDATE() → CURRENT_TIMESTAMP (3 occurrences)
+
+Pending Changes (Step 6 - ADO.NET Class Updates):
+- Move old value capture to application code before transaction
+- Refactor transaction handling to use NpgsqlTransaction
+
+Notes:
+- Variable assignment within SQL works differently in PostgreSQL
+- Application-level transaction management (Step 6) will handle old value capture
+
+================================================================================
+STATEMENT 5: DeleteProductAsync
+================================================================================
+Method: DeleteProductAsync
+Line Range: 197-234
+Status: PARTIALLY UPDATED - Full Refactoring Deferred to Step 6
+
+Original SQL (SQL Server):
+---
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+---
+
+Converted SQL (PostgreSQL):
+---
+BEGIN;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = CURRENT_TIMESTAMP
+    WHERE StatId = 1;
+COMMIT;
+---
+
+Changes Applied:
+1. BEGIN TRANSACTION; → BEGIN;
+2. GETDATE() → CURRENT_TIMESTAMP (2 occurrences)
+
+Pending Changes (Step 6 - ADO.NET Class Updates):
+- Move old value capture to application code before transaction
+- Refactor transaction handling to use NpgsqlTransaction
+
+Notes:
+- CASE expression in statistics update is PostgreSQL-compatible
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+================================================================================
+Method: GetProductsByPriceRangeAsync
+Line Range: 236-270
+Status: NO CHANGES NEEDED - PostgreSQL Compatible
+
+Original SQL (SQL Server):
+- CTE with window functions (RANK, PERCENT_RANK)
+- BETWEEN operator
+- CASE expression
+- Parameters (@MinPrice, @MaxPrice)
+
+Converted SQL (PostgreSQL):
+- Identical to original
+- All constructs are PostgreSQL-compatible
+
+Changes Applied: NONE
+Notes: RANK() and PERCENT_RANK() window functions work identically in PostgreSQL
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync
+================================================================================
+Method: GetLowStockProductsAsync
+Line Range: 272-310
+Status: NO CHANGES NEEDED - PostgreSQL Compatible
+
+Original SQL (SQL Server):
+- CTE with multiple window functions (AVG, MIN, MAX)
+- CASE expression
+- ROUND function
+- Parameter (@Threshold)
+
+Converted SQL (PostgreSQL):
+- Identical to original
+- All constructs are PostgreSQL-compatible
+
+Changes Applied: NONE
+Notes: All window functions are PostgreSQL-compatible
+
+================================================================================
+RE-INTEGRATION SUMMARY
+================================================================================
+
+Changes Applied in This Step:
+✓ Global replacement: GETDATE() → CURRENT_TIMESTAMP (7 occurrences)
+✓ Global replacement: BEGIN TRANSACTION; → BEGIN; (3 occurrences)
+✓ All SQL statements updated in ProductRepository.cs
+✓ Code structure and async patterns preserved
+✓ Parameter bindings unchanged (compatible with both SQL Server and PostgreSQL)
+
+Deferred to Step 6 (ADO.NET Class Updates):
+- InsertProductAsync: Full refactoring with RETURNING clause
+- UpdateProductAsync: Application-level old value capture
+- DeleteProductAsync: Application-level old value capture
+- All methods: SqlCommand → NpgsqlCommand updates
+- All methods: Transaction handling with NpgsqlTransaction
+
+Schema Object Name Changes:
+- NONE: All table names remain unchanged (Products, ProductHistory, ProductStats)
+- DMS tool did not modify any schema object names
+
+Files Modified:
+- DataAccess/ProductRepository.cs (SQL statements updated)
+- DataAccess/ProductRepository.cs.backup (backup created)
+
+Verification Status:
+✓ All 7 SQL statements reviewed
+✓ 4 statements required no changes (PostgreSQL-compatible)
+✓ 3 statements partially updated (transaction syntax and date functions)
+✓ No compilation errors expected (SqlClient classes still in use until Step 6)
+✓ Ready for Step 5 (NuGet package updates) and Step 6 (ADO.NET class replacements)
+
+================================================================================
+END OF RE-INTEGRATION LOG
+================================================================================
