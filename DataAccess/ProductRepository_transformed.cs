@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
@@ -8,13 +8,13 @@ using AdoCore.Models;
 
 namespace AdoCore.DataAccess
 {
-    public class ProductRepository : IAsyncDisposable
+    public class ProductRepositoryTransformed : IAsyncDisposable
     {
         private readonly string _connectionString;
         private NpgsqlConnection _connection;
         private readonly IConfiguration _configuration;
 
-        public ProductRepository(IConfiguration configuration)
+        public ProductRepositoryTransformed(IConfiguration configuration)
         {
             _configuration = configuration;
             var environment = _configuration["Environment"];
@@ -42,13 +42,13 @@ namespace AdoCore.DataAccess
 
             const string sql = @"
                 WITH ProductStats AS (
-                    SELECT 
+                    SELECT
                         ProductId,
                         AVG(Price) OVER() as AvgPrice,
                         COUNT(*) OVER() as TotalProducts
                     FROM products
                 )
-                SELECT 
+                SELECT
                     p.ProductId,
                     p.Name,
                     p.Description,
@@ -56,7 +56,7 @@ namespace AdoCore.DataAccess
                     p.StockQuantity,
                     p.CreatedDate,
                     p.ModifiedDate,
-                    CASE 
+                    CASE
                         WHEN p.Price > ps.AvgPrice THEN 'Above Average'
                         WHEN p.Price < ps.AvgPrice THEN 'Below Average'
                         ELSE 'Average'
@@ -64,8 +64,8 @@ namespace AdoCore.DataAccess
                     ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
                 FROM products p
                 INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
-                ORDER BY 
-                    CASE 
+                ORDER BY
+                    CASE
                         WHEN p.Price > ps.AvgPrice THEN 1
                         ELSE 2
                     END,
@@ -87,14 +87,14 @@ namespace AdoCore.DataAccess
 
             const string sql = @"
                 WITH ProductHistory AS (
-                    SELECT 
+                    SELECT
                         ProductId,
                         LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
                         LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
                     FROM products
                     WHERE ProductId = @ProductId
                 )
-                SELECT 
+                SELECT
                     p.ProductId,
                     p.Name,
                     p.Description,
@@ -104,8 +104,8 @@ namespace AdoCore.DataAccess
                     p.ModifiedDate,
                     ph.PreviousPrice,
                     ph.PreviousStock,
-                    CASE 
-                        WHEN ph.PreviousPrice IS NOT NULL THEN 
+                    CASE
+                        WHEN ph.PreviousPrice IS NOT NULL THEN
                             ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
                         ELSE NULL
                     END as PriceChangePercentage
@@ -143,7 +143,7 @@ namespace AdoCore.DataAccess
                 ),
                 stats_update AS (
                     UPDATE productstats
-                    SET 
+                    SET
                         TotalProducts = TotalProducts + 1,
                         AveragePrice = (AveragePrice * TotalProducts + (SELECT Price FROM inserted_product)) / (TotalProducts + 1),
                         LastUpdated = CURRENT_TIMESTAMP
@@ -173,7 +173,7 @@ namespace AdoCore.DataAccess
                 ),
                 product_update AS (
                     UPDATE products
-                    SET 
+                    SET
                         Name = @Name,
                         Description = @Description,
                         Price = @Price,
@@ -189,7 +189,7 @@ namespace AdoCore.DataAccess
                     RETURNING 1
                 )
                 UPDATE productstats
-                SET 
+                SET
                     AveragePrice = (AveragePrice * TotalProducts - (SELECT OldPrice FROM old_values) + @Price) / TotalProducts,
                     LastUpdated = CURRENT_TIMESTAMP
                 WHERE StatId = 1";
@@ -221,15 +221,15 @@ namespace AdoCore.DataAccess
                     RETURNING 1
                 ),
                 product_delete AS (
-                    DELETE FROM products 
+                    DELETE FROM products
                     WHERE ProductId = @ProductId
                     RETURNING 1
                 )
                 UPDATE productstats
-                SET 
+                SET
                     TotalProducts = TotalProducts - 1,
-                    AveragePrice = CASE 
-                        WHEN TotalProducts > 1 
+                    AveragePrice = CASE
+                        WHEN TotalProducts > 1
                         THEN (AveragePrice * TotalProducts - (SELECT OldPrice FROM old_values)) / (TotalProducts - 1)
                         ELSE 0
                     END,
@@ -249,16 +249,16 @@ namespace AdoCore.DataAccess
 
             const string sql = @"
                 WITH RankedProducts AS (
-                    SELECT 
+                    SELECT
                         p.*,
                         RANK() OVER (ORDER BY p.Price) as PriceRank,
                         PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
                     FROM products p
                     WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
                 )
-                SELECT 
+                SELECT
                     rp.*,
-                    CASE 
+                    CASE
                         WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
                         WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
                         ELSE 'Premium'
@@ -286,16 +286,16 @@ namespace AdoCore.DataAccess
 
             const string sql = @"
                 WITH StockAnalysis AS (
-                    SELECT 
+                    SELECT
                         p.*,
                         AVG(StockQuantity) OVER() as AvgStock,
                         MIN(StockQuantity) OVER() as MinStock,
                         MAX(StockQuantity) OVER() as MaxStock
                     FROM products p
                 )
-                SELECT 
+                SELECT
                     sa.*,
-                    CASE 
+                    CASE
                         WHEN StockQuantity <= @Threshold THEN 'Critical'
                         WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
                         ELSE 'Adequate'
