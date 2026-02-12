@@ -1,0 +1,171 @@
+===============================================================================
+CONNECTION STRING MAPPING - SQL SERVER TO POSTGRESQL
+===============================================================================
+Migration Date: 2026-02-12
+Application: AdoCore
+Configuration File: appsettings.json
+===============================================================================
+
+===============================================================================
+DEVCONNECTION
+===============================================================================
+
+BEFORE (SQL Server):
+--------------------
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+AFTER (PostgreSQL):
+-------------------
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true;
+
+PARAMETER TRANSFORMATIONS:
+1. Server=localhost  →  Host=localhost
+   - SQL Server uses "Server" parameter
+   - PostgreSQL uses "Host" parameter
+   - Both point to localhost
+
+2. Database=ProductManagement  →  Database=ProductManagement
+   - No change - same parameter name and value in both systems
+
+3. Trusted_Connection=True  →  Username=postgres;Password=postgres
+   - SQL Server uses Windows integrated authentication
+   - PostgreSQL requires explicit username and password
+   - Using default PostgreSQL credentials (should be changed in production)
+
+4. MultipleActiveResultSets=true  →  REMOVED
+   - SQL Server specific parameter
+   - Not applicable to PostgreSQL
+   - PostgreSQL handles multiple result sets differently
+
+5. TrustServerCertificate=True  →  REMOVED
+   - SQL Server specific SSL/TLS parameter
+   - PostgreSQL has different SSL configuration approach
+   - Can be added via SSL Mode parameter if needed
+
+6. NEW: Port=5432
+   - Default PostgreSQL port
+   - Not specified in SQL Server connection (uses default 1433)
+   - Explicitly included for clarity
+
+7. NEW: Pooling=true
+   - Enables connection pooling
+   - Improves performance for database operations
+   - Recommended best practice for PostgreSQL
+
+===============================================================================
+PRODCONNECTION
+===============================================================================
+
+BEFORE (SQL Server):
+--------------------
+Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+AFTER (PostgreSQL):
+-------------------
+Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres;Pooling=true;
+
+PARAMETER TRANSFORMATIONS:
+[Same transformations as DevConnection]
+
+NOTE: Production connection uses the same configuration as Development in this migration.
+In a real production environment, the following should be different:
+- Host: Production database server hostname or IP
+- Username: Dedicated application user with appropriate permissions
+- Password: Strong, unique password (not default)
+- Additional parameters: SSL Mode=Require for encrypted connections
+
+===============================================================================
+POSTGRESQL CONNECTION STRING PARAMETERS
+===============================================================================
+
+Available PostgreSQL Connection Parameters:
+------------------------------------------
+- Host: Database server hostname or IP address
+- Port: Database server port (default: 5432)
+- Database: Database name
+- Username: Database user
+- Password: Database password
+- Pooling: Enable/disable connection pooling (default: true)
+- Minimum Pool Size: Minimum number of connections in pool
+- Maximum Pool Size: Maximum number of connections in pool
+- Connection Lifetime: Maximum connection lifetime in seconds
+- Connection Idle Lifetime: Time before idle connection is closed
+- Timeout: Connection timeout in seconds
+- Command Timeout: Command execution timeout in seconds
+- SSL Mode: SSL/TLS mode (Disable, Allow, Prefer, Require)
+- Trust Server Certificate: Trust server certificate without validation
+- Search Path: Schema search path
+- Application Name: Application identifier for logging
+
+RECOMMENDED PRODUCTION PARAMETERS:
+----------------------------------
+Host=prod-pg-server.example.com;
+Port=5432;
+Database=ProductManagement;
+Username=app_user;
+Password=<strong-password>;
+Pooling=true;
+Minimum Pool Size=5;
+Maximum Pool Size=100;
+SSL Mode=Require;
+Application Name=AdoCore;
+
+===============================================================================
+SECURITY CONSIDERATIONS
+===============================================================================
+
+1. CREDENTIALS IN CONFIGURATION FILE:
+   - Current implementation stores username/password in plain text
+   - NOT RECOMMENDED for production
+   - Consider using:
+     * Environment variables
+     * Azure Key Vault
+     * AWS Secrets Manager
+     * Configuration encryption
+
+2. SSL/TLS ENCRYPTION:
+   - Current configuration does not enforce SSL
+   - Production should use: SSL Mode=Require
+   - Ensure PostgreSQL server has valid SSL certificate
+
+3. DATABASE USER PERMISSIONS:
+   - Use dedicated application user
+   - Grant only required permissions
+   - Follow principle of least privilege
+   - Separate users for different environments
+
+4. CONNECTION POOLING:
+   - Enabled in current configuration
+   - Monitor pool size in production
+   - Adjust min/max pool size based on load
+
+===============================================================================
+TESTING CHECKLIST
+===============================================================================
+
+☐ Verify PostgreSQL server is running on localhost:5432
+☐ Verify database "ProductManagement" exists
+☐ Verify user "postgres" has access to the database
+☐ Test connection from application
+☐ Verify all CRUD operations work correctly
+☐ Test transaction handling
+☐ Verify connection pooling behavior
+☐ Update credentials for production environment
+☐ Configure SSL for production environment
+☐ Update host for production environment
+
+===============================================================================
+ROLLBACK PROCEDURE
+===============================================================================
+
+If rollback to SQL Server is needed:
+1. Restore appsettings.json from appsettings.json.sqlserver.bak
+2. Restore AdoCore.csproj (replace Npgsql with Microsoft.Data.SqlClient)
+3. Restore ProductRepository.cs (replace Npgsql classes with SqlClient classes)
+4. Restore SQL statements (replace PostgreSQL syntax with SQL Server syntax)
+5. Run: dotnet build
+6. Verify application connects to SQL Server
+
+===============================================================================
+END OF CONNECTION STRING MAPPING
+===============================================================================
