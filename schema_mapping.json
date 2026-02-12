@@ -1,0 +1,49 @@
+{
+  "schema_mapping": {
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "schema_changes": "None - All schema object names preserved",
+    "tables": [
+      {
+        "original_name": "Products",
+        "converted_name": "Products",
+        "changed": false,
+        "note": "Table name unchanged"
+      },
+      {
+        "original_name": "ProductHistory",
+        "converted_name": "ProductHistory",
+        "changed": false,
+        "note": "Table name unchanged"
+      },
+      {
+        "original_name": "ProductStats",
+        "converted_name": "ProductStats",
+        "changed": false,
+        "note": "Table name unchanged"
+      }
+    ],
+    "columns": "All column names preserved - no changes required",
+    "data_types_converted": {
+      "INT PRIMARY KEY IDENTITY(1,1)": "SERIAL PRIMARY KEY or INT with SEQUENCE",
+      "NVARCHAR(255)": "VARCHAR(255)",
+      "NVARCHAR(MAX)": "TEXT",
+      "DECIMAL(18,2)": "DECIMAL(18,2) - compatible",
+      "INT": "INT - compatible",
+      "DATETIME": "TIMESTAMP"
+    },
+    "functions_converted": {
+      "GETDATE()": "NOW()",
+      "SCOPE_IDENTITY()": "RETURNING clause",
+      "BEGIN TRANSACTION": "BEGIN",
+      "COMMIT": "COMMIT - compatible"
+    },
+    "notes": [
+      "Per DMS conversion log, no schema object names were modified",
+      "All table names (Products, ProductHistory, ProductStats) remain unchanged",
+      "All column references in queries remain unchanged",
+      "SQL statements updated to use PostgreSQL-compatible syntax only",
+      "Transaction handling refactored to use ADO.NET transaction management instead of embedded SQL strings"
+    ]
+  }
+}
