@@ -1,0 +1,310 @@
+{
+  "migration_report_metadata": {
+    "report_title": "ADO.NET SQL Server to PostgreSQL Migration - Final Report",
+    "migration_date": "2026-02-12",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "application_type": "ADO.NET with Npgsql",
+    "transformation_id": "20260212_063356_c4012b6a"
+  },
+  "sql_statement_processing_summary": {
+    "total_statements_processed": 7,
+    "statements_from_repository": "ProductRepository.cs",
+    "dms_tool_conversion_statistics": {
+      "statements_successfully_converted_by_dms": 0,
+      "statements_requiring_manual_intervention": 7,
+      "dms_tool_success_rate_percentage": 0,
+      "manual_conversion_rate_percentage": 100
+    },
+    "equivalency_validation_statistics": {
+      "statements_validated_as_equivalent": 0,
+      "statements_validated_as_non_equivalent": 0,
+      "statements_with_equivalency_errors": 7,
+      "equivalency_tool_success_rate_percentage": 0,
+      "equivalency_validation_note": "All 7 statement pairs tested through SQL Equivalency tool. All returned ERROR status with 'uniqueID' error. No agent judgment was used."
+    }
+  },
+  "detailed_statement_conversion_results": [
+    {
+      "statement_number": 1,
+      "source_method": "GetAllProductsAsync",
+      "statement_type": "SELECT with CTE and Window Functions",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "LOW",
+      "changes_applied": [
+        "Added semicolon terminator",
+        "Window functions (AVG OVER, COUNT OVER) already PostgreSQL compatible"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    },
+    {
+      "statement_number": 2,
+      "source_method": "GetProductByIdAsync",
+      "statement_type": "SELECT with CTE and LAG Window Function",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "LOW",
+      "changes_applied": [
+        "Added semicolon terminator",
+        "LAG window function already PostgreSQL compatible"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    },
+    {
+      "statement_number": 3,
+      "source_method": "InsertProductAsync",
+      "statement_type": "Multi-statement Transaction (INSERT with History and Stats)",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "HIGH",
+      "changes_applied": [
+        "Removed T-SQL DECLARE statement",
+        "Removed BEGIN TRANSACTION/COMMIT (moved to C# NpgsqlTransaction)",
+        "Replaced SCOPE_IDENTITY() with RETURNING ProductId clause",
+        "Replaced GETDATE() with CURRENT_TIMESTAMP",
+        "Split into 3 separate SQL statements within C# transaction",
+        "Added proper try/catch with rollback"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    },
+    {
+      "statement_number": 4,
+      "source_method": "UpdateProductAsync",
+      "statement_type": "Multi-statement Transaction (UPDATE with History and Stats)",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "HIGH",
+      "changes_applied": [
+        "Removed BEGIN TRANSACTION/COMMIT (moved to C# NpgsqlTransaction)",
+        "Removed T-SQL DECLARE statements (captured in C# variables)",
+        "Replaced GETDATE() with CURRENT_TIMESTAMP",
+        "Split into 4 separate operations within transaction",
+        "Added proper error handling"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    },
+    {
+      "statement_number": 5,
+      "source_method": "DeleteProductAsync",
+      "statement_type": "Multi-statement Transaction (DELETE with History and Stats)",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "HIGH",
+      "changes_applied": [
+        "Removed BEGIN TRANSACTION/COMMIT (moved to C# NpgsqlTransaction)",
+        "Removed T-SQL DECLARE statements (captured in C# variables)",
+        "Replaced GETDATE() with CURRENT_TIMESTAMP",
+        "Split into 4 separate operations within transaction",
+        "Added proper error handling"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    },
+    {
+      "statement_number": 6,
+      "source_method": "GetProductsByPriceRangeAsync",
+      "statement_type": "SELECT with CTE, RANK and PERCENT_RANK Window Functions",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "LOW",
+      "changes_applied": [
+        "Added semicolon terminator",
+        "RANK() and PERCENT_RANK() window functions already PostgreSQL compatible"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    },
+    {
+      "statement_number": 7,
+      "source_method": "GetLowStockProductsAsync",
+      "statement_type": "SELECT with CTE and Multiple Window Functions",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_tool_status": "FAILED - Metadata model creation error",
+      "conversion_complexity": "LOW",
+      "changes_applied": [
+        "Added semicolon terminator",
+        "Window functions (AVG, MIN, MAX) already PostgreSQL compatible"
+      ],
+      "equivalency_status": "ERROR",
+      "requires_manual_review": true
+    }
+  ],
+  "transformation_artifacts_created": [
+    {
+      "artifact_name": "extracted_statements.sql",
+      "description": "Catalog of all 7 SQL statements extracted from ProductRepository.cs",
+      "file_size_bytes": 8874,
+      "line_count": 245,
+      "location": "/sourceCode/extracted_statements.sql"
+    },
+    {
+      "artifact_name": "converted_statements.sql",
+      "description": "All 7 SQL statements converted to PostgreSQL syntax",
+      "file_size_bytes": 10163,
+      "line_count": null,
+      "location": "/sourceCode/converted_statements.sql"
+    },
+    {
+      "artifact_name": "dms_conversion_log.json",
+      "description": "Detailed log of all DMS tool conversion attempts and manual conversions",
+      "file_size_bytes": 16965,
+      "line_count": null,
+      "location": "/sourceCode/dms_conversion_log.json"
+    },
+    {
+      "artifact_name": "sql_equivalency_validation_report.json",
+      "description": "Comprehensive equivalency validation report for all 7 statement pairs",
+      "file_size_bytes": null,
+      "line_count": null,
+      "location": "/sourceCode/sql_equivalency_validation_report.json"
+    },
+    {
+      "artifact_name": "01_InitialSetup_PostgreSQL.sql",
+      "description": "Converted PostgreSQL database initialization script",
+      "file_size_bytes": 13685,
+      "line_count": 331,
+      "location": "/sourceCode/Database/Scripts/01_InitialSetup_PostgreSQL.sql"
+    },
+    {
+      "artifact_name": "ProductRepository.cs (modified)",
+      "description": "Repository class with all SQL statements converted to PostgreSQL",
+      "modification_stats": "480 insertions, 371 deletions",
+      "location": "/sourceCode/DataAccess/ProductRepository.cs"
+    }
+  ],
+  "schema_object_name_changes": {
+    "table_name_changes": "NONE - All table names remain the same",
+    "column_name_changes": "NONE - All column names remain the same",
+    "schema_prefix_changes": "NONE - Using default public schema",
+    "note": "DMS tool did not change any schema object names. Manual conversions maintained original naming."
+  },
+  "application_compilation_status": {
+    "build_successful": true,
+    "build_exit_code": 0,
+    "build_errors": 0,
+    "build_warnings": 10,
+    "warnings_note": "All warnings are pre-existing nullable reference warnings, not related to migration",
+    "output_dll": "/sourceCode/bin/Debug/net9.0/AdoCore.dll",
+    "build_timestamp": "2026-02-12"
+  },
+  "critical_transformations_applied": {
+    "transaction_management": {
+      "before": "T-SQL BEGIN TRANSACTION/COMMIT in SQL strings",
+      "after": "C# managed NpgsqlTransaction with async/await",
+      "files_affected": ["ProductRepository.cs"]
+    },
+    "identity_retrieval": {
+      "before": "SCOPE_IDENTITY() function",
+      "after": "INSERT...RETURNING ProductId clause",
+      "files_affected": ["ProductRepository.cs - InsertProductAsync"]
+    },
+    "datetime_functions": {
+      "before": "GETDATE()",
+      "after": "CURRENT_TIMESTAMP",
+      "occurrences": "Multiple across all transaction methods"
+    },
+    "data_types": {
+      "before": "NVARCHAR, DATETIME, BIT, IDENTITY",
+      "after": "VARCHAR, TIMESTAMP, BOOLEAN, SERIAL",
+      "files_affected": ["01_InitialSetup_PostgreSQL.sql"]
+    },
+    "stored_procedures": {
+      "before": "T-SQL stored procedures",
+      "after": "PostgreSQL functions with LANGUAGE plpgsql",
+      "count": 5,
+      "files_affected": ["01_InitialSetup_PostgreSQL.sql"]
+    },
+    "triggers": {
+      "before": "T-SQL trigger syntax",
+      "after": "PostgreSQL trigger function pattern",
+      "count": 1,
+      "files_affected": ["01_InitialSetup_PostgreSQL.sql"]
+    }
+  },
+  "issues_and_warnings": [
+    {
+      "severity": "HIGH",
+      "category": "DMS Tool Failure",
+      "description": "All 7 statements failed DMS MCP tool conversion with metadata model creation error",
+      "impact": "Required 100% manual conversion instead of automated DMS conversion",
+      "resolution": "Applied manual conversions following SQL Server to PostgreSQL best practices",
+      "documented_in": "dms_conversion_log.json"
+    },
+    {
+      "severity": "HIGH",
+      "category": "SQL Equivalency Tool Failure",
+      "description": "All 7 statement pairs returned ERROR from SQL Equivalency tool with 'uniqueID' error",
+      "impact": "Unable to automatically validate functional equivalency of converted statements",
+      "resolution": "Marked all as ERROR per transformation definition. Manual testing required.",
+      "documented_in": "sql_equivalency_validation_report.json"
+    },
+    {
+      "severity": "LOW",
+      "category": "Build Warnings",
+      "description": "10 nullable reference warnings in build output",
+      "impact": "None - Pre-existing warnings, not related to migration",
+      "resolution": "No action required - warnings existed before migration"
+    }
+  ],
+  "manual_review_requirements": {
+    "statements_requiring_review": 7,
+    "review_reasons": [
+      "All statements have ERROR equivalency status from the tool",
+      "DMS tool failed for all statements",
+      "Manual conversions need runtime validation",
+      "Transaction logic restructured from SQL to C#",
+      "SCOPE_IDENTITY pattern changed to RETURNING clause"
+    ],
+    "recommended_testing": [
+      "Execute GetAllProductsAsync and verify window function results",
+      "Execute GetProductByIdAsync and verify LAG function results",
+      "Execute InsertProductAsync and verify RETURNING clause returns correct ID",
+      "Execute UpdateProductAsync and verify old values captured correctly",
+      "Execute DeleteProductAsync and verify deletion and history logging",
+      "Execute GetProductsByPriceRangeAsync and verify RANK/PERCENT_RANK results",
+      "Execute GetLowStockProductsAsync and verify window function calculations",
+      "Test all transaction rollback scenarios",
+      "Verify ProductHistory logging for all operations",
+      "Verify ProductStats updates correctly"
+    ]
+  },
+  "transformation_compliance": {
+    "all_statements_extracted": true,
+    "all_statements_passed_through_dms": true,
+    "dms_success_rate": "0% (7/7 failed)",
+    "all_statements_tested_for_equivalency": true,
+    "equivalency_tool_used_for_all": true,
+    "no_agent_judgment_for_equivalency": true,
+    "all_statements_re_integrated": true,
+    "application_compiles": true,
+    "schema_script_converted": true,
+    "comprehensive_report_generated": true
+  },
+  "next_steps_and_recommendations": [
+    "Deploy PostgreSQL database using 01_InitialSetup_PostgreSQL.sql",
+    "Update connection strings in appsettings.json to point to PostgreSQL",
+    "Perform comprehensive runtime testing of all repository methods",
+    "Validate transaction rollback behavior",
+    "Test error handling in Update and Delete methods",
+    "Verify window function calculations match expected results",
+    "Load test with realistic data volumes",
+    "Monitor PostgreSQL query performance",
+    "Consider adding database integration tests",
+    "Review and address nullable reference warnings if needed"
+  ],
+  "conclusion": {
+    "migration_status": "COMPLETED with manual review required",
+    "code_compilation": "SUCCESS",
+    "statements_migrated": "7 out of 7 (100%)",
+    "dms_tool_reliability": "0% - systematic failure",
+    "equivalency_tool_reliability": "0% - systematic failure",
+    "manual_conversion_quality": "HIGH - followed PostgreSQL best practices",
+    "production_readiness": "REQUIRES TESTING - All statements need runtime validation due to tool failures",
+    "overall_assessment": "Migration structurally complete. Application compiles successfully. All SQL statements converted to PostgreSQL syntax. Due to systematic DMS and equivalency tool failures, comprehensive runtime testing is required before production deployment."
+  }
+}
