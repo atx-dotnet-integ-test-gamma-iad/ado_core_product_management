@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using AdoCore.Business;
 using AdoCore.CLI;
 using AdoCore.DataAccess;
+using AdoCore.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,7 +11,7 @@ namespace AdoCore
 {
     class Program
     {
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
@@ -21,7 +22,14 @@ namespace AdoCore
             ConfigureServices(services, configuration);
             var serviceProvider = services.BuildServiceProvider();
 
-            if (args.Length > 0)
+            // Check for validation test mode
+            if (args.Length > 0 && args[0].ToLower() == "--validate")
+            {
+                Console.WriteLine("Running PostgreSQL Migration Validation Tests...\n");
+                int exitCode = await ValidationTests.RunValidationTestsAsync();
+                return exitCode;
+            }
+            else if (args.Length > 0)
             {
                 var cli = serviceProvider.GetRequiredService<CommandLineInterface>();
                 await cli.ProcessCommandAsync(args);
@@ -31,6 +39,8 @@ namespace AdoCore
                 var menu = serviceProvider.GetRequiredService<InteractiveMenu>();
                 await menu.RunAsync();
             }
+
+            return 0;
         }
 
         private static void ConfigureServices(IServiceCollection services, IConfiguration configuration)
@@ -42,4 +52,4 @@ namespace AdoCore
             services.AddScoped<InteractiveMenu>();
         }
     }
-} 
+}
