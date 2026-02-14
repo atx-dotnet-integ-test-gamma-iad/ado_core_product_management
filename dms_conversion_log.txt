@@ -1,0 +1,370 @@
+================================================================================
+DMS MCP TOOL CONVERSION LOG
+================================================================================
+Purpose: Document all DMS tool invocations and conversion results
+Date: 2026-02-14
+Total Statements Processed: 7
+Successful Conversions: 0
+Failed Conversions: 7 (All with metadata model creation error)
+Manual Conversions Required: 7
+================================================================================
+
+================================================================================
+STATEMENT 1: GetAllProductsAsync
+================================================================================
+Original SQL Server Statement:
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:50:08.021895
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:50:12.795672"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- Window functions (AVG OVER, COUNT OVER) are compatible with PostgreSQL
+- ROUND function syntax is compatible
+- No schema name changes needed
+- Statement is already PostgreSQL-compatible
+
+================================================================================
+STATEMENT 2: GetProductByIdAsync
+================================================================================
+Original SQL Server Statement:
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:50:23.223042
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:50:27.352228"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- LAG window function is compatible with PostgreSQL
+- ROUND function syntax is compatible
+- No schema name changes needed
+- Statement is already PostgreSQL-compatible
+
+================================================================================
+STATEMENT 3: InsertProductAsync
+================================================================================
+Original SQL Server Statement:
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:50:37.566516
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:50:41.653692"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- DECLARE variable → Not needed in PostgreSQL for this context, use RETURNING clause
+- BEGIN TRANSACTION → PostgreSQL transaction handled at connection level
+- SCOPE_IDENTITY() → Use RETURNING clause in INSERT statement
+- GETDATE() → Convert to NOW() or CURRENT_TIMESTAMP
+- Transaction will be managed at C# code level, not in SQL
+
+================================================================================
+STATEMENT 4: UpdateProductAsync
+================================================================================
+Original SQL Server Statement:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:50:53.181464
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:50:57.249355"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- BEGIN TRANSACTION/COMMIT → PostgreSQL transaction handled at connection level
+- DECLARE variables → Convert to CTEs or separate queries
+- GETDATE() → Convert to NOW() or CURRENT_TIMESTAMP
+- Need to break into multiple statements with transaction managed in C# code
+
+================================================================================
+STATEMENT 5: DeleteProductAsync
+================================================================================
+Original SQL Server Statement:
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:51:06.425771
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:51:10.910872"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- BEGIN TRANSACTION/COMMIT → PostgreSQL transaction handled at connection level
+- DECLARE variables → Convert to CTEs or separate queries
+- GETDATE() → Convert to NOW() or CURRENT_TIMESTAMP
+- Need to break into multiple statements with transaction managed in C# code
+
+================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+================================================================================
+Original SQL Server Statement:
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:51:19.969503
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:51:24.404603"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- RANK() OVER and PERCENT_RANK() OVER are compatible with PostgreSQL
+- BETWEEN syntax is compatible
+- No schema name changes needed
+- Statement is already PostgreSQL-compatible
+
+================================================================================
+STATEMENT 7: GetLowStockProductsAsync
+================================================================================
+Original SQL Server Statement:
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+DMS Tool Invocation:
+- Timestamp: 2026-02-14T19:51:33.821723
+- Schema: public
+- Status: error
+
+DMS Tool Output:
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-14T19:51:37.976362"
+}
+
+Conversion Method: MANUAL_AFTER_DMS_FAILURE
+Reason: DMS tool failed with metadata model creation error
+
+Manual Conversion Notes:
+- Window functions (AVG, MIN, MAX OVER) are compatible with PostgreSQL
+- ROUND function syntax is compatible
+- No schema name changes needed
+- Statement is already PostgreSQL-compatible
+
+================================================================================
+SUMMARY
+================================================================================
+All 7 SQL statements failed DMS conversion due to metadata model creation error.
+Manual conversion approach applied based on PostgreSQL syntax:
+- Statements 1, 2, 6, 7: Already PostgreSQL-compatible (CTEs, window functions)
+- Statement 3 (INSERT): Requires RETURNING clause instead of SCOPE_IDENTITY()
+- Statements 4, 5 (UPDATE, DELETE): Require transaction management in C# code
+- All GETDATE() functions replaced with NOW() or CURRENT_TIMESTAMP
+- All BEGIN TRANSACTION/COMMIT blocks handled at C# connection level
+
+================================================================================
+END OF DMS CONVERSION LOG
+================================================================================
