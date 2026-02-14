@@ -1,13 +1,13 @@
-# ADO.NET Core SQL Server Data Management Application
+# ADO.NET Core PostgreSQL Data Management Application
 
-This is a .NET Core application demonstrating modern ADO.NET integration with SQL Server, following best practices for data access and application architecture.
+This is a .NET Core application demonstrating modern ADO.NET integration with PostgreSQL, following best practices for data access and application architecture.
 
 ## Prerequisites
 
 - Visual Studio 2022 or later
 - .NET 9.0 SDK or later
-- SQL Server 2019 or later (Developer Edition is free and recommended for development)
-- SQL Server Management Studio (SSMS) or Azure Data Studio
+- PostgreSQL 14 or later (PostgreSQL is free and open-source)
+- PostgreSQL client tools (pgAdmin, psql, or Azure Data Studio with PostgreSQL extension)
 
 ## Project Structure
 
@@ -41,22 +41,23 @@ AdoCore/
    - Select "Restore NuGet Packages"
 
 3. **Database Setup**:
-   - Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   - Connect to your local SQL Server instance
-   - Open and run the script: `Database/Scripts/01_InitialSetup.sql`
+   - Open pgAdmin, psql, or Azure Data Studio with PostgreSQL extension
+   - Connect to your local PostgreSQL instance
+   - Create the database and run setup scripts if available
 
 4. **Update Connection String**:
    - In Solution Explorer, open `appsettings.json`
-   - Update the connection string if needed:
+   - The connection string is already configured for PostgreSQL:
    ```json
    {
      "ConnectionStrings": {
-       "DevConnection": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
-       "ProdConnection": "your-production-connection-string"
+       "DevConnection": "Host=localhost;Database=postgres;Username=postgres;Password=postgres",
+       "ProdConnection": "Host=localhost;Database=postgres;Username=postgres;Password=postgres"
      },
      "Environment": "Development"
    }
    ```
+   - Update host, database, username, and password as needed for your PostgreSQL instance
 
 5. **Run the Application**:
    - Press F5 to run in debug mode
@@ -70,26 +71,37 @@ AdoCore/
    # Verify .NET 9.0 SDK is installed
    dotnet --version
    # Should show 9.0.x
+   
+   # Verify PostgreSQL is running
+   psql --version
+   # Should show PostgreSQL version
    ```
 
 2. **Database Setup**:
    ```bash
-   # Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   # Connect to your local SQL Server instance
-   # Open and run the script: Database/Scripts/01_InitialSetup.sql
+   # Connect to PostgreSQL using psql
+   psql -h localhost -U postgres
+   
+   # Create database (if needed)
+   CREATE DATABASE productmanagement;
+   
+   # Connect to the database
+   \c productmanagement
+   
+   # Run setup scripts if available
    ```
 
 3. **Project Setup**:
    ```bash
    # Navigate to project directory
-   cd D:\ado_core
+   cd <your-project-path>
 
    # Restore NuGet packages
    dotnet restore
 
    # Update connection string in appsettings.json if needed
-   # Current connection string is:
-   # "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+   # Current connection string format:
+   # "Host=localhost;Database=postgres;Username=postgres;Password=postgres"
    ```
 
 4. **Build and Run**:
@@ -154,6 +166,39 @@ dotnet run -- delete 1
 dotnet run -- stock 1 20
 ```
 
+## PostgreSQL Connection String Format
+
+The application uses Npgsql for PostgreSQL connectivity. Connection string format:
+
+```
+Host=<hostname>;Port=<port>;Database=<database>;Username=<username>;Password=<password>
+```
+
+**Connection String Parameters:**
+- `Host` or `Server`: PostgreSQL server hostname (e.g., localhost)
+- `Port`: PostgreSQL server port (default: 5432, can be omitted if using default)
+- `Database`: Database name
+- `Username` or `User Id`: PostgreSQL username
+- `Password`: PostgreSQL password
+
+**Optional Parameters:**
+- `Timeout=<seconds>`: Connection timeout (default: 15)
+- `Pooling=true|false`: Enable/disable connection pooling (default: true)
+- `SSL Mode=<mode>`: SSL/TLS mode (Disable, Allow, Prefer, Require)
+- `SearchPath=<schema>`: Default schema search path
+
+**Example Connection Strings:**
+```
+# Development (local)
+Host=localhost;Database=productmanagement;Username=postgres;Password=postgres
+
+# Production (with SSL)
+Host=prod-server.example.com;Port=5432;Database=productmanagement;Username=app_user;Password=secure_password;SSL Mode=Require
+
+# With connection pooling settings
+Host=localhost;Database=productmanagement;Username=postgres;Password=postgres;Pooling=true;Minimum Pool Size=5;Maximum Pool Size=100
+```
+
 ## Key Features
 
 - Modern async/await patterns for all database operations
@@ -163,6 +208,7 @@ dotnet run -- stock 1 20
 - Parameterized queries for security
 - Connection pooling and management
 - Error handling and logging
+- PostgreSQL-specific features (RETURNING clause, NOW() function)
 
 ## Testing the Application
 
@@ -184,18 +230,35 @@ dotnet run -- stock 1 20
 ## Troubleshooting
 
 If you encounter errors:
-1. Verify SQL Server is running (check Services)
-2. Confirm your connection string matches your SQL Server instance name
-3. Ensure the `ProductManagement` database was created successfully
-4. Check you have appropriate permissions to access the database
+1. Verify PostgreSQL is running:
+   ```bash
+   # On Linux/Mac
+   systemctl status postgresql
+   # Or
+   brew services list | grep postgresql
+   
+   # On Windows (check Services or use)
+   pg_isready
+   ```
+2. Confirm your connection string matches your PostgreSQL instance configuration
+3. Ensure the database was created successfully
+4. Check you have appropriate permissions to access the database:
+   ```sql
+   -- In psql, check permissions
+   \du
+   ```
 5. Make sure all required NuGet packages are restored:
    ```bash
    dotnet restore
    ```
+6. Test PostgreSQL connection independently:
+   ```bash
+   psql -h localhost -U postgres -d productmanagement
+   ```
 
 ## Required NuGet Packages
 
-- Microsoft.Data.SqlClient
+- Npgsql (PostgreSQL .NET data provider)
 - Microsoft.Extensions.Configuration
 - Microsoft.Extensions.Configuration.Json
 - Microsoft.Extensions.DependencyInjection
@@ -206,7 +269,9 @@ If you encounter errors:
 - Connection strings are stored securely in configuration
 - Proper error handling and logging is implemented
 - All database resources are properly disposed using async patterns
-- TrustServerCertificate option for development environments
+- Consider using SSL/TLS for production connections (`SSL Mode=Require`)
+- Never commit connection strings with production credentials to version control
+- Use environment variables or secure vaults for production credentials
 
 ## Best Practices Implemented
 
@@ -215,12 +280,70 @@ If you encounter errors:
 - Transaction management with async support
 - Error handling and logging
 - Configuration management using .NET Core's IConfiguration
-- Security best practices
+- Security best practices (parameterized queries)
 - Dependency injection
 - Separation of concerns (layered architecture)
+- PostgreSQL-specific optimizations (RETURNING clause for INSERT operations)
+
+## Migration from SQL Server
+
+This application has been migrated from SQL Server to PostgreSQL. Key changes include:
+
+1. **Package Changes:**
+   - Replaced `Microsoft.Data.SqlClient` with `Npgsql`
+
+2. **Class Replacements:**
+   - `SqlConnection` → `NpgsqlConnection`
+   - `SqlCommand` → `NpgsqlCommand`
+   - `SqlDataReader` → `NpgsqlDataReader`
+
+3. **SQL Syntax Updates:**
+   - `SCOPE_IDENTITY()` → `RETURNING` clause
+   - `GETDATE()` → `NOW()`
+   - SQL Server transactions → PostgreSQL transaction handling
+
+4. **Connection String Format:**
+   - Changed from SQL Server format to PostgreSQL format
+   - Updated parameters (Server→Host, Trusted_Connection→Username/Password)
 
 ## Deployment to AWS EC2
 
-1. Ensure SQL Server is installed and configured on the EC2 instance
+1. Install PostgreSQL on the EC2 instance or use Amazon RDS for PostgreSQL
 2. Update the production connection string in appsettings.json
-3. Deploy the application using Visual Studio's Publish feature 
+3. Configure security groups to allow PostgreSQL connections (port 5432)
+4. Deploy the application using Visual Studio's Publish feature or CI/CD pipeline
+5. Consider using AWS Secrets Manager for connection string storage
+6. Enable SSL/TLS for production database connections
+
+## Useful PostgreSQL Commands
+
+```bash
+# Connect to PostgreSQL
+psql -h localhost -U postgres
+
+# List databases
+\l
+
+# Connect to a database
+\c productmanagement
+
+# List tables
+\dt
+
+# Describe table structure
+\d products
+
+# Run SQL file
+\i /path/to/script.sql
+
+# Exit psql
+\q
+```
+
+## PostgreSQL Client Tools
+
+- **pgAdmin**: Full-featured GUI for PostgreSQL administration
+- **psql**: Command-line interface (included with PostgreSQL installation)
+- **Azure Data Studio**: Microsoft's cross-platform database tool with PostgreSQL extension
+- **DBeaver**: Universal database tool with PostgreSQL support
+- **DataGrip**: JetBrains' database IDE with excellent PostgreSQL support
