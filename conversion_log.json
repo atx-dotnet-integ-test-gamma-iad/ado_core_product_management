@@ -1,0 +1,150 @@
+{
+  "conversion_summary": {
+    "total_statements": 7,
+    "dms_successful": 0,
+    "manual_after_dms_failure": 7,
+    "conversion_date": "2026-02-14T07:49:00Z"
+  },
+  "statements": [
+    {
+      "statement_number": 1,
+      "method_name": "GetAllProductsAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:48:20.976300",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:48:23.473551",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "Window functions (AVG, COUNT OVER) are already compatible with PostgreSQL. ROUND function and CASE expressions work identically. No changes needed except ensuring @ parameters work with Npgsql."
+    },
+    {
+      "statement_number": 2,
+      "method_name": "GetProductByIdAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:48:35.772257",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:48:37.936793",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "LAG window function is compatible with PostgreSQL. CTE syntax identical. Parameters (@ProductId) remain compatible with Npgsql."
+    },
+    {
+      "statement_number": 3,
+      "method_name": "InsertProductAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:48:50.044875",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:48:52.148733",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "Major changes: (1) Removed DECLARE - not needed in PostgreSQL with CTE approach, (2) Removed BEGIN TRANSACTION/COMMIT - handled at ADO.NET level, (3) Converted SCOPE_IDENTITY() to RETURNING clause, (4) Converted GETDATE() to NOW(), (5) Used WITH CTEs to chain operations and return ProductId."
+    },
+    {
+      "statement_number": 4,
+      "method_name": "UpdateProductAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:49:03.187072",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:49:05.377548",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "Changes: (1) Removed BEGIN TRANSACTION/COMMIT, (2) Removed DECLARE statements - used CTE for old_values, (3) Converted GETDATE() to NOW(), (4) Used CTEs to chain UPDATE, INSERT operations."
+    },
+    {
+      "statement_number": 5,
+      "method_name": "DeleteProductAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:49:16.272178",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:49:18.419105",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "Changes: (1) Removed BEGIN TRANSACTION/COMMIT, (2) Removed DECLARE statements - used CTE for old_values, (3) Converted GETDATE() to NOW(), (4) Used CTEs to chain operations."
+    },
+    {
+      "statement_number": 6,
+      "method_name": "GetProductsByPriceRangeAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:49:31.617178",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:49:33.723385",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "RANK() and PERCENT_RANK() window functions are compatible with PostgreSQL. CTE syntax and BETWEEN operator work identically. No changes needed."
+    },
+    {
+      "statement_number": 7,
+      "method_name": "GetLowStockProductsAsync",
+      "conversion_status": "MANUAL_AFTER_DMS_FAILURE",
+      "dms_attempt": {
+        "timestamp": "2026-02-14T07:49:44.416180",
+        "status": "error",
+        "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+        "workflow_steps": [
+          {
+            "step": "create_metadata_model",
+            "timestamp": "2026-02-14T07:49:46.588904",
+            "status": "started"
+          }
+        ]
+      },
+      "manual_conversion_notes": "AVG, MIN, MAX window functions are compatible with PostgreSQL. CTE syntax and ROUND function work identically. No changes needed."
+    }
+  ],
+  "dms_tool_configuration": {
+    "schema_name": "dbo",
+    "migration_project_identifier": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "database_name": "ProductManagement",
+    "region": "us-east-1",
+    "server_name": "172.31.83.165"
+  },
+  "general_conversion_patterns": {
+    "GETDATE()": "NOW()",
+    "SCOPE_IDENTITY()": "RETURNING clause",
+    "BEGIN TRANSACTION/COMMIT": "Removed - handled at ADO.NET level",
+    "DECLARE variables": "Replaced with CTEs or subqueries",
+    "Parameters": "@ prefix maintained for Npgsql compatibility"
+  }
+}
