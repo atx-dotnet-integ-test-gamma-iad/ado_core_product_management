@@ -23,6 +23,14 @@ namespace AdoCore
 
             if (args.Length > 0)
             {
+                // Check for test command to run database validation tests
+                if (args[0].ToLower() == "test")
+                {
+                    var tester = serviceProvider.GetRequiredService<DatabaseTester>();
+                    await tester.RunAllTestsAsync();
+                    return;
+                }
+                
                 var cli = serviceProvider.GetRequiredService<CommandLineInterface>();
                 await cli.ProcessCommandAsync(args);
             }
@@ -40,6 +48,7 @@ namespace AdoCore
             services.AddScoped<ProductService>();
             services.AddScoped<CommandLineInterface>();
             services.AddScoped<InteractiveMenu>();
+            services.AddScoped<DatabaseTester>();
         }
     }
 } 
