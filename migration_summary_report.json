@@ -1,0 +1,152 @@
+{
+  "migration_date": "2026-02-15",
+  "migration_type": "Microsoft SQL Server to PostgreSQL",
+  "application": "AdoCore - ADO.NET Product Management Application",
+  "total_sql_statements_processed": 7,
+  "statements_successfully_converted_by_dms": 0,
+  "statements_requiring_manual_intervention": 7,
+  "statements_validated_as_equivalent": 0,
+  "statements_validated_as_non_equivalent": 0,
+  "statements_with_equivalency_errors": 7,
+  "build_status": "success",
+  "build_details": "Application compiles successfully with all PostgreSQL changes applied",
+  "packages_changed": {
+    "removed": ["Microsoft.Data.SqlClient (v5.1.4)"],
+    "added": ["Npgsql (v8.0.0)"]
+  },
+  "files_modified": [
+    "DataAccess/ProductRepository.cs",
+    "AdoCore.csproj",
+    "appsettings.json"
+  },
+  "transformation_artifacts_created": [
+    "extracted_statements.sql",
+    "converted_statements.sql",
+    "dms_conversion_log.json",
+    "sql_equivalency_validation_report.json",
+    "migration_summary_report.json",
+    "migration_review_required.txt"
+  ],
+  "detailed_statement_list": [
+    {
+      "statement_id": 1,
+      "method": "GetAllProductsAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Fully Compatible - No Changes Required",
+      "equivalency_status": "ERROR",
+      "notes": "CTE with window functions compatible with PostgreSQL"
+    },
+    {
+      "statement_id": 2,
+      "method": "GetProductByIdAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Fully Compatible - No Changes Required",
+      "equivalency_status": "ERROR",
+      "notes": "LAG window function compatible with PostgreSQL"
+    },
+    {
+      "statement_id": 3,
+      "method": "InsertProductAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Major Conversion - SCOPE_IDENTITY to RETURNING",
+      "equivalency_status": "ERROR",
+      "notes": "Converted to CTE chain with RETURNING clause, GETDATE to CURRENT_TIMESTAMP"
+    },
+    {
+      "statement_id": 4,
+      "method": "UpdateProductAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Major Conversion - DECLARE to CTE",
+      "equivalency_status": "ERROR",
+      "notes": "Converted DECLARE statements to CTE, GETDATE to CURRENT_TIMESTAMP"
+    },
+    {
+      "statement_id": 5,
+      "method": "DeleteProductAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Major Conversion - DECLARE to CTE",
+      "equivalency_status": "ERROR",
+      "notes": "Converted DECLARE statements to CTE, GETDATE to CURRENT_TIMESTAMP"
+    },
+    {
+      "statement_id": 6,
+      "method": "GetProductsByPriceRangeAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Fully Compatible - No Changes Required",
+      "equivalency_status": "ERROR",
+      "notes": "RANK and PERCENT_RANK functions compatible with PostgreSQL"
+    },
+    {
+      "statement_id": 7,
+      "method": "GetLowStockProductsAsync",
+      "conversion_method": "MANUAL_AFTER_DMS_FAILURE",
+      "conversion_status": "Fully Compatible - No Changes Required",
+      "equivalency_status": "ERROR",
+      "notes": "Aggregate window functions compatible with PostgreSQL"
+    }
+  ],
+  "tool_status_summary": {
+    "dms_tool": {
+      "status": "SYSTEMIC_ERROR",
+      "error": "Unknown metadata model creation status: RECEIVED",
+      "statements_processed": 7,
+      "successful_conversions": 0,
+      "failed_conversions": 7
+    },
+    "sql_equivalency_tool": {
+      "status": "SYSTEMIC_ERROR",
+      "error": "'uniqueID'",
+      "statements_validated": 4,
+      "equivalency_confirmed": 0,
+      "errors": 7
+    }
+  },
+  "sql_server_specific_features_converted": [
+    {
+      "feature": "SCOPE_IDENTITY()",
+      "conversion": "RETURNING clause in INSERT CTE",
+      "impact": "Returns inserted ID, maintains same functionality"
+    },
+    {
+      "feature": "GETDATE()",
+      "conversion": "CURRENT_TIMESTAMP",
+      "impact": "PostgreSQL standard function, equivalent behavior"
+    },
+    {
+      "feature": "BEGIN TRANSACTION/COMMIT",
+      "conversion": "Removed from SQL, handled at ADO.NET level",
+      "impact": "Transaction control via NpgsqlConnection.BeginTransactionAsync()"
+    },
+    {
+      "feature": "DECLARE variables",
+      "conversion": "CTE patterns",
+      "impact": "Maintains data flow and atomicity within single statement"
+    },
+    {
+      "feature": "SET variable assignments",
+      "conversion": "SELECT within CTE",
+      "impact": "Equivalent functionality using PostgreSQL idioms"
+    }
+  ],
+  "runtime_considerations": [
+    "Transaction isolation levels may differ between SQL Server and PostgreSQL - testing recommended",
+    "Lock escalation behavior differs - PostgreSQL uses MVCC",
+    "RETURNING clause behavior should be tested with concurrent operations",
+    "Connection pooling parameters may need tuning for PostgreSQL",
+    "Error handling and exception types differ between SqlClient and Npgsql",
+    "Parameter binding uses same @ syntax but underlying implementation differs",
+    "Date/time precision and timezone handling may require attention"
+  ],
+  "testing_recommendations": [
+    "Comprehensive integration testing with actual PostgreSQL database required",
+    "Validate all CRUD operations (Insert, Update, Delete, Select)",
+    "Test transaction rollback scenarios",
+    "Verify RETURNING clause returns correct values",
+    "Test concurrent access scenarios",
+    "Validate null handling in all methods",
+    "Test error scenarios and exception handling",
+    "Performance testing and comparison with SQL Server baseline"
+  ],
+  "manual_review_required": true,
+  "manual_review_details": "Both DMS and SQL Equivalency tools experienced systemic failures. All 7 statement pairs require manual code review, integration testing, and validation to confirm functional equivalence."
+}
