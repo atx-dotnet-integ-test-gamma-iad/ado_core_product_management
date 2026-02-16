@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 using AdoCore.Models;
 
@@ -11,7 +11,7 @@ namespace AdoCore.DataAccess
     public class ProductRepository : IAsyncDisposable
     {
         private readonly string _connectionString;
-        private SqlConnection _connection;
+        private NpgsqlConnection _connection;
         private readonly IConfiguration _configuration;
 
         public ProductRepository(IConfiguration configuration)
@@ -22,11 +22,11 @@ namespace AdoCore.DataAccess
             _connectionString = _configuration.GetConnectionString(connectionName);
         }
 
-        private async Task<SqlConnection> GetConnectionAsync()
+        private async Task<NpgsqlConnection> GetConnectionAsync()
         {
             if (_connection == null)
             {
-                _connection = new SqlConnection(_connectionString);
+                _connection = new NpgsqlConnection(_connectionString);
             }
             if (_connection.State != ConnectionState.Open)
             {
@@ -46,7 +46,7 @@ namespace AdoCore.DataAccess
                         ProductId,
                         AVG(Price) OVER() as AvgPrice,
                         COUNT(*) OVER() as TotalProducts
-                    FROM Products
+                    FROM public.products
                 )
                 SELECT 
                     p.ProductId,
@@ -62,7 +62,7 @@ namespace AdoCore.DataAccess
                         ELSE 'Average'
                     END as PriceCategory,
                     ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
-                FROM Products p
+                FROM public.products p
                 INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
                 ORDER BY 
                     CASE 
@@ -71,7 +71,7 @@ namespace AdoCore.DataAccess
                     END,
                     p.Name";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -91,7 +91,7 @@ namespace AdoCore.DataAccess
                         ProductId,
                         LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
                         LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
-                    FROM Products
+                    FROM public.products
                     WHERE ProductId = @ProductId
                 )
                 SELECT 
@@ -109,11 +109,11 @@ namespace AdoCore.DataAccess
                             ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
                         ELSE NULL
                     END as PriceChangePercentage
-                FROM Products p
+                FROM public.products p
                 LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
                 WHERE p.ProductId = @ProductId";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("@ProductId", productId);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -129,110 +129,225 @@ namespace AdoCore.DataAccess
         {
             var connection = await GetConnectionAsync();
 
-            const string sql = @"
-                DECLARE @NewProductId INT;
-                
-                BEGIN TRANSACTION;
-                    -- Insert the new product
-                    INSERT INTO Products (Name, Description, Price, StockQuantity)
-                    VALUES (@Name, @Description, @Price, @StockQuantity);
-                    
-                    SET @NewProductId = SCOPE_IDENTITY();
-                    
-                    -- Log the insertion
-                    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
-                    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
-                    
-                    -- Update product statistics
-                    UPDATE ProductStats
+            // Use a transaction to ensure atomicity across multiple operations
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                // Insert the new product and get the generated ProductId using RETURNING clause
+                const string insertSql = @"
+                    INSERT INTO public.products (Name, Description, Price, StockQuantity)
+                    VALUES (@Name, @Description, @Price, @StockQuantity)
+                    RETURNING ProductId;";
+
+                int newProductId;
+                using (var insertCommand = new NpgsqlCommand(insertSql, connection, transaction))
+                {
+                    insertCommand.Parameters.AddWithValue("@Name", product.Name);
+                    insertCommand.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+                    insertCommand.Parameters.AddWithValue("@Price", product.Price);
+                    insertCommand.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+
+                    newProductId = Convert.ToInt32(await insertCommand.ExecuteScalarAsync());
+                }
+
+                // Log the insertion
+                const string logSql = @"
+                    INSERT INTO public.producthistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+                    VALUES (@ProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, CURRENT_TIMESTAMP);";
+
+                using (var logCommand = new NpgsqlCommand(logSql, connection, transaction))
+                {
+                    logCommand.Parameters.AddWithValue("@ProductId", newProductId);
+                    logCommand.Parameters.AddWithValue("@Price", product.Price);
+                    logCommand.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+
+                    await logCommand.ExecuteNonQueryAsync();
+                }
+
+                // Update product statistics
+                const string statsSql = @"
+                    UPDATE public.productstats
                     SET 
                         TotalProducts = TotalProducts + 1,
                         AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
-                        LastUpdated = GETDATE()
-                    WHERE StatId = 1;
-                COMMIT;
-                
-                SELECT @NewProductId;";
+                        LastUpdated = CURRENT_TIMESTAMP
+                    WHERE StatId = 1;";
 
-            using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Name", product.Name);
-            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("@Price", product.Price);
-            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+                using (var statsCommand = new NpgsqlCommand(statsSql, connection, transaction))
+                {
+                    statsCommand.Parameters.AddWithValue("@Price", product.Price);
 
-            return Convert.ToInt32(await command.ExecuteScalarAsync());
+                    await statsCommand.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+                return newProductId;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task UpdateProductAsync(Product product)
         {
             var connection = await GetConnectionAsync();
 
-            const string sql = @"
-                BEGIN TRANSACTION;
-                    -- Store old values for history
-                    DECLARE @OldPrice DECIMAL(18,2);
-                    DECLARE @OldStock INT;
-                    
-                    SELECT @OldPrice = Price, @OldStock = StockQuantity
-                    FROM Products
-                    WHERE ProductId = @ProductId;
-                    
-                    -- Update the product
-                    UPDATE Products
+            // Use a transaction to ensure atomicity across multiple operations
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                // Store old values for history using a CTE and retrieve them
+                decimal oldPrice;
+                int oldStock;
+
+                const string getOldValuesSql = @"
+                    SELECT Price, StockQuantity
+                    FROM public.products
+                    WHERE ProductId = @ProductId;";
+
+                using (var getOldValuesCommand = new NpgsqlCommand(getOldValuesSql, connection, transaction))
+                {
+                    getOldValuesCommand.Parameters.AddWithValue("@ProductId", product.ProductId);
+
+                    using var reader = await getOldValuesCommand.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        oldPrice = reader.GetDecimal(0);
+                        oldStock = reader.GetInt32(1);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Product with ID {product.ProductId} not found.");
+                    }
+                }
+
+                // Update the product
+                const string updateSql = @"
+                    UPDATE public.products
                     SET 
                         Name = @Name,
                         Description = @Description,
                         Price = @Price,
                         StockQuantity = @StockQuantity,
-                        ModifiedDate = GETDATE()
-                    WHERE ProductId = @ProductId;
-                    
-                    -- Log the changes
-                    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
-                    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
-                    
-                    -- Update product statistics
-                    UPDATE ProductStats
+                        ModifiedDate = CURRENT_TIMESTAMP
+                    WHERE ProductId = @ProductId;";
+
+                using (var updateCommand = new NpgsqlCommand(updateSql, connection, transaction))
+                {
+                    updateCommand.Parameters.AddWithValue("@ProductId", product.ProductId);
+                    updateCommand.Parameters.AddWithValue("@Name", product.Name);
+                    updateCommand.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+                    updateCommand.Parameters.AddWithValue("@Price", product.Price);
+                    updateCommand.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+
+                    await updateCommand.ExecuteNonQueryAsync();
+                }
+
+                // Log the changes
+                const string logSql = @"
+                    INSERT INTO public.producthistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+                    VALUES (@ProductId, 'UPDATE', @OldPrice, @NewPrice, @OldStock, @NewStock, CURRENT_TIMESTAMP);";
+
+                using (var logCommand = new NpgsqlCommand(logSql, connection, transaction))
+                {
+                    logCommand.Parameters.AddWithValue("@ProductId", product.ProductId);
+                    logCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    logCommand.Parameters.AddWithValue("@NewPrice", product.Price);
+                    logCommand.Parameters.AddWithValue("@OldStock", oldStock);
+                    logCommand.Parameters.AddWithValue("@NewStock", product.StockQuantity);
+
+                    await logCommand.ExecuteNonQueryAsync();
+                }
+
+                // Update product statistics
+                const string statsSql = @"
+                    UPDATE public.productstats
                     SET 
-                        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
-                        LastUpdated = GETDATE()
-                    WHERE StatId = 1;
-                COMMIT;";
+                        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @NewPrice) / TotalProducts,
+                        LastUpdated = CURRENT_TIMESTAMP
+                    WHERE StatId = 1;";
 
-            using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", product.ProductId);
-            command.Parameters.AddWithValue("@Name", product.Name);
-            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("@Price", product.Price);
-            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+                using (var statsCommand = new NpgsqlCommand(statsSql, connection, transaction))
+                {
+                    statsCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    statsCommand.Parameters.AddWithValue("@NewPrice", product.Price);
 
-            await command.ExecuteNonQueryAsync();
+                    await statsCommand.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task DeleteProductAsync(int productId)
         {
             var connection = await GetConnectionAsync();
 
-            const string sql = @"
-                BEGIN TRANSACTION;
-                    -- Store product info for history
-                    DECLARE @OldPrice DECIMAL(18,2);
-                    DECLARE @OldStock INT;
-                    
-                    SELECT @OldPrice = Price, @OldStock = StockQuantity
-                    FROM Products
-                    WHERE ProductId = @ProductId;
-                    
-                    -- Log the deletion
-                    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
-                    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
-                    
-                    -- Delete the product
-                    DELETE FROM Products 
-                    WHERE ProductId = @ProductId;
-                    
-                    -- Update product statistics
-                    UPDATE ProductStats
+            // Use a transaction to ensure atomicity across multiple operations
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                // Store product info for history
+                decimal oldPrice;
+                int oldStock;
+
+                const string getOldValuesSql = @"
+                    SELECT Price, StockQuantity
+                    FROM public.products
+                    WHERE ProductId = @ProductId;";
+
+                using (var getOldValuesCommand = new NpgsqlCommand(getOldValuesSql, connection, transaction))
+                {
+                    getOldValuesCommand.Parameters.AddWithValue("@ProductId", productId);
+
+                    using var reader = await getOldValuesCommand.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        oldPrice = reader.GetDecimal(0);
+                        oldStock = reader.GetInt32(1);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Product with ID {productId} not found.");
+                    }
+                }
+
+                // Log the deletion
+                const string logSql = @"
+                    INSERT INTO public.producthistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+                    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, CURRENT_TIMESTAMP);";
+
+                using (var logCommand = new NpgsqlCommand(logSql, connection, transaction))
+                {
+                    logCommand.Parameters.AddWithValue("@ProductId", productId);
+                    logCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    logCommand.Parameters.AddWithValue("@OldStock", oldStock);
+
+                    await logCommand.ExecuteNonQueryAsync();
+                }
+
+                // Delete the product
+                const string deleteSql = @"
+                    DELETE FROM public.products 
+                    WHERE ProductId = @ProductId;";
+
+                using (var deleteCommand = new NpgsqlCommand(deleteSql, connection, transaction))
+                {
+                    deleteCommand.Parameters.AddWithValue("@ProductId", productId);
+
+                    await deleteCommand.ExecuteNonQueryAsync();
+                }
+
+                // Update product statistics
+                const string statsSql = @"
+                    UPDATE public.productstats
                     SET 
                         TotalProducts = TotalProducts - 1,
                         AveragePrice = CASE 
@@ -240,14 +355,23 @@ namespace AdoCore.DataAccess
                             THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
                             ELSE 0
                         END,
-                        LastUpdated = GETDATE()
-                    WHERE StatId = 1;
-                COMMIT;";
+                        LastUpdated = CURRENT_TIMESTAMP
+                    WHERE StatId = 1;";
 
-            using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", productId);
+                using (var statsCommand = new NpgsqlCommand(statsSql, connection, transaction))
+                {
+                    statsCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
 
-            await command.ExecuteNonQueryAsync();
+                    await statsCommand.ExecuteNonQueryAsync();
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<List<Product>> GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
@@ -261,7 +385,7 @@ namespace AdoCore.DataAccess
                         p.*,
                         RANK() OVER (ORDER BY p.Price) as PriceRank,
                         PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
-                    FROM Products p
+                    FROM public.products p
                     WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
                 )
                 SELECT 
@@ -274,7 +398,7 @@ namespace AdoCore.DataAccess
                 FROM RankedProducts rp
                 ORDER BY rp.PriceRank";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("@MinPrice", minPrice);
             command.Parameters.AddWithValue("@MaxPrice", maxPrice);
 
@@ -299,7 +423,7 @@ namespace AdoCore.DataAccess
                         AVG(StockQuantity) OVER() as AvgStock,
                         MIN(StockQuantity) OVER() as MinStock,
                         MAX(StockQuantity) OVER() as MaxStock
-                    FROM Products p
+                    FROM public.products p
                 )
                 SELECT 
                     sa.*,
@@ -313,7 +437,7 @@ namespace AdoCore.DataAccess
                 WHERE StockQuantity <= @Threshold
                 ORDER BY StockQuantity";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("@Threshold", threshold);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -341,7 +465,7 @@ namespace AdoCore.DataAccess
             }
         }
 
-        private static Product MapProductFromReader(SqlDataReader reader)
+        private static Product MapProductFromReader(NpgsqlDataReader reader)
         {
             return new Product
             {
@@ -368,4 +492,4 @@ namespace AdoCore.DataAccess
             }
         }
     }
-} 
+}
