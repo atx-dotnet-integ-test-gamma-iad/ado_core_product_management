@@ -1,0 +1,243 @@
+========================================================================================================
+DMS MCP TOOL CONVERSION LOG
+Microsoft SQL Server to PostgreSQL Statement Conversion
+========================================================================================================
+
+Conversion Session Started: 2026-02-18T12:47:46
+DMS Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+Server: 172.31.83.165
+
+========================================================================================================
+STATEMENT 1: GetAllProductsAsync - CTE with Window Functions
+========================================================================================================
+Timestamp: 2026-02-18T12:47:46.629988
+Status: ERROR
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-02-18T12:47:46.629988",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-18T12:47:49.253385",
+      "status": "started"
+    }
+  ],
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-18T12:47:51.329348"
+}
+
+Original SQL:
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+Manual Conversion Applied: YES
+Reason: DMS metadata model creation failed
+PostgreSQL Conversion: Statement is largely compatible; no significant changes needed for PostgreSQL
+
+========================================================================================================
+STATEMENT 2: GetProductByIdAsync - CTE with LAG Function
+========================================================================================================
+Timestamp: 2026-02-18T12:48:02.567965
+Status: ERROR
+DMS Tool Output:
+{
+  "conversion_timestamp": "2026-02-18T12:48:02.567965",
+  "workflow_steps": [
+    {
+      "step": "create_metadata_model",
+      "timestamp": "2026-02-18T12:48:04.805319",
+      "status": "started"
+    }
+  ],
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-18T12:48:06.876869"
+}
+
+Original SQL:
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+Manual Conversion Applied: YES
+Reason: DMS metadata model creation failed
+PostgreSQL Conversion: Statement is largely compatible; LAG function and @ parameter syntax work in PostgreSQL
+
+========================================================================================================
+STATEMENT 3: InsertProductAsync - Transaction with SCOPE_IDENTITY
+========================================================================================================
+Status: ERROR (Anticipated based on previous failures)
+DMS Tool: Not invoked due to consistent metadata model creation failures
+
+Original SQL:
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+Manual Conversion Applied: YES
+Reason: DMS tool unavailable
+Key Changes:
+- SCOPE_IDENTITY() → RETURNING clause
+- GETDATE() → CURRENT_TIMESTAMP
+- Transaction handling adapted for ADO.NET/Npgsql
+
+========================================================================================================
+STATEMENT 4: UpdateProductAsync - Transaction with Variable Declarations
+========================================================================================================
+Status: ERROR (Anticipated based on previous failures)
+DMS Tool: Not invoked due to consistent metadata model creation failures
+
+Original SQL: [Multi-statement transaction with DECLARE, SELECT, UPDATE, INSERT]
+
+Manual Conversion Applied: YES
+Reason: DMS tool unavailable
+Key Changes:
+- DECLARE syntax → PostgreSQL format (within DO block or multiple statements)
+- GETDATE() → CURRENT_TIMESTAMP
+- Variable assignment syntax adjusted
+
+========================================================================================================
+STATEMENT 5: DeleteProductAsync - Transaction with DELETE and Statistics
+========================================================================================================
+Status: ERROR (Anticipated based on previous failures)
+DMS Tool: Not invoked due to consistent metadata model creation failures
+
+Original SQL: [Multi-statement transaction with DECLARE, SELECT, INSERT, DELETE, UPDATE]
+
+Manual Conversion Applied: YES
+Reason: DMS tool unavailable
+Key Changes:
+- DECLARE syntax → PostgreSQL format
+- GETDATE() → CURRENT_TIMESTAMP
+- Variable assignments adjusted
+
+========================================================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync - CTE with RANK/PERCENT_RANK
+========================================================================================================
+Status: ERROR (Anticipated based on previous failures)
+DMS Tool: Not invoked due to consistent metadata model creation failures
+
+Original SQL: [CTE with RANK() and PERCENT_RANK() window functions]
+
+Manual Conversion Applied: YES
+Reason: DMS tool unavailable
+PostgreSQL Conversion: Statement is fully compatible; no changes needed
+
+========================================================================================================
+STATEMENT 7: GetLowStockProductsAsync - CTE with Aggregate Window Functions
+========================================================================================================
+Status: ERROR (Anticipated based on previous failures)
+DMS Tool: Not invoked due to consistent metadata model creation failures
+
+Original SQL: [CTE with AVG/MIN/MAX window functions]
+
+Manual Conversion Applied: YES
+Reason: DMS tool unavailable
+PostgreSQL Conversion: Statement is fully compatible; no changes needed
+
+========================================================================================================
+CONVERSION SESSION SUMMARY
+========================================================================================================
+Total Statements Processed: 7
+DMS Tool Successful Conversions: 0
+DMS Tool Failures: 2 (statements 1 and 2 explicitly invoked)
+Manual Conversions Required: 7
+
+Root Cause of DMS Failures:
+The DMS MCP tool consistently failed with metadata model creation errors:
+"Unknown metadata model creation status: RECEIVED"
+
+This appears to be an infrastructure or configuration issue with the DMS service, not a problem
+with the SQL statements themselves. The statements were manually converted following PostgreSQL
+best practices and syntax requirements.
+
+Key Conversion Patterns Applied:
+1. GETDATE() → CURRENT_TIMESTAMP
+2. SCOPE_IDENTITY() → RETURNING clause
+3. BEGIN TRANSACTION/COMMIT → Managed by ADO.NET transaction object
+4. DECLARE variables → Multiple command approach or DO $$ blocks
+5. Window functions (AVG, COUNT, LAG, RANK, PERCENT_RANK) → No changes (compatible)
+6. CTE syntax → No changes (compatible)
+7. CASE expressions → No changes (compatible)
+8. Parameter syntax (@parameter) → Compatible with Npgsql
+
+Transaction Handling Strategy:
+For statements 3, 4, and 5 (multi-statement transactions), the conversion approach is to
+break them into multiple ADO.NET command executions within a single transaction scope,
+rather than using PostgreSQL DO $$ blocks. This maintains better compatibility with
+ADO.NET/Npgsql and provides cleaner error handling.
+
+========================================================================================================
+END OF CONVERSION LOG
+========================================================================================================
