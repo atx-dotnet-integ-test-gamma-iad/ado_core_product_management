@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using Npgsql;
 using Microsoft.Extensions.Configuration;
 using AdoCore.Models;
 
@@ -11,7 +11,7 @@ namespace AdoCore.DataAccess
     public class ProductRepository : IAsyncDisposable
     {
         private readonly string _connectionString;
-        private SqlConnection _connection;
+        private NpgsqlConnection _connection;
         private readonly IConfiguration _configuration;
 
         public ProductRepository(IConfiguration configuration)
@@ -22,11 +22,11 @@ namespace AdoCore.DataAccess
             _connectionString = _configuration.GetConnectionString(connectionName);
         }
 
-        private async Task<SqlConnection> GetConnectionAsync()
+        private async Task<NpgsqlConnection> GetConnectionAsync()
         {
             if (_connection == null)
             {
-                _connection = new SqlConnection(_connectionString);
+                _connection = new NpgsqlConnection(_connectionString);
             }
             if (_connection.State != ConnectionState.Open)
             {
@@ -35,6 +35,7 @@ namespace AdoCore.DataAccess
             return _connection;
         }
 
+        // Statement 1: GetAllProductsAsync - PostgreSQL compatible, no changes needed
         public async Task<List<Product>> GetAllProductsAsync()
         {
             var products = new List<Product>();
@@ -71,7 +72,7 @@ namespace AdoCore.DataAccess
                     END,
                     p.Name";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             using var reader = await command.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
@@ -81,6 +82,7 @@ namespace AdoCore.DataAccess
             return products;
         }
 
+        // Statement 2: GetProductByIdAsync - PostgreSQL compatible, no changes needed
         public async Task<Product> GetProductByIdAsync(int productId)
         {
             var connection = await GetConnectionAsync();
@@ -113,7 +115,7 @@ namespace AdoCore.DataAccess
                 LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
                 WHERE p.ProductId = @ProductId";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("@ProductId", productId);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -125,113 +127,241 @@ namespace AdoCore.DataAccess
             return null;
         }
 
+        // Statement 3: InsertProductAsync - PostgreSQL conversion: RETURNING instead of SCOPE_IDENTITY(), NOW() instead of GETDATE()
         public async Task<int> InsertProductAsync(Product product)
         {
             var connection = await GetConnectionAsync();
-
-            const string sql = @"
-                DECLARE @NewProductId INT;
-                
-                BEGIN TRANSACTION;
-                    -- Insert the new product
+            
+            // PostgreSQL: Use transaction with RETURNING clause instead of SCOPE_IDENTITY()
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                // Insert the new product and get the ID using RETURNING
+                const string insertSql = @"
                     INSERT INTO Products (Name, Description, Price, StockQuantity)
-                    VALUES (@Name, @Description, @Price, @StockQuantity);
+                    VALUES (@Name, @Description, @Price, @StockQuantity)
+                    RETURNING ProductId";
+                
+                int newProductId;
+                using (var insertCommand = new NpgsqlCommand(insertSql, connection))
+                {
+                    insertCommand.Transaction = transaction;
+                    insertCommand.Parameters.AddWithValue("@Name", product.Name);
+                    insertCommand.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+                    insertCommand.Parameters.AddWithValue("@Price", product.Price);
+                    insertCommand.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
                     
-                    SET @NewProductId = SCOPE_IDENTITY();
-                    
-                    -- Log the insertion
+                    newProductId = Convert.ToInt32(await insertCommand.ExecuteScalarAsync());
+                }
+                
+                // Log the insertion - PostgreSQL: NOW() instead of GETDATE()
+                const string historySql = @"
                     INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
-                    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+                    VALUES (@ProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, NOW())";
+                
+                using (var historyCommand = new NpgsqlCommand(historySql, connection))
+                {
+                    historyCommand.Transaction = transaction;
+                    historyCommand.Parameters.AddWithValue("@ProductId", newProductId);
+                    historyCommand.Parameters.AddWithValue("@Price", product.Price);
+                    historyCommand.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
                     
-                    -- Update product statistics
+                    await historyCommand.ExecuteNonQueryAsync();
+                }
+                
+                // Update product statistics - PostgreSQL: NOW() instead of GETDATE()
+                const string statsSql = @"
                     UPDATE ProductStats
                     SET 
                         TotalProducts = TotalProducts + 1,
                         AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
-                        LastUpdated = GETDATE()
-                    WHERE StatId = 1;
-                COMMIT;
+                        LastUpdated = NOW()
+                    WHERE StatId = 1";
                 
-                SELECT @NewProductId;";
-
-            using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Name", product.Name);
-            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("@Price", product.Price);
-            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
-
-            return Convert.ToInt32(await command.ExecuteScalarAsync());
+                using (var statsCommand = new NpgsqlCommand(statsSql, connection))
+                {
+                    statsCommand.Transaction = transaction;
+                    statsCommand.Parameters.AddWithValue("@Price", product.Price);
+                    
+                    await statsCommand.ExecuteNonQueryAsync();
+                }
+                
+                await transaction.CommitAsync();
+                return newProductId;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
+        // Statement 4: UpdateProductAsync - PostgreSQL conversion: NOW() instead of GETDATE()
         public async Task UpdateProductAsync(Product product)
         {
             var connection = await GetConnectionAsync();
-
-            const string sql = @"
-                BEGIN TRANSACTION;
-                    -- Store old values for history
-                    DECLARE @OldPrice DECIMAL(18,2);
-                    DECLARE @OldStock INT;
-                    
-                    SELECT @OldPrice = Price, @OldStock = StockQuantity
+            
+            // PostgreSQL: Use explicit transaction management
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                // Store old values for history
+                decimal oldPrice;
+                int oldStock;
+                
+                const string selectSql = @"
+                    SELECT Price, StockQuantity
                     FROM Products
-                    WHERE ProductId = @ProductId;
+                    WHERE ProductId = @ProductId";
+                
+                using (var selectCommand = new NpgsqlCommand(selectSql, connection))
+                {
+                    selectCommand.Transaction = transaction;
+                    selectCommand.Parameters.AddWithValue("@ProductId", product.ProductId);
                     
-                    -- Update the product
+                    using var reader = await selectCommand.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        oldPrice = reader.GetDecimal(0);
+                        oldStock = reader.GetInt32(1);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Product with ID {product.ProductId} not found.");
+                    }
+                }
+                
+                // Update the product - PostgreSQL: NOW() instead of GETDATE()
+                const string updateSql = @"
                     UPDATE Products
                     SET 
                         Name = @Name,
                         Description = @Description,
                         Price = @Price,
                         StockQuantity = @StockQuantity,
-                        ModifiedDate = GETDATE()
-                    WHERE ProductId = @ProductId;
+                        ModifiedDate = NOW()
+                    WHERE ProductId = @ProductId";
+                
+                using (var updateCommand = new NpgsqlCommand(updateSql, connection))
+                {
+                    updateCommand.Transaction = transaction;
+                    updateCommand.Parameters.AddWithValue("@ProductId", product.ProductId);
+                    updateCommand.Parameters.AddWithValue("@Name", product.Name);
+                    updateCommand.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
+                    updateCommand.Parameters.AddWithValue("@Price", product.Price);
+                    updateCommand.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
                     
-                    -- Log the changes
+                    await updateCommand.ExecuteNonQueryAsync();
+                }
+                
+                // Log the changes - PostgreSQL: NOW() instead of GETDATE()
+                const string historySql = @"
                     INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
-                    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+                    VALUES (@ProductId, 'UPDATE', @OldPrice, @NewPrice, @OldStock, @NewStock, NOW())";
+                
+                using (var historyCommand = new NpgsqlCommand(historySql, connection))
+                {
+                    historyCommand.Transaction = transaction;
+                    historyCommand.Parameters.AddWithValue("@ProductId", product.ProductId);
+                    historyCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    historyCommand.Parameters.AddWithValue("@NewPrice", product.Price);
+                    historyCommand.Parameters.AddWithValue("@OldStock", oldStock);
+                    historyCommand.Parameters.AddWithValue("@NewStock", product.StockQuantity);
                     
-                    -- Update product statistics
+                    await historyCommand.ExecuteNonQueryAsync();
+                }
+                
+                // Update product statistics - PostgreSQL: NOW() instead of GETDATE()
+                const string statsSql = @"
                     UPDATE ProductStats
                     SET 
-                        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
-                        LastUpdated = GETDATE()
-                    WHERE StatId = 1;
-                COMMIT;";
-
-            using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", product.ProductId);
-            command.Parameters.AddWithValue("@Name", product.Name);
-            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("@Price", product.Price);
-            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
-
-            await command.ExecuteNonQueryAsync();
+                        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @NewPrice) / TotalProducts,
+                        LastUpdated = NOW()
+                    WHERE StatId = 1";
+                
+                using (var statsCommand = new NpgsqlCommand(statsSql, connection))
+                {
+                    statsCommand.Transaction = transaction;
+                    statsCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    statsCommand.Parameters.AddWithValue("@NewPrice", product.Price);
+                    
+                    await statsCommand.ExecuteNonQueryAsync();
+                }
+                
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
+        // Statement 5: DeleteProductAsync - PostgreSQL conversion: NOW() instead of GETDATE()
         public async Task DeleteProductAsync(int productId)
         {
             var connection = await GetConnectionAsync();
-
-            const string sql = @"
-                BEGIN TRANSACTION;
-                    -- Store product info for history
-                    DECLARE @OldPrice DECIMAL(18,2);
-                    DECLARE @OldStock INT;
-                    
-                    SELECT @OldPrice = Price, @OldStock = StockQuantity
+            
+            // PostgreSQL: Use explicit transaction management
+            using var transaction = await connection.BeginTransactionAsync();
+            try
+            {
+                // Store product info for history
+                decimal oldPrice;
+                int oldStock;
+                
+                const string selectSql = @"
+                    SELECT Price, StockQuantity
                     FROM Products
-                    WHERE ProductId = @ProductId;
+                    WHERE ProductId = @ProductId";
+                
+                using (var selectCommand = new NpgsqlCommand(selectSql, connection))
+                {
+                    selectCommand.Transaction = transaction;
+                    selectCommand.Parameters.AddWithValue("@ProductId", productId);
                     
-                    -- Log the deletion
+                    using var reader = await selectCommand.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        oldPrice = reader.GetDecimal(0);
+                        oldStock = reader.GetInt32(1);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Product with ID {productId} not found.");
+                    }
+                }
+                
+                // Log the deletion - PostgreSQL: NOW() instead of GETDATE()
+                const string historySql = @"
                     INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
-                    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+                    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, NOW())";
+                
+                using (var historyCommand = new NpgsqlCommand(historySql, connection))
+                {
+                    historyCommand.Transaction = transaction;
+                    historyCommand.Parameters.AddWithValue("@ProductId", productId);
+                    historyCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    historyCommand.Parameters.AddWithValue("@OldStock", oldStock);
                     
-                    -- Delete the product
+                    await historyCommand.ExecuteNonQueryAsync();
+                }
+                
+                // Delete the product
+                const string deleteSql = @"
                     DELETE FROM Products 
-                    WHERE ProductId = @ProductId;
+                    WHERE ProductId = @ProductId";
+                
+                using (var deleteCommand = new NpgsqlCommand(deleteSql, connection))
+                {
+                    deleteCommand.Transaction = transaction;
+                    deleteCommand.Parameters.AddWithValue("@ProductId", productId);
                     
-                    -- Update product statistics
+                    await deleteCommand.ExecuteNonQueryAsync();
+                }
+                
+                // Update product statistics - PostgreSQL: NOW() instead of GETDATE()
+                const string statsSql = @"
                     UPDATE ProductStats
                     SET 
                         TotalProducts = TotalProducts - 1,
@@ -240,16 +370,27 @@ namespace AdoCore.DataAccess
                             THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
                             ELSE 0
                         END,
-                        LastUpdated = GETDATE()
-                    WHERE StatId = 1;
-                COMMIT;";
-
-            using var command = new SqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", productId);
-
-            await command.ExecuteNonQueryAsync();
+                        LastUpdated = NOW()
+                    WHERE StatId = 1";
+                
+                using (var statsCommand = new NpgsqlCommand(statsSql, connection))
+                {
+                    statsCommand.Transaction = transaction;
+                    statsCommand.Parameters.AddWithValue("@OldPrice", oldPrice);
+                    
+                    await statsCommand.ExecuteNonQueryAsync();
+                }
+                
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
+        // Statement 6: GetProductsByPriceRangeAsync - PostgreSQL compatible, no changes needed
         public async Task<List<Product>> GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
         {
             var products = new List<Product>();
@@ -274,7 +415,7 @@ namespace AdoCore.DataAccess
                 FROM RankedProducts rp
                 ORDER BY rp.PriceRank";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("@MinPrice", minPrice);
             command.Parameters.AddWithValue("@MaxPrice", maxPrice);
 
@@ -287,6 +428,7 @@ namespace AdoCore.DataAccess
             return products;
         }
 
+        // Statement 7: GetLowStockProductsAsync - PostgreSQL compatible, no changes needed
         public async Task<List<Product>> GetLowStockProductsAsync(int threshold)
         {
             var products = new List<Product>();
@@ -313,7 +455,7 @@ namespace AdoCore.DataAccess
                 WHERE StockQuantity <= @Threshold
                 ORDER BY StockQuantity";
 
-            using var command = new SqlCommand(sql, connection);
+            using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("@Threshold", threshold);
 
             using var reader = await command.ExecuteReaderAsync();
@@ -341,7 +483,7 @@ namespace AdoCore.DataAccess
             }
         }
 
-        private static Product MapProductFromReader(SqlDataReader reader)
+        private static Product MapProductFromReader(NpgsqlDataReader reader)
         {
             return new Product
             {
