@@ -1,0 +1,78 @@
+============================================================
+DMS CONVERSION FAILURE SUMMARY
+============================================================
+
+Date: 2026-02-20
+DMS Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+============================================================
+ERROR DETAILS
+============================================================
+All 7 SQL statements from ProductRepository.cs failed DMS conversion with the same error:
+Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+The error occurs at the create_metadata_model workflow step.
+
+============================================================
+FALLBACK CONVERSION METHOD
+============================================================
+Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+- All schema object names (tables, columns, views, aliases) converted to lowercase
+- SCOPE_IDENTITY() converted to RETURNING clause
+- GETDATE() converted to NOW()
+- BEGIN TRANSACTION/COMMIT managed by ADO.NET transaction API
+- DECLARE/@variable patterns restructured for PostgreSQL compatibility
+- Integer division in ROUND() functions addressed with ::numeric cast where needed
+- Window functions (AVG, COUNT, LAG, RANK, PERCENT_RANK, MIN, MAX OVER) are PostgreSQL compatible
+
+============================================================
+STATEMENT-BY-STATEMENT DMS ATTEMPTS
+============================================================
+
+Statement 1 (GetAllProductsAsync):
+  DMS Attempt Time: 2026-02-20T08:04:45 (1st), 2026-02-20T08:05:01 (2nd)
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+  
+Statement 2 (GetProductByIdAsync):
+  DMS Attempt Time: 2026-02-20T08:05:17
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+
+Statement 3 (InsertProductAsync):
+  DMS Attempt Time: 2026-02-20T08:05:32
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+  Special Notes: SCOPE_IDENTITY() replaced with RETURNING clause; transaction restructured for ADO.NET handling
+
+Statement 4 (UpdateProductAsync):
+  DMS Attempt Time: 2026-02-20T08:05:45
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+  Special Notes: DECLARE/SET variable pattern restructured; GETDATE() -> NOW()
+
+Statement 5 (DeleteProductAsync):
+  DMS Attempt Time: 2026-02-20T08:06:02
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+  Special Notes: DECLARE/SET variable pattern restructured; GETDATE() -> NOW(); CASE preserved
+
+Statement 6 (GetProductsByPriceRangeAsync):
+  DMS Attempt Time: 2026-02-20T08:06:15
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+
+Statement 7 (GetLowStockProductsAsync):
+  DMS Attempt Time: 2026-02-20T08:06:31
+  DMS Status: error
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion Applied: Yes
+  Special Notes: Added ::numeric cast for integer division in ROUND()
