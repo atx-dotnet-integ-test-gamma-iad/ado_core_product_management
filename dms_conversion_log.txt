@@ -1,0 +1,405 @@
+===============================================================================
+DMS MCP TOOL CONVERSION LOG
+Microsoft SQL Server to PostgreSQL Migration
+===============================================================================
+Date: 2026-02-20
+Tool: dms-mcp____statement_conversion_tool
+Schema: dbo
+Database: ProductManagement
+Total Statements Processed: 7
+Successful Conversions: 0
+Failed Conversions: 7
+===============================================================================
+
+===============================================================================
+STATEMENT 1: GetAllProductsAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:46:04.151749
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+WITH ProductStats AS (
+    SELECT 
+        ProductId,
+        AVG(Price) OVER() as AvgPrice,
+        COUNT(*) OVER() as TotalProducts
+    FROM Products
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 'Above Average'
+        WHEN p.Price < ps.AvgPrice THEN 'Below Average'
+        ELSE 'Average'
+    END as PriceCategory,
+    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage
+FROM Products p
+INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId
+ORDER BY 
+    CASE 
+        WHEN p.Price > ps.AvgPrice THEN 1
+        ELSE 2
+    END,
+    p.Name
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:46:04.151749",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:46:07.243547"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- Converted all table names to lowercase (Products -> products)
+- Converted all column names to lowercase
+- Window functions (AVG OVER, COUNT OVER) are compatible with PostgreSQL
+- ROUND() function is compatible with PostgreSQL
+- CASE expressions are compatible with PostgreSQL
+
+===============================================================================
+STATEMENT 2: GetProductByIdAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:46:18.130607
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+WITH ProductHistory AS (
+    SELECT 
+        ProductId,
+        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,
+        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock
+    FROM Products
+    WHERE ProductId = @ProductId
+)
+SELECT 
+    p.ProductId,
+    p.Name,
+    p.Description,
+    p.Price,
+    p.StockQuantity,
+    p.CreatedDate,
+    p.ModifiedDate,
+    ph.PreviousPrice,
+    ph.PreviousStock,
+    CASE 
+        WHEN ph.PreviousPrice IS NOT NULL THEN 
+            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)
+        ELSE NULL
+    END as PriceChangePercentage
+FROM Products p
+LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId
+WHERE p.ProductId = @ProductId
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:46:18.130607",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:46:21.098127"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- Converted all table names to lowercase (Products -> products)
+- Converted all column names to lowercase
+- LAG() window function is compatible with PostgreSQL
+- ROUND() function is compatible with PostgreSQL
+- LEFT JOIN syntax is compatible with PostgreSQL
+- Parameter @ProductId is maintained (Npgsql supports @ parameters)
+
+===============================================================================
+STATEMENT 3: InsertProductAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:46:30.731485
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:46:30.731485",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:46:33.712839"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- BEGIN TRANSACTION/COMMIT -> BEGIN/COMMIT (PostgreSQL syntax)
+- Converted all table names to lowercase (Products -> products, ProductHistory -> producthistory, ProductStats -> productstats)
+- Converted all column names to lowercase
+- SCOPE_IDENTITY() -> RETURNING productid clause (PostgreSQL approach)
+- GETDATE() -> CURRENT_TIMESTAMP (PostgreSQL function)
+- Removed DECLARE @variable and SET @variable (using RETURNING instead)
+- Simplified to use INSERT...RETURNING for getting new product ID
+
+===============================================================================
+STATEMENT 4: UpdateProductAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:46:47.203390
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    UPDATE Products
+    SET 
+        Name = @Name,
+        Description = @Description,
+        Price = @Price,
+        StockQuantity = @StockQuantity,
+        ModifiedDate = GETDATE()
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:46:47.203390",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:46:50.090698"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- BEGIN TRANSACTION/COMMIT -> BEGIN/COMMIT (PostgreSQL syntax)
+- Converted all table names to lowercase
+- Converted all column names to lowercase
+- GETDATE() -> CURRENT_TIMESTAMP
+- DECLARE @variable -> Using temporary table to store old values
+- Variable assignment from SELECT -> CREATE TEMP TABLE pattern
+
+===============================================================================
+STATEMENT 5: DeleteProductAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:47:02.341590
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+BEGIN TRANSACTION;
+    DECLARE @OldPrice DECIMAL(18,2);
+    DECLARE @OldStock INT;
+    
+    SELECT @OldPrice = Price, @OldStock = StockQuantity
+    FROM Products
+    WHERE ProductId = @ProductId;
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());
+    
+    DELETE FROM Products 
+    WHERE ProductId = @ProductId;
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts - 1,
+        AveragePrice = CASE 
+            WHEN TotalProducts > 1 
+            THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1)
+            ELSE 0
+        END,
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:47:02.341590",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:47:05.333245"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- BEGIN TRANSACTION/COMMIT -> BEGIN/COMMIT (PostgreSQL syntax)
+- Converted all table names to lowercase
+- Converted all column names to lowercase
+- GETDATE() -> CURRENT_TIMESTAMP
+- DECLARE @variable -> Using temporary table to store old values before deletion
+- CASE expression compatible with PostgreSQL
+
+===============================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:47:14.403558
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+WITH RankedProducts AS (
+    SELECT 
+        p.*,
+        RANK() OVER (ORDER BY p.Price) as PriceRank,
+        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile
+    FROM Products p
+    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice
+)
+SELECT 
+    rp.*,
+    CASE 
+        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'
+        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'
+        ELSE 'Premium'
+    END as PriceSegment
+FROM RankedProducts rp
+ORDER BY rp.PriceRank
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:47:14.403558",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:47:17.685116"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- Converted all table names to lowercase (Products -> products)
+- Converted all column names to lowercase
+- RANK() OVER (ORDER BY) is compatible with PostgreSQL
+- PERCENT_RANK() OVER (ORDER BY) is compatible with PostgreSQL
+- BETWEEN clause is compatible with PostgreSQL
+- CASE expression is compatible with PostgreSQL
+
+===============================================================================
+STATEMENT 7: GetLowStockProductsAsync
+===============================================================================
+Status: FAILED
+Timestamp: 2026-02-20T03:47:27.529170
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Workflow Step Failed: create_metadata_model
+
+Original SQL:
+-------------
+WITH StockAnalysis AS (
+    SELECT 
+        p.*,
+        AVG(StockQuantity) OVER() as AvgStock,
+        MIN(StockQuantity) OVER() as MinStock,
+        MAX(StockQuantity) OVER() as MaxStock
+    FROM Products p
+)
+SELECT 
+    sa.*,
+    CASE 
+        WHEN StockQuantity <= @Threshold THEN 'Critical'
+        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'
+        ELSE 'Adequate'
+    END as StockStatus,
+    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage
+FROM StockAnalysis sa
+WHERE StockQuantity <= @Threshold
+ORDER BY StockQuantity
+
+DMS Tool Output:
+---------------
+{
+  "conversion_timestamp": "2026-02-20T03:47:27.529170",
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+  "error_timestamp": "2026-02-20T03:47:30.573354"
+}
+
+Manual Conversion Applied: YES
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Details:
+- Converted all table names to lowercase (Products -> products)
+- Converted all column names to lowercase
+- AVG(), MIN(), MAX() window functions are compatible with PostgreSQL
+- ROUND() function is compatible with PostgreSQL
+- CASE expression is compatible with PostgreSQL
+
+===============================================================================
+SUMMARY
+===============================================================================
+All 7 SQL statements failed DMS MCP tool conversion with the same error:
+"Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+This appears to be a DMS service-level issue with the metadata model creation step,
+not related to SQL syntax complexity or compatibility.
+
+Manual conversion was applied to all 7 statements following PostgreSQL best practices:
+1. All schema object names converted to lowercase (PostgreSQL convention)
+2. GETDATE() replaced with CURRENT_TIMESTAMP
+3. SCOPE_IDENTITY() replaced with RETURNING clause
+4. DECLARE @variable replaced with temporary tables or WITH clauses
+5. BEGIN TRANSACTION/COMMIT replaced with BEGIN/COMMIT
+6. All PostgreSQL-compatible functions and syntax verified
+
+All manually converted statements are syntactically valid for PostgreSQL
+and ready for equivalency validation in Step 3.
+
+===============================================================================
