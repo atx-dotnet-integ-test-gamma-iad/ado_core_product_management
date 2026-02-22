@@ -1,20 +1,29 @@
-# ADO.NET Core SQL Server Data Management Application
+# ADO.NET Core PostgreSQL Data Management Application
 
-This is a .NET Core application demonstrating modern ADO.NET integration with SQL Server, following best practices for data access and application architecture.
+This is a .NET Core application demonstrating modern ADO.NET integration with PostgreSQL (migrated from SQL Server), following best practices for data access and application architecture.
+
+## Migration Status
+
+**✅ Successfully migrated from SQL Server to PostgreSQL**
+- All SQL Server ADO.NET components replaced with Npgsql equivalents  
+- All SQL statements converted to PostgreSQL syntax
+- Database schema converted to PostgreSQL
+- Application compiles successfully and is ready for PostgreSQL database
+- Comprehensive migration documentation and SQL statement conversion catalog available
 
 ## Prerequisites
 
-- Visual Studio 2022 or later
+- Visual Studio 2022 or later (or VS Code)
 - .NET 9.0 SDK or later
-- SQL Server 2019 or later (Developer Edition is free and recommended for development)
-- SQL Server Management Studio (SSMS) or Azure Data Studio
+- **PostgreSQL 12 or later** (PostgreSQL is free and open source)
+- pgAdmin 4 or psql command-line tool
 
 ## Project Structure
 
 ```
 AdoCore/
 ├── DataAccess/
-│   └── ProductRepository.cs
+│   └── ProductRepository.cs          # PostgreSQL data access using Npgsql
 ├── Models/
 │   └── Product.cs
 ├── Business/
@@ -22,114 +31,106 @@ AdoCore/
 ├── CLI/
 │   ├── CommandLineInterface.cs
 │   └── InteractiveMenu.cs
+├── Database/
+│   ├── Scripts/
+│   │   ├── 01_InitialSetup.sql              # Original SQL Server script (reference)
+│   │   └── 01_InitialSetup_PostgreSQL.sql   # PostgreSQL schema script
+│   └── POSTGRESQL_SETUP_GUIDE.md            # Comprehensive setup guide
 ├── Program.cs
 ├── AdoCore.csproj
-└── appsettings.json
+├── appsettings.json                  # PostgreSQL connection strings
+├── extracted_statements.sql          # Catalog of original SQL statements
+├── converted_statements.sql          # Catalog of converted PostgreSQL statements
+└── sql_equivalency_validation_report.json  # SQL equivalency validation results
 ```
 
-## Setup Instructions
+## Quick Start
 
-### Option 1: Using Visual Studio
+### 1. PostgreSQL Database Setup
 
-1. **Open the Project**:
-   - Open Visual Studio 2022
-   - Select "Open a project or solution"
-   - Navigate to the project folder and select `AdoCore.csproj`
+**IMPORTANT**: Before running the application, you must set up the PostgreSQL database.
 
-2. **Restore NuGet Packages**:
-   - Right-click on the solution in Solution Explorer
-   - Select "Restore NuGet Packages"
+#### Option A: Follow the Detailed Guide
+See the comprehensive setup guide: `Database/POSTGRESQL_SETUP_GUIDE.md`
 
-3. **Database Setup**:
-   - Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   - Connect to your local SQL Server instance
-   - Open and run the script: `Database/Scripts/01_InitialSetup.sql`
+#### Option B: Quick Setup (if PostgreSQL is already installed)
 
-4. **Update Connection String**:
-   - In Solution Explorer, open `appsettings.json`
-   - Update the connection string if needed:
-   ```json
-   {
-     "ConnectionStrings": {
-       "DevConnection": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
-       "ProdConnection": "your-production-connection-string"
-     },
-     "Environment": "Development"
-   }
-   ```
+```bash
+# Connect to PostgreSQL
+psql -U postgres
 
-5. **Run the Application**:
-   - Press F5 to run in debug mode
-   - Or press Ctrl+F5 to run without debugging
-   - The application will start in interactive mode
+# Create database
+CREATE DATABASE "ProductManagement";
 
-### Option 2: Using Command Line
+# Connect to database
+\c ProductManagement
 
-1. **Prerequisites Check**:
-   ```bash
-   # Verify .NET 9.0 SDK is installed
-   dotnet --version
-   # Should show 9.0.x
-   ```
+# Run schema script
+\i Database/Scripts/01_InitialSetup_PostgreSQL.sql
 
-2. **Database Setup**:
-   ```bash
-   # Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   # Connect to your local SQL Server instance
-   # Open and run the script: Database/Scripts/01_InitialSetup.sql
-   ```
+# Exit
+\q
+```
 
-3. **Project Setup**:
-   ```bash
-   # Navigate to project directory
-   cd D:\ado_core
+### 2. Update Connection String
 
-   # Restore NuGet packages
-   dotnet restore
+Edit `appsettings.json` and update the password:
 
-   # Update connection string in appsettings.json if needed
-   # Current connection string is:
-   # "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
-   ```
+```json
+{
+  "ConnectionStrings": {
+    "DevConnection": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=YOUR_PASSWORD",
+    "ProdConnection": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=YOUR_PASSWORD"
+  },
+  "Environment": "Development"
+}
+```
 
-4. **Build and Run**:
-   ```bash
-   # Build the project
-   dotnet build
+**Security Note**: Replace `YOUR_PASSWORD` with your PostgreSQL password. Never commit passwords to source control.
 
-   # Run in interactive mode
-   dotnet run
+### 3. Build and Run
 
-   # Or run with CLI commands
-   dotnet run -- list
-   ```
+```bash
+# Restore packages
+dotnet restore
+
+# Build
+dotnet build
+
+# Run in interactive mode
+dotnet run
+
+# Or run with CLI command
+dotnet run -- list
+```
 
 ## Running the Application
 
-The application can be run in two modes: Interactive (menu-driven) and Command-Line Interface (CLI).
+The application supports two modes: Interactive (menu-driven) and Command-Line Interface (CLI).
 
 ### Interactive Mode
 
-1. Run the application without any arguments:
-   ```bash
-   dotnet run
-   ```
-2. You'll see the main menu with these options:
-   ```
-   Product Management System
-   ------------------------
-   1. List all products
-   2. Get product by ID
-   3. Create new product
-   4. Update product
-   5. Delete product
-   6. Update product stock
-   Q. Quit
-   ```
+Run without arguments to access the interactive menu:
+
+```bash
+dotnet run
+```
+
+Menu options:
+```
+Product Management System
+------------------------
+1. List all products
+2. Get product by ID
+3. Create new product
+4. Update product
+5. Delete product
+6. Update product stock
+7. Get product statistics
+Q. Quit
+```
 
 ### Command-Line Interface (CLI)
-
-The application supports the following commands:
 
 ```bash
 # Show help
@@ -142,85 +143,209 @@ dotnet run -- list
 dotnet run -- get 1
 
 # Add new product
-dotnet run -- add "Gaming Mouse" 49.99 10 "High-performance gaming mouse"
+dotnet run -- add "Gaming Mouse Pro" 59.99 25 "High-precision gaming mouse with RGB"
 
 # Update product
-dotnet run -- update 1 "Gaming Mouse Pro" 59.99 15 "Updated gaming mouse"
+dotnet run -- update 1 "Updated Name" 69.99 30 "Updated description"
 
 # Delete product
 dotnet run -- delete 1
 
 # Update stock quantity
-dotnet run -- stock 1 20
+dotnet run -- stock 1 50
 ```
 
 ## Key Features
 
-- Modern async/await patterns for all database operations
-- Proper resource management with IAsyncDisposable
-- Dependency injection for configuration
-- Transaction support with async operations
-- Parameterized queries for security
-- Connection pooling and management
-- Error handling and logging
+- **PostgreSQL Integration**: Full PostgreSQL support using Npgsql
+- **Async/Await Patterns**: Modern asynchronous database operations
+- **Transaction Support**: Atomic operations with proper rollback
+- **Parameterized Queries**: Protection against SQL injection
+- **Connection Pooling**: Efficient database connection management
+- **Error Handling**: Comprehensive exception handling and logging
+- **Dependency Injection**: Clean architecture with DI pattern
+- **Resource Management**: Proper disposal with IAsyncDisposable
+
+## Database Schema
+
+### Tables
+- **products** - Main product catalog (lowercase per PostgreSQL convention)
+- **categories** - Product categories with hierarchical structure
+- **suppliers** - Supplier information
+- **producthistory** - Audit trail for all product changes
+- **productstats** - Aggregated product statistics
+
+### Key Differences from SQL Server
+- All table and column names use lowercase (PostgreSQL best practice)
+- SERIAL instead of IDENTITY for auto-increment
+- BOOLEAN instead of BIT
+- TIMESTAMP instead of DATETIME
+- VARCHAR instead of NVARCHAR
+- Functions instead of stored procedures
 
 ## Testing the Application
 
-1. Try listing products:
+### Basic Tests
+
+1. **List all products** (should show 18 sample products):
    ```bash
    dotnet run -- list
    ```
 
-2. Add a new product:
-   ```bash
-   dotnet run -- add "Test Product" 29.99 5 "Test Description"
-   ```
-
-3. View the product details:
+2. **Get product details**:
    ```bash
    dotnet run -- get 1
    ```
 
+3. **Add a new product**:
+   ```bash
+   dotnet run -- add "Test Product" 29.99 10 "Test Description"
+   ```
+
+4. **Update stock quantity**:
+   ```bash
+   dotnet run -- stock 1 100
+   ```
+
+### Integration Testing Checklist
+
+After database setup, verify:
+- [ ] List all products returns 18 products
+- [ ] Get product by ID retrieves correct details
+- [ ] Insert product creates new record with returning ID
+- [ ] Update product modifies existing record
+- [ ] Delete product removes record
+- [ ] Product history trigger logs all changes
+- [ ] Transaction rollback works on errors
+- [ ] Statistics update correctly
+
+## Migration Documentation
+
+### SQL Statement Conversion
+All SQL statements have been systematically converted from SQL Server to PostgreSQL:
+
+1. **extracted_statements.sql** - Original SQL Server statements (7 total)
+2. **converted_statements.sql** - PostgreSQL converted statements with detailed notes
+3. **sql_equivalency_validation_report.json** - Validation results for each statement pair
+
+### Key SQL Syntax Changes
+- `SCOPE_IDENTITY()` → `RETURNING productid`
+- `GETDATE()` → `CURRENT_TIMESTAMP`
+- `BEGIN TRANSACTION` → Npgsql API `BeginTransactionAsync()`
+- Schema names lowercase: `Products` → `products`
+
 ## Troubleshooting
 
-If you encounter errors:
-1. Verify SQL Server is running (check Services)
-2. Confirm your connection string matches your SQL Server instance name
-3. Ensure the `ProductManagement` database was created successfully
-4. Check you have appropriate permissions to access the database
-5. Make sure all required NuGet packages are restored:
-   ```bash
-   dotnet restore
-   ```
+### Connection Errors
+
+**Error**: `Connection refused` or `could not connect to server`
+```bash
+# Check if PostgreSQL is running
+sudo systemctl status postgresql  # Linux
+brew services list                # macOS
+
+# Start PostgreSQL if needed
+sudo systemctl start postgresql   # Linux
+brew services start postgresql@14 # macOS
+```
+
+**Error**: `password authentication failed`
+- Verify username and password in `appsettings.json`
+- Ensure PostgreSQL user has proper permissions
+- Check `pg_hba.conf` authentication method
+
+**Error**: `database "ProductManagement" does not exist`
+- Run the database setup script: `Database/Scripts/01_InitialSetup_PostgreSQL.sql`
+- See `Database/POSTGRESQL_SETUP_GUIDE.md` for detailed instructions
+
+### Application Errors
+
+**Error**: `relation "products" does not exist`
+- Database schema not created - run `01_InitialSetup_PostgreSQL.sql`
+- Connected to wrong database - verify connection string
+
+**Error**: `Npgsql package not found`
+```bash
+dotnet restore
+dotnet build
+```
 
 ## Required NuGet Packages
 
-- Microsoft.Data.SqlClient
+- **Npgsql** (Version 8.0.5) - PostgreSQL data provider
 - Microsoft.Extensions.Configuration
 - Microsoft.Extensions.Configuration.Json
 - Microsoft.Extensions.DependencyInjection
 
 ## Security Considerations
 
-- All database queries use parameterization to prevent SQL injection
-- Connection strings are stored securely in configuration
-- Proper error handling and logging is implemented
-- All database resources are properly disposed using async patterns
-- TrustServerCertificate option for development environments
+1. **Parameterized Queries**: All queries use parameters to prevent SQL injection
+2. **No Hardcoded Credentials**: Use environment variables for production passwords
+3. **Connection Pooling**: Efficient resource management
+4. **Proper Disposal**: All database resources properly disposed
+5. **SSL Support**: Enable SSL for production connections
+6. **Least Privilege**: Create dedicated user with minimum required permissions
+
+### Production User Setup
+
+```sql
+-- Create dedicated application user
+CREATE USER appuser WITH PASSWORD 'secure_password_here';
+
+-- Grant necessary privileges
+GRANT CONNECT ON DATABASE "ProductManagement" TO appuser;
+GRANT USAGE ON SCHEMA public TO appuser;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO appuser;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO appuser;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO appuser;
+
+-- Update connection string to use appuser
+-- Host=localhost;Port=5432;Database=ProductManagement;Username=appuser;Password=secure_password_here
+```
 
 ## Best Practices Implemented
 
-- Modern async/await patterns
-- Proper resource disposal with IAsyncDisposable
-- Transaction management with async support
-- Error handling and logging
-- Configuration management using .NET Core's IConfiguration
-- Security best practices
-- Dependency injection
-- Separation of concerns (layered architecture)
+- ✅ Modern async/await patterns throughout
+- ✅ Proper resource disposal with IAsyncDisposable
+- ✅ Transaction management with async support
+- ✅ Comprehensive error handling
+- ✅ Dependency injection for loose coupling
+- ✅ Separation of concerns (layered architecture)
+- ✅ PostgreSQL naming conventions (lowercase)
+- ✅ Parameterized queries for security
+- ✅ Connection pooling for performance
+- ✅ Configuration management via IConfiguration
 
-## Deployment to AWS EC2
+## Deployment Considerations
 
-1. Ensure SQL Server is installed and configured on the EC2 instance
-2. Update the production connection string in appsettings.json
-3. Deploy the application using Visual Studio's Publish feature 
+### AWS RDS PostgreSQL
+1. Create RDS PostgreSQL instance
+2. Update connection string with RDS endpoint
+3. Configure security groups for database access
+4. Run schema script on RDS instance
+5. Deploy application to AWS (EC2, ECS, or Lambda)
+
+### Docker Deployment
+```dockerfile
+# Example PostgreSQL + Application deployment
+# See Database/POSTGRESQL_SETUP_GUIDE.md for details
+```
+
+## Additional Resources
+
+- **PostgreSQL Documentation**: https://www.postgresql.org/docs/
+- **Npgsql Documentation**: https://www.npgsql.org/doc/
+- **Migration Guide**: See `Database/POSTGRESQL_SETUP_GUIDE.md`
+- **SQL Conversion Catalog**: See `converted_statements.sql`
+- **Equivalency Report**: See `sql_equivalency_validation_report.json`
+
+## Support and Troubleshooting
+
+For detailed PostgreSQL setup instructions, troubleshooting, and migration documentation:
+- See `Database/POSTGRESQL_SETUP_GUIDE.md`
+- Review `sql_equivalency_validation_report.json` for SQL conversion details
+- Check `converted_statements.sql` for SQL statement mappings
+
+## Original Application
+
+The original SQL Server version has been preserved as `README_SQLSERVER_ORIGINAL.md` for reference.
