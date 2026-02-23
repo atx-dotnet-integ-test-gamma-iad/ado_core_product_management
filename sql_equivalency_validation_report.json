@@ -1,0 +1,105 @@
+{
+  "number_of_statements_processed": 7,
+  "number_of_statements_equivalent": 0,
+  "number_of_statements_non_equivalent": 0,
+  "number_of_statements_with_equivalency_error": 7,
+  "statement_details": [
+    {
+      "statement_id": 1,
+      "statement_name": "GetAllProductsAsync",
+      "original_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "converted_statement": "WITH productstats AS (\n    SELECT \n        productid,\n        AVG(price) OVER() as avgprice,\n        COUNT(*) OVER() as totalproducts\n    FROM products\n)\nSELECT \n    p.productid,\n    p.name,\n    p.description,\n    p.price,\n    p.stockquantity,\n    p.createddate,\n    p.modifieddate,\n    CASE \n        WHEN p.price > ps.avgprice THEN 'Above Average'\n        WHEN p.price < ps.avgprice THEN 'Below Average'\n        ELSE 'Average'\n    END as pricecategory,\n    ROUND((p.price / ps.avgprice) * 100, 2) as pricepercentageofaverage\nFROM products p\nINNER JOIN productstats ps ON p.productid = ps.productid\nORDER BY \n    CASE \n        WHEN p.price > ps.avgprice THEN 1\n        ELSE 2\n    END,\n    p.name",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:46:24.662551\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_id": 2,
+      "statement_name": "GetProductByIdAsync",
+      "original_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "converted_statement": "WITH producthistory AS (\n    SELECT \n        productid,\n        LAG(price) OVER (ORDER BY modifieddate) as previousprice,\n        LAG(stockquantity) OVER (ORDER BY modifieddate) as previousstock\n    FROM products\n    WHERE productid = $1\n)\nSELECT \n    p.productid,\n    p.name,\n    p.description,\n    p.price,\n    p.stockquantity,\n    p.createddate,\n    p.modifieddate,\n    ph.previousprice,\n    ph.previousstock,\n    CASE \n        WHEN ph.previousprice IS NOT NULL THEN \n            ROUND(((p.price - ph.previousprice) / ph.previousprice) * 100, 2)\n        ELSE NULL\n    END as pricechangepercentage\nFROM products p\nLEFT JOIN producthistory ph ON p.productid = ph.productid\nWHERE p.productid = $1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:46:37.273975\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_id": 3,
+      "statement_name": "InsertProductAsync - INSERT statement",
+      "original_statement": "INSERT INTO Products (Name, Description, Price, StockQuantity)\nVALUES (@Name, @Description, @Price, @StockQuantity)",
+      "converted_statement": "INSERT INTO products (name, description, price, stockquantity)\nVALUES ($1, $2, $3, $4)\nRETURNING productid",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:47:10.729762\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "note": "Part of multi-statement transaction. SCOPE_IDENTITY() replaced with RETURNING clause."
+    },
+    {
+      "statement_id": 4,
+      "statement_name": "UpdateProductAsync - UPDATE statement",
+      "original_statement": "UPDATE Products\nSET \n    Name = @Name,\n    Description = @Description,\n    Price = @Price,\n    StockQuantity = @StockQuantity,\n    ModifiedDate = GETDATE()\nWHERE ProductId = @ProductId",
+      "converted_statement": "UPDATE products\nSET \n    name = $2,\n    description = $3,\n    price = $4,\n    stockquantity = $5,\n    modifieddate = CURRENT_TIMESTAMP\nWHERE productid = $1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:47:23.361416\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "note": "Part of multi-statement transaction. GETDATE() replaced with CURRENT_TIMESTAMP."
+    },
+    {
+      "statement_id": 5,
+      "statement_name": "DeleteProductAsync - DELETE statement",
+      "original_statement": "DELETE FROM Products WHERE ProductId = @ProductId",
+      "converted_statement": "DELETE FROM products WHERE productid = $1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:47:36.259446\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "note": "Part of multi-statement transaction."
+    },
+    {
+      "statement_id": 6,
+      "statement_name": "GetProductsByPriceRangeAsync",
+      "original_statement": "WITH RankedProducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.Price) as PriceRank,\n        PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p\n    WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.PricePercentile <= 0.25 THEN 'Budget'\n        WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as PriceSegment\nFROM RankedProducts rp\nORDER BY rp.PriceRank",
+      "converted_statement": "WITH rankedproducts AS (\n    SELECT \n        p.*,\n        RANK() OVER (ORDER BY p.price) as pricerank,\n        PERCENT_RANK() OVER (ORDER BY p.price) as pricepercentile\n    FROM products p\n    WHERE p.price BETWEEN $1 AND $2\n)\nSELECT \n    rp.*,\n    CASE \n        WHEN rp.pricepercentile <= 0.25 THEN 'Budget'\n        WHEN rp.pricepercentile <= 0.75 THEN 'Mid-Range'\n        ELSE 'Premium'\n    END as pricesegment\nFROM rankedproducts rp\nORDER BY rp.pricerank",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:46:49.167993\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_id": 7,
+      "statement_name": "GetLowStockProductsAsync",
+      "original_statement": "WITH StockAnalysis AS (\n    SELECT \n        p.*,\n        AVG(StockQuantity) OVER() as AvgStock,\n        MIN(StockQuantity) OVER() as MinStock,\n        MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN StockQuantity <= @Threshold THEN 'Critical'\n        WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as StockStatus,\n    ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa\nWHERE StockQuantity <= @Threshold\nORDER BY StockQuantity",
+      "converted_statement": "WITH stockanalysis AS (\n    SELECT \n        p.*,\n        AVG(stockquantity) OVER() as avgstock,\n        MIN(stockquantity) OVER() as minstock,\n        MAX(stockquantity) OVER() as maxstock\n    FROM products p\n)\nSELECT \n    sa.*,\n    CASE \n        WHEN stockquantity <= $1 THEN 'Critical'\n        WHEN stockquantity <= avgstock * 0.5 THEN 'Low'\n        ELSE 'Adequate'\n    END as stockstatus,\n    ROUND((stockquantity / avgstock) * 100, 2) as stockpercentageofaverage\nFROM stockanalysis sa\nWHERE stockquantity <= $1\nORDER BY stockquantity",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\n  \"equivalence_status\": \"ERROR\",\n  \"error\": \"'uniqueID'\",\n  \"timestamp\": \"2026-02-23T01:47:00.750651\"\n}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    }
+  ],
+  "summary": {
+    "tool_validation_status": "All 7 SQL statement pairs processed through sql-equivalency___validate_sql_equivalence tool",
+    "tool_error_pattern": "All statements returned ERROR with message: 'uniqueID'",
+    "compliance_note": "Per transformation definition: equivalency_status values come exclusively from the tool output. Tool returned ERROR for all statements, so all marked as ERROR.",
+    "no_agent_judgment_used": "CONFIRMED - All equivalency_status values are directly from sql-equivalency___validate_sql_equivalence tool output, not from agent judgment",
+    "conversion_summary": {
+      "all_statements_converted": true,
+      "dms_tool_failures": 7,
+      "manual_conversions_applied": 7,
+      "manual_conversion_rules_applied": [
+        "All table and column names converted to lowercase",
+        "Parameter syntax changed from @param to $1, $2, etc.",
+        "GETDATE() replaced with CURRENT_TIMESTAMP",
+        "SCOPE_IDENTITY() replaced with RETURNING clause",
+        "Schema naming conventions followed PostgreSQL standards"
+      ]
+    }
+  },
+  "validation_metadata": {
+    "validation_date": "2026-02-23",
+    "validation_tool": "sql-equivalency___validate_sql_equivalence (MCP tool)",
+    "statements_validated": 7,
+    "multi_statement_transactions_note": "Complex multi-statement transactions (InsertProductAsync, UpdateProductAsync, DeleteProductAsync) were broken down and core DML statements validated individually as per transformation definition guidance"
+  }
+}
