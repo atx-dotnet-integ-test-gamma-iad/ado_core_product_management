@@ -9,61 +9,61 @@ USE ProductManagement;
 GO
 
 -- Drop existing objects in correct order
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[trg_Products_History]') AND type = 'TR')
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[trg_Products_History]') AND type = 'TR')
 BEGIN
-    DROP TRIGGER [dbo].[trg_Products_History]
+    DROP TRIGGER [trg_Products_History]
 END
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ProductHistory]') AND type in (N'U'))
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[ProductHistory]') AND type in (N'U'))
 BEGIN
-    DROP TABLE [dbo].[ProductHistory]
+    DROP TABLE [ProductHistory]
 END
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Products]') AND type in (N'U'))
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[Products]') AND type in (N'U'))
 BEGIN
-    DROP TABLE [dbo].[Products]
+    DROP TABLE [Products]
 END
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Categories]') AND type in (N'U'))
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[Categories]') AND type in (N'U'))
 BEGIN
-    DROP TABLE [dbo].[Categories]
+    DROP TABLE [Categories]
 END
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Suppliers]') AND type in (N'U'))
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[Suppliers]') AND type in (N'U'))
 BEGIN
-    DROP TABLE [dbo].[Suppliers]
+    DROP TABLE [Suppliers]
 END
 GO
 
-IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ProductStats]') AND type in (N'U'))
+IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[ProductStats]') AND type in (N'U'))
 BEGIN
-    DROP TABLE [dbo].[ProductStats]
+    DROP TABLE [ProductStats]
 END
 GO
 
 -- Create Categories Table
-CREATE TABLE [dbo].[Categories](
-    [CategoryId] [int] IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE [Categories](
+    [CategoryId] [int] SERIAL PRIMARY KEY,
     [Name] [nvarchar](50) NOT NULL,
     [Description] [nvarchar](200) NULL,
     [ParentCategoryId] [int] NULL,
-    [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE()
+    [CreatedDate] [TIMESTAMP] NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 GO
 
 -- Add self-referencing foreign key for Categories
-ALTER TABLE [dbo].[Categories]
+ALTER TABLE [Categories]
 ADD CONSTRAINT [FK_Categories_Categories] 
-FOREIGN KEY ([ParentCategoryId]) REFERENCES [dbo].[Categories] ([CategoryId])
+FOREIGN KEY ([ParentCategoryId]) REFERENCES [Categories] ([CategoryId])
 GO
 
 -- Create Suppliers Table
-CREATE TABLE [dbo].[Suppliers](
-    [SupplierId] [int] IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE [Suppliers](
+    [SupplierId] [int] SERIAL PRIMARY KEY,
     [Name] [nvarchar](100) NOT NULL,
     [ContactName] [nvarchar](100) NULL,
     [Email] [nvarchar](100) NULL,
@@ -71,13 +71,13 @@ CREATE TABLE [dbo].[Suppliers](
     [Address] [nvarchar](200) NULL,
     [Country] [nvarchar](50) NULL,
     [IsActive] [bit] NOT NULL DEFAULT 1,
-    [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE()
+    [CreatedDate] [TIMESTAMP] NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 GO
 
 -- Create Products Table
-CREATE TABLE [dbo].[Products](
-    [ProductId] [int] IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE [Products](
+    [ProductId] [int] SERIAL PRIMARY KEY,
     [Name] [nvarchar](100) NOT NULL,
     [Description] [nvarchar](500) NULL,
     [Price] [decimal](18, 2) NOT NULL,
@@ -89,57 +89,57 @@ CREATE TABLE [dbo].[Products](
     [Dimensions] [nvarchar](50) NULL,
     [IsDiscontinued] [bit] NOT NULL DEFAULT 0,
     [ReorderLevel] [int] NOT NULL DEFAULT 10,
-    [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE(),
-    [ModifiedDate] [datetime] NULL,
+    [CreatedDate] [TIMESTAMP] NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    [ModifiedDate] [TIMESTAMP] NULL,
     CONSTRAINT [FK_Products_Categories] FOREIGN KEY ([CategoryId]) 
-        REFERENCES [dbo].[Categories] ([CategoryId]),
+        REFERENCES [Categories] ([CategoryId]),
     CONSTRAINT [FK_Products_Suppliers] FOREIGN KEY ([SupplierId]) 
-        REFERENCES [dbo].[Suppliers] ([SupplierId])
+        REFERENCES [Suppliers] ([SupplierId])
 )
 GO
 
 -- Create ProductHistory Table
-CREATE TABLE [dbo].[ProductHistory](
-    [HistoryId] [int] IDENTITY(1,1) PRIMARY KEY,
+CREATE TABLE [ProductHistory](
+    [HistoryId] [int] SERIAL PRIMARY KEY,
     [ProductId] [int] NOT NULL,
     [Action] [varchar](10) NOT NULL,
     [OldPrice] [decimal](18, 2) NULL,
     [NewPrice] [decimal](18, 2) NULL,
     [OldStock] [int] NULL,
     [NewStock] [int] NULL,
-    [ActionDate] [datetime] NOT NULL DEFAULT GETDATE(),
+    [ActionDate] [TIMESTAMP] NOT NULL DEFAULT CURRENT_TIMESTAMP,
     [ModifiedBy] [nvarchar](100) NULL,
     CONSTRAINT [FK_ProductHistory_Products] FOREIGN KEY ([ProductId]) 
-        REFERENCES [dbo].[Products] ([ProductId])
+        REFERENCES [Products] ([ProductId])
 )
 GO
 
 -- Create ProductStats Table
-CREATE TABLE [dbo].[ProductStats](
+CREATE TABLE [ProductStats](
     [StatId] [int] PRIMARY KEY DEFAULT 1,
     [TotalProducts] [int] NOT NULL DEFAULT 0,
     [AveragePrice] [decimal](18, 2) NOT NULL DEFAULT 0,
     [TotalStockValue] [decimal](18, 2) NOT NULL DEFAULT 0,
     [LowStockCount] [int] NOT NULL DEFAULT 0,
     [DiscontinuedCount] [int] NOT NULL DEFAULT 0,
-    [LastUpdated] [datetime] NOT NULL DEFAULT GETDATE()
+    [LastUpdated] [TIMESTAMP] NOT NULL DEFAULT CURRENT_TIMESTAMP
 )
 GO
 
 -- Create Indexes
-CREATE INDEX [IX_Products_CategoryId] ON [dbo].[Products] ([CategoryId])
+CREATE INDEX [IX_Products_CategoryId] ON [Products] ([CategoryId])
 GO
 
-CREATE INDEX [IX_Products_SupplierId] ON [dbo].[Products] ([SupplierId])
+CREATE INDEX [IX_Products_SupplierId] ON [Products] ([SupplierId])
 GO
 
-CREATE UNIQUE INDEX [IX_Products_SKU] ON [dbo].[Products] ([SKU])
+CREATE UNIQUE INDEX [IX_Products_SKU] ON [Products] ([SKU])
 GO
 
-CREATE INDEX [IX_ProductHistory_ProductId] ON [dbo].[ProductHistory] ([ProductId])
+CREATE INDEX [IX_ProductHistory_ProductId] ON [ProductHistory] ([ProductId])
 GO
 
-CREATE INDEX [IX_ProductHistory_ActionDate] ON [dbo].[ProductHistory] ([ActionDate])
+CREATE INDEX [IX_ProductHistory_ActionDate] ON [ProductHistory] ([ActionDate])
 GO
 
 -- Insert Sample Categories
@@ -223,7 +223,7 @@ GO
 
 -- Insert initial stats record
 INSERT INTO ProductStats (StatId, TotalProducts, AveragePrice, TotalStockValue, LowStockCount, DiscontinuedCount, LastUpdated)
-VALUES (1, 0, 0, 0, 0, 0, GETDATE())
+VALUES (1, 0, 0, 0, 0, 0, CURRENT_TIMESTAMP)
 GO
 
 -- Update initial statistics
@@ -234,13 +234,13 @@ SET
     TotalStockValue = (SELECT SUM(Price * StockQuantity) FROM Products),
     LowStockCount = (SELECT COUNT(*) FROM Products WHERE StockQuantity <= ReorderLevel),
     DiscontinuedCount = (SELECT COUNT(*) FROM Products WHERE IsDiscontinued = 1),
-    LastUpdated = GETDATE()
+    LastUpdated = CURRENT_TIMESTAMP
 WHERE StatId = 1
 GO
 
 -- Create Trigger for Product History
-CREATE TRIGGER [dbo].[trg_Products_History]
-ON [dbo].[Products]
+CREATE TRIGGER [trg_Products_History]
+ON [Products]
 AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
@@ -292,7 +292,7 @@ END
 GO
 
 -- Create Stored Procedure for Getting All Products
-CREATE OR ALTER PROCEDURE [dbo].[sp_GetAllProducts]
+CREATE OR ALTER PROCEDURE [sp_GetAllProducts]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -303,7 +303,7 @@ END
 GO
 
 -- Create Stored Procedure for Getting Product by ID
-CREATE OR ALTER PROCEDURE [dbo].[sp_GetProductById]
+CREATE OR ALTER PROCEDURE [sp_GetProductById]
     @ProductId INT
 AS
 BEGIN
@@ -315,9 +315,9 @@ END
 GO
 
 -- Create Stored Procedure for Inserting Product
-CREATE OR ALTER PROCEDURE [dbo].[sp_InsertProduct]
-    @Name NVARCHAR(100),
-    @Description NVARCHAR(500),
+CREATE OR ALTER PROCEDURE [sp_InsertProduct]
+    @Name VARCHAR(100),
+    @Description VARCHAR(500),
     @Price DECIMAL(18,2),
     @StockQuantity INT
 AS
@@ -331,10 +331,10 @@ END
 GO
 
 -- Create Stored Procedure for Updating Product
-CREATE OR ALTER PROCEDURE [dbo].[sp_UpdateProduct]
+CREATE OR ALTER PROCEDURE [sp_UpdateProduct]
     @ProductId INT,
-    @Name NVARCHAR(100),
-    @Description NVARCHAR(500),
+    @Name VARCHAR(100),
+    @Description VARCHAR(500),
     @Price DECIMAL(18,2),
     @StockQuantity INT
 AS
@@ -345,13 +345,13 @@ BEGIN
         Description = @Description,
         Price = @Price,
         StockQuantity = @StockQuantity,
-        ModifiedDate = GETDATE()
+        ModifiedDate = CURRENT_TIMESTAMP
     WHERE ProductId = @ProductId;
 END
 GO
 
 -- Create Stored Procedure for Deleting Product
-CREATE OR ALTER PROCEDURE [dbo].[sp_DeleteProduct]
+CREATE OR ALTER PROCEDURE [sp_DeleteProduct]
     @ProductId INT
 AS
 BEGIN
