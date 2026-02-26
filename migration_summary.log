@@ -1,0 +1,131 @@
+================================================================================
+MIGRATION SUMMARY LOG
+MS SQL Server to PostgreSQL Migration for ADO.NET Application
+Generated: 2026-02-26
+================================================================================
+
+## Overview
+Application: AdoCore (.NET 9.0 ADO.NET Application)
+Source Database: Microsoft SQL Server (ProductManagement)
+Target Database: PostgreSQL 13
+
+## SQL Statement Processing Summary
+Total SQL statements processed: 7
+Statements successfully converted by DMS: 0
+Statements requiring manual intervention: 7
+DMS failure reason: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+Manual conversion method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+## SQL Equivalency Validation Summary
+Total pairs validated: 7
+Equivalent: 0
+Non-equivalent: 0
+Errors: 7
+Equivalency tool error: "'uniqueID'"
+Note: All equivalency statuses come from the sql-equivalency tool, not agent judgment
+
+## Statement-by-Statement Details
+
+### Statement 1: GetAllProductsAsync
+- Type: SELECT with CTE, window functions (AVG OVER, COUNT OVER), INNER JOIN, CASE, ROUND
+- DMS Status: FAILED
+- Manual Conversion: Applied lowercase schema object names
+- Equivalency: ERROR (tool error)
+
+### Statement 2: GetProductByIdAsync
+- Type: SELECT with CTE, LAG window function, LEFT JOIN, CASE, ROUND
+- DMS Status: FAILED
+- Manual Conversion: Applied lowercase schema object names
+- Equivalency: ERROR (tool error)
+
+### Statement 3: InsertProductAsync
+- Type: Transaction block with DECLARE, INSERT, SCOPE_IDENTITY(), GETDATE()
+- DMS Status: FAILED
+- Manual Conversion: SCOPE_IDENTITY() -> RETURNING clause, GETDATE() -> NOW(),
+  DECLARE/SET -> separate C# commands within transaction
+- Equivalency: ERROR (tool error)
+
+### Statement 4: UpdateProductAsync
+- Type: Transaction block with DECLARE, SELECT INTO variables, UPDATE, GETDATE()
+- DMS Status: FAILED
+- Manual Conversion: DECLARE/SET -> C# variables, GETDATE() -> NOW(),
+  restructured into 4 separate commands within C# transaction
+- Equivalency: ERROR (tool error)
+
+### Statement 5: DeleteProductAsync
+- Type: Transaction block with DECLARE, SELECT INTO variables, DELETE, GETDATE()
+- DMS Status: FAILED
+- Manual Conversion: DECLARE/SET -> C# variables, GETDATE() -> NOW(),
+  restructured into 4 separate commands within C# transaction
+- Equivalency: ERROR (tool error)
+
+### Statement 6: GetProductsByPriceRangeAsync
+- Type: SELECT with CTE, RANK(), PERCENT_RANK(), BETWEEN, CASE
+- DMS Status: FAILED
+- Manual Conversion: Applied lowercase schema object names
+- Equivalency: ERROR (tool error)
+
+### Statement 7: GetLowStockProductsAsync
+- Type: SELECT with CTE, AVG/MIN/MAX window functions, CASE, ROUND
+- DMS Status: FAILED
+- Manual Conversion: Applied lowercase schema object names, added CAST for integer division
+- Equivalency: ERROR (tool error)
+
+## Files Modified
+
+### Source Code Changes
+1. sourceCode/DataAccess/ProductRepository.cs
+   - Replaced all 7 SQL statements with PostgreSQL equivalents
+   - Restructured transaction blocks (Insert, Update, Delete) into multiple C# commands
+   - Replaced using Microsoft.Data.SqlClient -> using Npgsql
+   - Replaced SqlConnection -> NpgsqlConnection (3 occurrences)
+   - Replaced SqlCommand -> NpgsqlCommand (15 occurrences)
+   - Replaced SqlDataReader -> NpgsqlDataReader (1 occurrence)
+   - Added NpgsqlTransaction casts (11 occurrences)
+
+2. sourceCode/AdoCore.csproj
+   - Replaced Microsoft.Data.SqlClient 5.1.4 -> Npgsql 8.0.1
+
+3. sourceCode/appsettings.json
+   - Updated connection strings from SQL Server to PostgreSQL format
+   - Server= -> Host=, added Port=5432, Username=, Password=
+   - Removed Trusted_Connection, MultipleActiveResultSets, TrustServerCertificate
+
+### SQL Script Changes
+4. sourceCode/Scripts/01_InitialSetup.sql
+   - Converted from MS SQL Server to PostgreSQL DDL syntax
+
+5. sourceCode/Database/Scripts/01_InitialSetup.sql
+   - Converted from MS SQL Server to PostgreSQL DDL syntax
+   - Includes tables, indexes, triggers, functions, sample data
+
+### Migration Artifacts Created
+6. sourceCode/extracted_statements.sql - Catalog of original SQL statements
+7. sourceCode/converted_statements.sql - Catalog of converted PostgreSQL statements
+8. sourceCode/sql_equivalency_validation_report.json - Complete equivalency report
+
+## Build Status
+Final build: SUCCEEDED (0 errors, 12 warnings)
+Warnings are pre-existing nullable reference type warnings and Npgsql 8.0.1 vulnerability advisory
+
+## Key Conversions Applied
+- SCOPE_IDENTITY() -> RETURNING productid (PostgreSQL)
+- GETDATE() -> NOW() (PostgreSQL)
+- DECLARE @var / SET @var -> C# variables with separate queries
+- BEGIN TRANSACTION / COMMIT -> C# BeginTransactionAsync / CommitAsync
+- All schema object names converted to lowercase
+- [int] IDENTITY(1,1) -> SERIAL
+- [nvarchar](N) -> VARCHAR(N)
+- [datetime] -> TIMESTAMP
+- [bit] -> BOOLEAN
+- SYSTEM_USER -> CURRENT_USER
+- CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION
+- MS SQL trigger syntax -> PostgreSQL trigger function + CREATE TRIGGER
+
+## Issues and Warnings
+1. DMS MCP Tool: All 7 conversion attempts failed with "Metadata model creation failed"
+   - All conversions performed manually with lowercase schema naming convention
+2. SQL Equivalency Tool: All 7 validation attempts returned ERROR ("'uniqueID'")
+   - Results documented as-is from the tool; no agent judgment applied
+3. Npgsql 8.0.1: Known vulnerability NU1903 (GHSA-x9vc-6hfv-hg8c)
+   - Version specified in migration plan; consider upgrading to 8.0.6+
