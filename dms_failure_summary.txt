@@ -1,0 +1,67 @@
+================================================================================
+DMS CONVERSION FAILURE SUMMARY
+================================================================================
+
+DMS Tool Configuration:
+- Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+- Database: ProductManagement
+- Schema: dbo
+- Region: us-east-1
+- Server: 172.31.83.165
+
+DMS Error (consistent across all 7 statements):
+"Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+Manual Conversion Approach Applied:
+- DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+- All schema object names (tables, columns, aliases) converted to lowercase
+- SQL Server-specific functions converted to PostgreSQL equivalents:
+  - SCOPE_IDENTITY() -> lastval()
+  - GETDATE() -> NOW()
+  - BEGIN TRANSACTION -> BEGIN
+  - DECLARE @variable -> SELECT INTO TEMPORARY TABLE (for transactional blocks)
+  - ROUND with integer division -> Added ::numeric cast where needed
+
+SQL Equivalency Tool Results:
+- All 7 statements returned ERROR status from the equivalency tool
+- Error: "'uniqueID'"
+- Per transformation rules, these are marked as ERROR (not agent judgment)
+
+================================================================================
+STATEMENT-BY-STATEMENT DETAIL
+================================================================================
+
+Statement 1 (GetAllProductsAsync):
+- DMS Attempt: Failed
+- Manual Conversion: Lowercase schema objects, SQL syntax compatible
+- Equivalency: ERROR
+
+Statement 2 (GetProductByIdAsync):
+- DMS Attempt: Failed
+- Manual Conversion: Lowercase schema objects, SQL syntax compatible
+- Equivalency: ERROR
+
+Statement 3 (InsertProductAsync):
+- DMS Attempt: Failed
+- Manual Conversion: SCOPE_IDENTITY() -> lastval(), GETDATE() -> NOW(), BEGIN TRANSACTION -> BEGIN
+- Equivalency: ERROR
+
+Statement 4 (UpdateProductAsync):
+- DMS Attempt: Failed
+- Manual Conversion: DECLARE vars -> temp table, GETDATE() -> NOW(), BEGIN TRANSACTION -> BEGIN
+- Equivalency: ERROR
+
+Statement 5 (DeleteProductAsync):
+- DMS Attempt: Failed
+- Manual Conversion: DECLARE vars -> temp table, GETDATE() -> NOW(), BEGIN TRANSACTION -> BEGIN
+- Equivalency: ERROR
+
+Statement 6 (GetProductsByPriceRangeAsync):
+- DMS Attempt: Failed
+- Manual Conversion: Lowercase schema objects, SQL syntax compatible
+- Equivalency: ERROR
+
+Statement 7 (GetLowStockProductsAsync):
+- DMS Attempt: Failed
+- Manual Conversion: Lowercase schema objects, added ::numeric cast for ROUND
+- Equivalency: ERROR

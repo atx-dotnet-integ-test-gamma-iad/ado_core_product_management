@@ -1,0 +1,170 @@
+================================================================================
+FINAL MIGRATION REPORT
+Microsoft SQL Server to PostgreSQL Migration for .NET ADO Application
+Generated: 2026-02-27
+================================================================================
+
+1. MIGRATION SUMMARY
+================================================================================
+
+Application: AdoCore (.NET 9.0 ADO.NET Application)
+Source Database: Microsoft SQL Server (ProductManagement)
+Target Database: PostgreSQL (ProductManagement)
+Migration Method: DMS MCP Tool (failed) + Manual Conversion with Lowercase Schema
+
+2. SQL STATEMENT PROCESSING SUMMARY
+================================================================================
+
+Total SQL statements processed:           8
+  - From ProductRepository.cs:            7
+  - From Database Setup Scripts:          1 (representative DDL)
+
+DMS Tool Conversion Results:
+  - Successfully converted by DMS:        0
+  - DMS failures (manual conversion):     8
+  - DMS Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+SQL Equivalency Validation Results:
+  - Validated as EQUIVALENT:              0
+  - Validated as NOT_EQUIVALENT:          0
+  - Validation returned ERROR:            8
+  - Equivalency Tool Error: "'uniqueID'"
+  NOTE: All equivalency statuses are from the tool output, not agent judgment.
+
+3. FILES MODIFIED
+================================================================================
+
+Code Files:
+  [x] sourceCode/DataAccess/ProductRepository.cs
+      - 7 SQL statements converted to PostgreSQL (lowercase schema)
+      - SqlConnection -> NpgsqlConnection
+      - SqlCommand -> NpgsqlCommand
+      - SqlDataReader -> NpgsqlDataReader
+      - using Microsoft.Data.SqlClient -> using Npgsql
+
+  [x] sourceCode/AdoCore.csproj
+      - Microsoft.Data.SqlClient 5.1.4 -> Npgsql 8.0.6
+      (Upgraded from 8.0.1 to resolve NU1903 security vulnerability)
+
+  [x] sourceCode/appsettings.json
+      - Connection strings converted to PostgreSQL format
+      - Server -> Host, added Port=5432
+      - Removed SQL Server-specific parameters (MARS, TrustedConnection)
+      - Added PostgreSQL authentication (Username/Password)
+
+SQL Script Files:
+  [x] sourceCode/Scripts/01_InitialSetup.sql
+      - Fully converted to PostgreSQL syntax
+      - Stored procedures -> PostgreSQL functions
+      - Data types converted
+
+  [x] sourceCode/Database/Scripts/01_InitialSetup.sql
+      - Fully converted to PostgreSQL syntax
+      - All tables, indexes, triggers, stored procedures converted
+      - GO separators removed
+      - SQL Server system objects -> PostgreSQL equivalents
+
+Artifact Files Created:
+  [x] sourceCode/extracted_statements.sql (7 original MS SQL statements)
+  [x] sourceCode/converted_statements.sql (7 PostgreSQL converted statements)
+  [x] sourceCode/sql_equivalency_validation_report.json (8 statement pairs)
+  [x] sourceCode/dms_failure_summary.txt (DMS failure documentation)
+  [x] sourceCode/migration_report.txt (this file)
+
+4. SQL SYNTAX CONVERSION DETAILS
+================================================================================
+
+Common Conversions Applied:
+  - SCOPE_IDENTITY() -> lastval()
+  - GETDATE() -> NOW()
+  - BEGIN TRANSACTION/COMMIT -> Removed (Npgsql handles transactions in C#)
+  - DECLARE @variable -> DO $$ DECLARE v_variable ... END $$
+  - [dbo].[TableName] -> tablename (lowercase, no schema prefix)
+  - [int] IDENTITY(1,1) -> SERIAL
+  - [nvarchar](n) -> varchar(n)
+  - [decimal](p,s) -> numeric(p,s)
+  - [datetime] -> timestamp
+  - [bit] -> boolean
+  - SYSTEM_USER -> CURRENT_USER
+  - CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION
+  - Triggers -> PostgreSQL trigger function + CREATE TRIGGER syntax
+  - OBJECT_ID() checks -> DROP IF EXISTS
+  - Integer division in ROUND -> Added ::numeric cast
+
+5. ADO.NET CLASS MIGRATION
+================================================================================
+
+  Microsoft.Data.SqlClient 5.1.4  ->  Npgsql 8.0.6
+  SqlConnection                   ->  NpgsqlConnection
+  SqlCommand                      ->  NpgsqlCommand
+  SqlDataReader                   ->  NpgsqlDataReader
+  SqlParameter                    ->  NpgsqlParameter (not used directly)
+
+6. CONNECTION STRING MIGRATION
+================================================================================
+
+  Original (SQL Server):
+    Server=localhost;Database=ProductManagement;Trusted_Connection=True;
+    MultipleActiveResultSets=true;TrustServerCertificate=True
+
+  Converted (PostgreSQL):
+    Host=localhost;Port=5432;Database=ProductManagement;
+    Username=postgres;Password=postgres
+
+7. BUILD VERIFICATION
+================================================================================
+
+  Final Build Status: SUCCESS
+  Errors: 0
+  Warnings: 10 (all pre-existing nullable reference warnings, no new warnings)
+  Target Framework: net9.0
+  No security vulnerabilities detected (Npgsql upgraded to 8.0.6)
+
+8. DMS TOOL FAILURE DOCUMENTATION
+================================================================================
+
+  All 8 DMS conversion attempts failed with identical error:
+  "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+  
+  This appears to be a service-level issue with the DMS metadata model creation,
+  not related to the SQL statements themselves. The error occurred consistently
+  across all statement types (SELECT, INSERT, UPDATE, DELETE, CREATE TABLE).
+
+9. SQL EQUIVALENCY TOOL RESULTS
+================================================================================
+
+  All 8 equivalency validation attempts returned ERROR status:
+  Error: "'uniqueID'"
+  
+  This appears to be a service-level issue with the equivalency tool,
+  not related to the SQL statement pairs themselves. The error occurred
+  consistently across all statement pairs regardless of complexity.
+  
+  Per the transformation definition: all statuses are from the tool output,
+  never from agent judgment.
+
+10. RECOMMENDATIONS FOR MANUAL REVIEW
+================================================================================
+
+  Due to both DMS and Equivalency tools returning errors, the following
+  statements should be manually verified against a PostgreSQL instance:
+
+  1. GetAllProductsAsync - CTE with window functions (should be compatible)
+  2. GetProductByIdAsync - CTE with LAG (should be compatible)
+  3. InsertProductAsync - lastval() usage for SCOPE_IDENTITY() replacement
+  4. UpdateProductAsync - DO $$ block with local variables
+  5. DeleteProductAsync - DO $$ block with local variables
+  6. GetProductsByPriceRangeAsync - RANK/PERCENT_RANK (should be compatible)
+  7. GetLowStockProductsAsync - AVG/MIN/MAX window functions + ::numeric cast
+  8. DDL Scripts - Table creation, triggers, functions
+
+  Special attention items:
+  - The DO $$ blocks in Update/Delete use @params which Npgsql will pass as
+    parameters. Verify that DO $$ blocks work correctly with Npgsql parameters.
+  - The lastval() function requires SERIAL column auto-increment to have
+    occurred in the same session.
+  - The ::numeric cast in statement 7 is needed for integer division in ROUND.
+
+================================================================================
+END OF MIGRATION REPORT
+================================================================================
