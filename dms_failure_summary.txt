@@ -1,0 +1,59 @@
+============================================================================
+DMS MCP Tool Failure Summary
+============================================================================
+
+Tool: dms-mcp___statement_conversion_tool
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+Error (consistent across all 7 statements):
+  Status: error
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  
+Total Statements Attempted: 7
+Total Failures: 7
+
+All statements were manually converted applying lowercase schema object naming
+for PostgreSQL compatibility per DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA protocol.
+
+Statement Details:
+---------------------------------------------------------------------------
+Statement 1: GetAllProductsAsync - CTE with window functions
+  DMS Attempted: Yes (3 attempts)
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: Applied lowercase schema naming, SQL is PostgreSQL compatible
+
+Statement 2: GetProductByIdAsync - CTE with LAG() window function
+  DMS Attempted: Yes
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: Applied lowercase schema naming, SQL is PostgreSQL compatible
+
+Statement 3: InsertProductAsync - Transaction block with SCOPE_IDENTITY
+  DMS Attempted: Yes
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: SCOPE_IDENTITY() -> CTE with RETURNING, GETDATE() -> NOW(),
+    DECLARE/SET -> CTE pattern, BEGIN TRANSACTION/COMMIT -> removed (use CTE)
+
+Statement 4: UpdateProductAsync - Transaction block with variables
+  DMS Attempted: Yes
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: DECLARE -> CTE, GETDATE() -> NOW(),
+    BEGIN TRANSACTION/COMMIT -> removed (use CTE)
+
+Statement 5: DeleteProductAsync - Transaction block with variables
+  DMS Attempted: Yes
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: DECLARE -> CTE, GETDATE() -> NOW(),
+    BEGIN TRANSACTION/COMMIT -> removed (use CTE)
+
+Statement 6: GetProductsByPriceRangeAsync - CTE with RANK/PERCENT_RANK
+  DMS Attempted: Yes
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: Applied lowercase schema naming, SQL is PostgreSQL compatible
+
+Statement 7: GetLowStockProductsAsync - CTE with AVG/MIN/MAX window functions
+  DMS Attempted: Yes
+  DMS Result: error - Metadata model creation failed
+  Manual Conversion: Applied lowercase schema naming, added CAST for integer division
