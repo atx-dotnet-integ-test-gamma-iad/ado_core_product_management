@@ -1,0 +1,87 @@
+# DMS Conversion Issues Log
+# Date: 2026-03-02
+# Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+
+## Issue 1: Statement 3 - InsertProductAsync
+
+### Original MS SQL Statement:
+```sql
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+```
+
+### DMS Error Output:
+```json
+{
+  "status": "error",
+  "error": "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+}
+```
+
+### Root Cause Analysis:
+The DMS tool could not parse the statement because it contains a DECLARE statement followed by a 
+BEGIN TRANSACTION block and a final SELECT statement. The combination of DECLARE + transaction block 
++ final SELECT was not recognized as a valid statement definition.
+
+### Manual Conversion (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA):
+```sql
+WITH new_product AS (
+    INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity)
+    RETURNING productid
+),
+log_history AS (
+    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+    SELECT productid, 'INSERT', NULL, @Price, NULL, @StockQuantity, clock_timestamp()
+    FROM new_product
+),
+update_stats AS (
+    UPDATE productmanagement_dbo.productstats
+    SET totalproducts = totalproducts + 1,
+        averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1),
+        lastupdated = clock_timestamp()
+    WHERE statid = 1
+)
+SELECT productid FROM new_product;
+```
+
+### Conversion Notes:
+- SCOPE_IDENTITY() replaced with RETURNING clause in CTE
+- GETDATE() replaced with clock_timestamp()
+- Transaction management removed (handled by ADO.NET/Npgsql at connection level)
+- DECLARE @variable pattern replaced with CTE-based approach
+- Schema objects converted to lowercase per manual conversion rules
+- Schema prefix `productmanagement_dbo.` applied consistent with DMS conversions of other statements
+
+## Issue 2: Statements 4 and 5 - DMS Warning (Transaction Management)
+
+### DMS Warning for both UpdateProductAsync and DeleteProductAsync:
+```
+[7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands 
+such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]
+```
+
+### Resolution:
+DMS successfully converted the SQL syntax (GETDATE → clock_timestamp, lowercase naming, schema prefix).
+However, the DECLARE/BEGIN/END block output by DMS is designed for PL/pgSQL functions, not for inline
+ADO.NET SQL execution via Npgsql. The converted statements were adapted to use CTEs with writable
+subqueries (data-modifying CTEs) which are supported in PostgreSQL and work directly as inline SQL.
+Transaction management is handled at the ADO.NET/Npgsql connection level.
