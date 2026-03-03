@@ -1,0 +1,129 @@
+============================================================
+MIGRATION SUMMARY LOG
+Microsoft SQL Server to PostgreSQL Migration for .NET ADO Application
+Generated: 2026-03-03
+============================================================
+
+1. OVERVIEW
+-----------
+Application: AdoCore (.NET 9.0 Console Application)
+Source Database: Microsoft SQL Server (ProductManagement)
+Target Database: PostgreSQL (ProductManagement)
+Migration Tool: AWS DMS MCP Statement Conversion Tool
+Validation Tool: SQL Equivalency MCP Tool
+
+2. TOTAL STATEMENTS PROCESSED
+------------------------------
+Total SQL statements extracted and processed: 19
+- From ProductRepository.cs: 7 statements
+- From Scripts/01_InitialSetup.sql: 6 statements
+- From Database/Scripts/01_InitialSetup.sql: 6 statements
+
+3. DMS CONVERSION RESULTS
+--------------------------
+Successfully converted by DMS: 18 statements
+Failed DMS conversion (manual): 1 statement
+
+DMS Success Details:
+- Statement 1 (GetAllProductsAsync): SUCCESS - CTE with window functions converted
+- Statement 2 (GetProductByIdAsync): SUCCESS - CTE with LAG converted
+- Statement 3 (InsertProductAsync): FAILED - "Statement definition is not valid"
+  * Manual conversion applied with lowercase schema mapping
+  * SCOPE_IDENTITY() -> RETURNING clause + lastval()
+  * GETDATE() -> clock_timestamp()
+- Statement 4 (UpdateProductAsync): SUCCESS - Transaction block with note [7807]
+- Statement 5 (DeleteProductAsync): SUCCESS - Transaction block with note [7807]
+- Statement 6 (GetProductsByPriceRangeAsync): SUCCESS - RANK/PERCENT_RANK converted
+- Statement 7 (GetLowStockProductsAsync): SUCCESS - AVG/MIN/MAX window functions converted
+- Statement 8 (CREATE TABLE Products): SUCCESS - IDENTITY->GENERATED ALWAYS AS IDENTITY
+- Statement 9 (sp_GetAllProducts SELECT): SUCCESS - Lowercase + NULLS FIRST
+- Statement 10 (sp_GetProductById SELECT): SUCCESS - Lowercase + parameter preserved
+- Statement 11 (sp_InsertProduct INSERT): SUCCESS - Schema prefixed
+- Statement 12 (sp_UpdateProduct UPDATE): SUCCESS - GETDATE()->clock_timestamp()
+- Statement 13 (sp_DeleteProduct DELETE): SUCCESS - Schema prefixed
+- Statement 14-18 (CREATE TABLE statements): SUCCESS - Applied DMS patterns
+- Statement 19 (UPDATE ProductStats): SUCCESS - Subqueries converted
+
+4. KEY CONVERSION PATTERNS (from DMS)
+--------------------------------------
+- Schema: [dbo] -> productmanagement_dbo
+- IDENTITY(1,1) -> GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1)
+- GETDATE() -> clock_timestamp()
+- nvarchar(n) -> VARCHAR(n)
+- datetime -> TIMESTAMP WITHOUT TIME ZONE
+- bit -> BOOLEAN
+- SCOPE_IDENTITY() -> RETURNING clause
+- ORDER BY col -> ORDER BY col NULLS FIRST
+- LEFT JOIN -> LEFT OUTER JOIN
+- DECLARE @var TYPE -> DECLARE var_name TYPE
+- BEGIN TRANSACTION/COMMIT -> DO $$ BEGIN...END $$;
+- CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION
+- SYSTEM_USER -> CURRENT_USER
+- IF NOT EXISTS (sys.objects) -> IF NOT EXISTS / DROP IF EXISTS
+
+5. EQUIVALENCY VALIDATION RESULTS
+-----------------------------------
+Total statement pairs validated: 19
+Equivalent: 0
+Not Equivalent: 0
+Error: 19
+
+NOTE: The SQL Equivalency tool (sql-equivalency___validate_sql_equivalence) returned
+a systemic error "'uniqueID'" for ALL 19 statement pairs, including the simplest
+possible queries. This is a tool-level issue, not related to statement correctness.
+All equivalency statuses are recorded as ERROR from the tool output.
+
+6. FILES MODIFIED
+-----------------
+- sourceCode/DataAccess/ProductRepository.cs
+  * 7 SQL statements converted to PostgreSQL syntax
+  * using Microsoft.Data.SqlClient -> using Npgsql
+  * SqlConnection -> NpgsqlConnection
+  * SqlCommand -> NpgsqlCommand
+  * SqlDataReader -> NpgsqlDataReader
+
+- sourceCode/AdoCore.csproj
+  * Microsoft.Data.SqlClient 5.1.4 -> Npgsql 8.0.6
+
+- sourceCode/appsettings.json
+  * Connection strings updated from SQL Server to PostgreSQL format
+
+- sourceCode/Scripts/01_InitialSetup.sql
+  * Fully converted to PostgreSQL syntax
+
+- sourceCode/Database/Scripts/01_InitialSetup.sql
+  * Fully converted to PostgreSQL syntax
+  * Tables, indexes, triggers, stored procedures all converted
+
+7. MANUAL INTERVENTIONS
+------------------------
+Statement 3 (InsertProductAsync):
+- DMS Error: "Metadata model creation failed: Statement definition is not valid."
+- Reason: DMS could not parse the complex multi-statement block with
+  DECLARE, SCOPE_IDENTITY(), and SELECT @variable
+- Manual Conversion: Applied lowercase schema object names, replaced
+  SCOPE_IDENTITY() with RETURNING clause, GETDATE() with clock_timestamp(),
+  wrapped in DO $$ ... END $$ block
+
+Statements 4-5 (Update/Delete transaction blocks):
+- DMS successfully converted but noted [7807 - Severity CRITICAL]:
+  "PostgreSQL does not support explicit transaction management commands
+  such as BEGIN TRAN, SAVE TRAN in functions."
+- Adaptation: Wrapped in DO $$ ... END $$ anonymous blocks for ADO.NET execution
+
+8. BUILD STATUS
+----------------
+Final build: SUCCESS
+Errors: 0
+Warnings: 10 (all pre-existing nullable reference warnings)
+
+9. ARTIFACTS GENERATED
+-----------------------
+- extracted_statements.sql: Complete catalog of all 19 original MS SQL statements
+- converted_statements.sql: Complete catalog of all 19 converted PostgreSQL statements
+- sql_equivalency_validation_report.json: Full equivalency report for all 19 pairs
+- migration_summary.log: This file
+
+============================================================
+END OF MIGRATION SUMMARY
+============================================================
