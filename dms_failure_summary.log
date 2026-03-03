@@ -1,0 +1,78 @@
+== DMS CONVERSION FAILURE SUMMARY LOG ==
+
+Statement 3: InsertProductAsync
+===============================
+DMS Status: ERROR
+DMS Error: "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+
+Original MS SQL Statement:
+--------------------------
+DECLARE @NewProductId INT;
+
+BEGIN TRANSACTION;
+    INSERT INTO Products (Name, Description, Price, StockQuantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity);
+    
+    SET @NewProductId = SCOPE_IDENTITY();
+    
+    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+    
+    UPDATE ProductStats
+    SET 
+        TotalProducts = TotalProducts + 1,
+        AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+        LastUpdated = GETDATE()
+    WHERE StatId = 1;
+COMMIT;
+
+SELECT @NewProductId;
+
+Manual PostgreSQL Conversion (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA):
+------------------------------------------------------------------------------------
+Reason: DMS could not parse the transaction block with DECLARE before BEGIN TRANSACTION.
+Applied lowercase schema naming and productmanagement_dbo schema prefix consistent with DMS conversions.
+Key conversions applied:
+  - SCOPE_IDENTITY() -> RETURNING productid INTO var_newproductid
+  - GETDATE() -> clock_timestamp()
+  - All schema objects lowercased
+  - Schema prefix productmanagement_dbo applied (consistent with DMS output)
+  - Transaction management removed from SQL (handled by C# code via ADO.NET)
+
+Converted PostgreSQL Statement:
+-------------------------------
+DO $$
+DECLARE
+    var_newproductid INTEGER;
+BEGIN
+    INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+    VALUES (@Name, @Description, @Price, @StockQuantity)
+    RETURNING productid INTO var_newproductid;
+
+    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+    VALUES (var_newproductid, 'INSERT', NULL, @Price, NULL, @StockQuantity, clock_timestamp());
+
+    UPDATE productmanagement_dbo.productstats
+    SET
+        totalproducts = totalproducts + 1,
+        averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1),
+        lastupdated = clock_timestamp()
+    WHERE statid = 1;
+END $$;
+
+SELECT var_newproductid;
+
+
+== DMS CONVERSION WARNINGS ==
+
+Statement 4: UpdateProductAsync
+===============================
+DMS Status: SUCCESS (with warning)
+DMS Warning: [7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]
+Resolution: Transaction management will be handled by C# ADO.NET code (BeginTransactionAsync/CommitAsync).
+
+Statement 5: DeleteProductAsync
+===============================
+DMS Status: SUCCESS (with warning)
+DMS Warning: [7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]
+Resolution: Transaction management will be handled by C# ADO.NET code (BeginTransactionAsync/CommitAsync).
