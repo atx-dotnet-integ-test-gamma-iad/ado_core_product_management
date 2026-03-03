@@ -1,0 +1,120 @@
+{
+  "number_of_statements_processed": 14,
+  "number_of_statements_equivalent": 0,
+  "number_of_statements_non_equivalent": 0,
+  "number_of_statements_with_equivalency_error": 14,
+  "statement_details": [
+    {
+      "original_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "converted_statement": "WITH productstats\nAS (SELECT\n    productid, AVG(price) OVER () AS avgprice, COUNT(*) OVER () AS totalproducts\n    FROM productmanagement_dbo.products)\nSELECT\n    p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate,\n    CASE\n        WHEN p.price > ps.avgprice THEN 'Above Average'\n        WHEN p.price < ps.avgprice THEN 'Below Average'\n        ELSE 'Average'\n    END AS pricecategory, ROUND((p.price / ps.avgprice) * 100, 2) AS pricepercentageofaverage\n    FROM productmanagement_dbo.products AS p\n    INNER JOIN productstats AS ps\n        ON p.productid = ps.productid\n    ORDER BY\n    CASE\n        WHEN p.price > ps.avgprice THEN 1\n        ELSE 2\n    END NULLS FIRST, p.name NULLS FIRST;",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T17:58:51.296396\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "converted_statement": "WITH producthistory\nAS (SELECT\n    productid, lag(price) OVER (ORDER BY modifieddate) AS previousprice, lag(stockquantity) OVER (ORDER BY modifieddate) AS previousstock\n    FROM productmanagement_dbo.products\n    WHERE productid = @ProductId)\nSELECT\n    p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate, ph.previousprice, ph.previousstock,\n    CASE\n        WHEN ph.previousprice IS NOT NULL THEN ROUND(((p.price - ph.previousprice) / ph.previousprice) * 100, 2)\n        ELSE NULL\n    END AS pricechangepercentage\n    FROM productmanagement_dbo.products AS p\n    LEFT OUTER JOIN producthistory AS ph\n        ON p.productid = ph.productid\n    WHERE p.productid = @ProductId;",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T17:59:06.321291\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "DECLARE @NewProductId INT;\n\nBEGIN TRANSACTION;\n    INSERT INTO Products (Name, Description, Price, StockQuantity)\n    VALUES (@Name, @Description, @Price, @StockQuantity);\n    SET @NewProductId = SCOPE_IDENTITY();\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)\n    VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());\n    UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = GETDATE() WHERE StatId = 1;\nCOMMIT;\nSELECT @NewProductId;",
+      "converted_statement": "INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)\nVALUES (@Name, @Description, @Price, @StockQuantity)\nRETURNING productid;\n-- Plus separate history and stats statements in application-managed transaction",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T17:59:50.472733\"}",
+      "dms_failure_reason": "Metadata model creation failed: Statement definition is not valid."
+    },
+    {
+      "original_statement": "BEGIN TRANSACTION;\n    DECLARE @OldPrice DECIMAL(18,2);\n    DECLARE @OldStock INT;\n    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;\n    UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId;\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());\n    UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1;\nCOMMIT;",
+      "converted_statement": "DO $$\nDECLARE\n    var_OldPrice NUMERIC(18, 2);\n    var_OldStock INTEGER;\nBEGIN\n    SELECT price, stockquantity INTO var_OldPrice, var_OldStock FROM productmanagement_dbo.products WHERE productid = @ProductId;\n    UPDATE productmanagement_dbo.products SET name = @Name, description = @Description, price = @Price, stockquantity = @StockQuantity, modifieddate = clock_timestamp() WHERE productid = @ProductId;\n    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@ProductId, 'UPDATE', var_OldPrice, @Price, var_OldStock, @StockQuantity, clock_timestamp());\n    UPDATE productmanagement_dbo.productstats SET averageprice = (averageprice * totalproducts - var_OldPrice + @Price) / totalproducts, lastupdated = clock_timestamp() WHERE statid = 1;\nEND $$;",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:00:06.760068\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "BEGIN TRANSACTION;\n    DECLARE @OldPrice DECIMAL(18,2);\n    DECLARE @OldStock INT;\n    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());\n    DELETE FROM Products WHERE ProductId = @ProductId;\n    UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1;\nCOMMIT;",
+      "converted_statement": "DO $$\nDECLARE\n    var_OldPrice NUMERIC(18, 2);\n    var_OldStock INTEGER;\nBEGIN\n    SELECT price, stockquantity INTO var_OldPrice, var_OldStock FROM productmanagement_dbo.products WHERE productid = @ProductId;\n    INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@ProductId, 'DELETE', var_OldPrice, NULL, var_OldStock, NULL, clock_timestamp());\n    DELETE FROM productmanagement_dbo.products WHERE productid = @ProductId;\n    UPDATE productmanagement_dbo.productstats SET totalproducts = totalproducts - 1, averageprice = CASE WHEN totalproducts > 1 THEN (averageprice * totalproducts - var_OldPrice) / (totalproducts - 1) ELSE 0 END, lastupdated = clock_timestamp() WHERE statid = 1;\nEND $$;",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:00:21.658958\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "WITH RankedProducts AS (\n    SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment\nFROM RankedProducts rp ORDER BY rp.PriceRank",
+      "converted_statement": "WITH rankedproducts\nAS (SELECT p.*, RANK() OVER (ORDER BY p.price) AS pricerank, percent_rank() OVER (ORDER BY p.price) AS pricepercentile\n    FROM productmanagement_dbo.products AS p WHERE p.price BETWEEN @MinPrice AND @MaxPrice)\nSELECT rp.*, CASE WHEN rp.pricepercentile <= 0.25 THEN 'Budget' WHEN rp.pricepercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END AS pricesegment\n    FROM rankedproducts AS rp ORDER BY rp.pricerank NULLS FIRST;",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:00:34.875308\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "WITH StockAnalysis AS (\n    SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus, ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity",
+      "converted_statement": "WITH stockanalysis\nAS (SELECT p.*, AVG(stockquantity) OVER () AS avgstock, MIN(stockquantity) OVER () AS minstock, MAX(stockquantity) OVER () AS maxstock\n    FROM productmanagement_dbo.products AS p)\nSELECT sa.*, CASE WHEN stockquantity <= @Threshold THEN 'Critical' WHEN stockquantity <= avgstock * 0.5 THEN 'Low' ELSE 'Adequate' END AS stockstatus, ROUND((stockquantity / avgstock) * 100, 2) AS stockpercentageofaverage\n    FROM stockanalysis AS sa WHERE stockquantity <= @Threshold ORDER BY stockquantity NULLS FIRST;",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:00:48.291721\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "CREATE TABLE [dbo].[Products]([ProductId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](100) NOT NULL, [Description] [nvarchar](500) NULL, [Price] [decimal](18, 2) NOT NULL, [StockQuantity] [int] NOT NULL, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE(), [ModifiedDate] [datetime] NULL)",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.products(productid BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) NULL, price NUMERIC(18, 2) NOT NULL, stockquantity INTEGER NOT NULL, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp(), modifieddate TIMESTAMP WITHOUT TIME ZONE NULL);",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:12:15.068412\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "CREATE TABLE [dbo].[Categories]([CategoryId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](50) NOT NULL, [Description] [nvarchar](200) NULL, [ParentCategoryId] [int] NULL, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE())",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.categories(categoryid BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY, name VARCHAR(50) NOT NULL, description VARCHAR(200) NULL, parentcategoryid INTEGER NULL, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp());",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:12:25.967533\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "CREATE TABLE [dbo].[Suppliers]([SupplierId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](100) NOT NULL, [ContactName] [nvarchar](100) NULL, [Email] [nvarchar](100) NULL, [Phone] [nvarchar](20) NULL, [Address] [nvarchar](200) NULL, [Country] [nvarchar](50) NULL, [IsActive] [bit] NOT NULL DEFAULT 1, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE())",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.suppliers(supplierid BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY, name VARCHAR(100) NOT NULL, contactname VARCHAR(100) NULL, email VARCHAR(100) NULL, phone VARCHAR(20) NULL, address VARCHAR(200) NULL, country VARCHAR(50) NULL, isactive NUMERIC(1, 0) NOT NULL DEFAULT 1, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp());",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:12:37.264689\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_InsertProduct] @Name NVARCHAR(100), @Description NVARCHAR(500), @Price DECIMAL(18,2), @StockQuantity INT AS BEGIN SET NOCOUNT ON; INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity); SELECT SCOPE_IDENTITY() AS ProductId; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_insertproduct(par_name VARCHAR(100), par_description VARCHAR(500), par_price NUMERIC(18,2), par_stockquantity INTEGER) RETURNS BIGINT AS $BODY$ DECLARE var_productid BIGINT; BEGIN INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity) VALUES (par_name, par_description, par_price, par_stockquantity) RETURNING productmanagement_dbo.products.productid INTO var_productid; RETURN var_productid; END; $BODY$ LANGUAGE plpgsql;",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:12:50.809805\"}",
+      "dms_failure_reason": "Metadata model creation failed: Statement definition is not valid."
+    },
+    {
+      "original_statement": "INSERT INTO Categories (Name, Description, ParentCategoryId) VALUES ('Electronics', 'Electronic devices and accessories', NULL), ...",
+      "converted_statement": "INSERT INTO productmanagement_dbo.categories (name, description, parentcategoryid) OVERRIDING SYSTEM VALUE VALUES ('Electronics', 'Electronic devices and accessories', NULL), ...",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:14:27.029253\"}",
+      "dms_failure_reason": "INSERT with sample data - applied DMS schema naming pattern manually"
+    },
+    {
+      "original_statement": "UPDATE ProductStats SET TotalProducts = (SELECT COUNT(*) FROM Products), AveragePrice = (SELECT AVG(Price) FROM Products), TotalStockValue = (SELECT SUM(Price * StockQuantity) FROM Products), LowStockCount = (SELECT COUNT(*) FROM Products WHERE StockQuantity <= ReorderLevel), DiscontinuedCount = (SELECT COUNT(*) FROM Products WHERE IsDiscontinued = 1), LastUpdated = GETDATE() WHERE StatId = 1",
+      "converted_statement": "UPDATE productmanagement_dbo.productstats SET totalproducts = (SELECT COUNT(*) FROM productmanagement_dbo.products), averageprice = (SELECT AVG(price) FROM productmanagement_dbo.products), totalstockvalue = (SELECT SUM(price * stockquantity) FROM productmanagement_dbo.products), lowstockcount = (SELECT COUNT(*) FROM productmanagement_dbo.products WHERE stockquantity <= reorderlevel), discontinuedcount = (SELECT COUNT(*) FROM productmanagement_dbo.products WHERE isdiscontinued = 1), lastupdated = clock_timestamp() WHERE statid = 1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:14:40.642064\"}",
+      "dms_failure_reason": "Complex UPDATE with subqueries - applied DMS schema naming pattern manually"
+    },
+    {
+      "original_statement": "CREATE TRIGGER [dbo].[trg_Products_History] ON [dbo].[Products] AFTER INSERT, UPDATE, DELETE AS BEGIN ... END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.trg_products_history_func() RETURNS TRIGGER AS $BODY$ BEGIN ... END; $BODY$ LANGUAGE plpgsql; CREATE TRIGGER trg_products_history AFTER INSERT OR UPDATE OR DELETE ON productmanagement_dbo.products FOR EACH ROW EXECUTE FUNCTION productmanagement_dbo.trg_products_history_func();",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-03-03T18:14:40.642064\"}",
+      "dms_failure_reason": "Trigger conversion - DMS does not support trigger statements. Converted INSERTED/DELETED pseudo-tables to NEW/OLD, SYSTEM_USER to current_user"
+    }
+  ]
+}
