@@ -1,0 +1,35 @@
+-- =====================================================
+-- DMS Conversion Failure Summary
+-- =====================================================
+
+-- Statement 3: InsertProductAsync
+-- DMS Status: FAILED
+-- DMS Error: "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+-- Original MS SQL Statement:
+-- BEGIN
+--     DECLARE @NewProductId INT;
+--     INSERT INTO dbo.Products (Name, Description, Price, StockQuantity)
+--     VALUES (@Name, @Description, @Price, @StockQuantity);
+--     SET @NewProductId = SCOPE_IDENTITY();
+--     INSERT INTO dbo.ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+--     VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+--     UPDATE dbo.ProductStats
+--     SET TotalProducts = TotalProducts + 1,
+--         AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+--         LastUpdated = GETDATE()
+--     WHERE StatId = 1;
+--     SELECT @NewProductId;
+-- END;
+--
+-- Manual Conversion Applied: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+-- Conversion Details:
+--   - Schema: dbo.Products -> productmanagement_dbo.products (confirmed by DMS on other statements)
+--   - GETDATE() -> clock_timestamp()
+--   - SCOPE_IDENTITY() -> lastval() with RETURNING clause
+--   - BEGIN...END -> DO $$ ... END $$; (PostgreSQL anonymous block)
+--   - DECLARE @var -> DECLARE var (PostgreSQL variable syntax)
+--   - All schema object names lowercased per PostgreSQL convention
+--
+-- Note: Individual sub-statements within this block were verified against DMS conversion patterns:
+--   - INSERT INTO dbo.Products was separately tested via DMS and confirmed schema mapping
+--   - DMS confirmed: dbo -> productmanagement_dbo, all object names lowercased
