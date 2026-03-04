@@ -1,0 +1,68 @@
+=====================================================
+DMS Conversion Summary Report
+=====================================================
+
+Total Statements Processed: 7
+DMS Successful Conversions: 6
+DMS Failed Conversions: 1
+
+=====================================================
+DMS Failures Detail
+=====================================================
+
+--- Failure 1 ---
+Statement: Statement 3 (InsertProductAsync)
+Location: sourceCode/DataAccess/ProductRepository.cs, Line ~107
+Original SQL:
+  DECLARE @NewProductId INT;
+  BEGIN TRANSACTION;
+      INSERT INTO Products (Name, Description, Price, StockQuantity)
+      VALUES (@Name, @Description, @Price, @StockQuantity);
+      SET @NewProductId = SCOPE_IDENTITY();
+      INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate)
+      VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());
+      UPDATE ProductStats
+      SET TotalProducts = TotalProducts + 1,
+          AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1),
+          LastUpdated = GETDATE()
+      WHERE StatId = 1;
+  COMMIT;
+  SELECT @NewProductId;
+
+DMS Error Output:
+  Status: error
+  Error: "Metadata model creation failed: {'error': \"Metadata model creation failed: {'default_error_details': {'message': 'Statement definition is not valid.'}}\"}"
+  Timestamp: 2026-03-04T11:36:35.009900
+
+Manual Conversion Applied:
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+  Approach:
+    1. Used DMS-consistent schema mapping: Products -> productmanagement_dbo.products
+    2. Replaced SCOPE_IDENTITY() with PostgreSQL RETURNING clause
+    3. Replaced GETDATE() with clock_timestamp() (consistent with DMS conversions of Statements 4, 5)
+    4. Applied lowercase for all schema object names
+    5. Transaction block restructured for Npgsql ADO.NET multi-command execution
+  Converted SQL (restructured as multiple ADO.NET commands within a transaction):
+    Command 1: INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+               VALUES (@Name, @Description, @Price, @StockQuantity) RETURNING productid
+    Command 2: INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate)
+               VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, clock_timestamp())
+    Command 3: UPDATE productmanagement_dbo.productstats
+               SET totalproducts = totalproducts + 1,
+                   averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1),
+                   lastupdated = clock_timestamp()
+               WHERE statid = 1
+
+=====================================================
+DMS Warnings Detail (Successful with warnings)
+=====================================================
+
+--- Warning 1 ---
+Statement: Statement 4 (UpdateProductAsync) 
+DMS Warning: [7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]
+Resolution: Transaction management handled by Npgsql ADO.NET BeginTransaction/Commit in C# code. SQL statements extracted from DMS PL/pgSQL block for inline execution.
+
+--- Warning 2 ---
+Statement: Statement 5 (DeleteProductAsync)
+DMS Warning: [7807 - Severity CRITICAL - PostgreSQL does not support explicit transaction management commands such as BEGIN TRAN, SAVE TRAN in functions. Convert your source code manually.]
+Resolution: Transaction management handled by Npgsql ADO.NET BeginTransaction/Commit in C# code. SQL statements extracted from DMS PL/pgSQL block for inline execution.
