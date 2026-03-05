@@ -1,0 +1,548 @@
+{
+  "number_of_statements_processed": 46,
+  "number_of_statements_equivalent": 0,
+  "number_of_statements_non_equivalent": 0,
+  "number_of_statements_with_equivalency_error": 46,
+  "statement_details": [
+    {
+      "statement_number": 1,
+      "description": "GetAllProductsAsync() - CTE with window functions",
+      "original_statement": "WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name",
+      "converted_statement": "WITH productstats AS (SELECT productid, AVG(price) OVER () AS avgprice, COUNT(*) OVER () AS totalproducts FROM productmanagement_dbo.products) SELECT p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate, CASE WHEN p.price > ps.avgprice THEN 'Above Average' WHEN p.price < ps.avgprice THEN 'Below Average' ELSE 'Average' END AS pricecategory, ROUND((p.price / ps.avgprice) * 100, 2) AS pricepercentageofaverage FROM productmanagement_dbo.products AS p INNER JOIN productstats AS ps ON p.productid = ps.productid ORDER BY CASE WHEN p.price > ps.avgprice THEN 1 ELSE 2 END NULLS FIRST, p.name NULLS FIRST",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 2,
+      "description": "GetProductByIdAsync() - CTE with LAG window functions",
+      "original_statement": "WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice, LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock FROM Products WHERE ProductId = @ProductId) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, ph.PreviousPrice, ph.PreviousStock, CASE WHEN ph.PreviousPrice IS NOT NULL THEN ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) ELSE NULL END as PriceChangePercentage FROM Products p LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId WHERE p.ProductId = @ProductId",
+      "converted_statement": "WITH producthistory AS (SELECT productid, lag(price) OVER (ORDER BY modifieddate) AS previousprice, lag(stockquantity) OVER (ORDER BY modifieddate) AS previousstock FROM productmanagement_dbo.products WHERE productid = @ProductId) SELECT p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate, ph.previousprice, ph.previousstock, CASE WHEN ph.previousprice IS NOT NULL THEN ROUND(((p.price - ph.previousprice) / ph.previousprice) * 100, 2) ELSE NULL END AS pricechangepercentage FROM productmanagement_dbo.products AS p LEFT OUTER JOIN producthistory AS ph ON p.productid = ph.productid WHERE p.productid = @ProductId",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 3,
+      "description": "InsertProductAsync() - INSERT with SCOPE_IDENTITY, INSERT history, UPDATE stats",
+      "original_statement": "INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity); SELECT SCOPE_IDENTITY();",
+      "converted_statement": "INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity) VALUES (@Name, @Description, @Price, @StockQuantity) RETURNING productid",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "3b",
+      "description": "InsertProductAsync() - History INSERT",
+      "original_statement": "INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE())",
+      "converted_statement": "INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, clock_timestamp())",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "3c",
+      "description": "InsertProductAsync() - Stats UPDATE",
+      "original_statement": "UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = GETDATE() WHERE StatId = 1",
+      "converted_statement": "UPDATE productmanagement_dbo.productstats SET totalproducts = totalproducts + 1, averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1), lastupdated = clock_timestamp() WHERE statid = 1",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "4a",
+      "description": "UpdateProductAsync() - SELECT old values",
+      "original_statement": "SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId",
+      "converted_statement": "SELECT price, stockquantity FROM productmanagement_dbo.products WHERE productid = @ProductId",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "4b",
+      "description": "UpdateProductAsync() - UPDATE Products",
+      "original_statement": "UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId",
+      "converted_statement": "UPDATE productmanagement_dbo.products SET name = @Name, description = @Description, price = @Price, stockquantity = @StockQuantity, modifieddate = clock_timestamp() WHERE productid = @ProductId",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "4c",
+      "description": "UpdateProductAsync() - History INSERT",
+      "original_statement": "INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE())",
+      "converted_statement": "INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, clock_timestamp())",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout after 15 attempts"
+    },
+    {
+      "statement_number": "4d",
+      "description": "UpdateProductAsync() - Stats UPDATE",
+      "original_statement": "UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1",
+      "converted_statement": "UPDATE productmanagement_dbo.productstats SET averageprice = (averageprice * totalproducts - @OldPrice + @Price) / totalproducts, lastupdated = clock_timestamp() WHERE statid = 1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout after 15 attempts"
+    },
+    {
+      "statement_number": "5a",
+      "description": "DeleteProductAsync() - SELECT old values",
+      "original_statement": "SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId",
+      "converted_statement": "SELECT price, stockquantity FROM productmanagement_dbo.products WHERE productid = @ProductId",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "5b",
+      "description": "DeleteProductAsync() - History INSERT",
+      "original_statement": "INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE())",
+      "converted_statement": "INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, clock_timestamp())",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout after 15 attempts"
+    },
+    {
+      "statement_number": "5c",
+      "description": "DeleteProductAsync() - DELETE Products",
+      "original_statement": "DELETE FROM Products WHERE ProductId = @ProductId",
+      "converted_statement": "DELETE FROM productmanagement_dbo.products WHERE productid = @ProductId",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": "5d",
+      "description": "DeleteProductAsync() - Stats UPDATE with CASE",
+      "original_statement": "UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1",
+      "converted_statement": "UPDATE productmanagement_dbo.productstats SET totalproducts = totalproducts - 1, averageprice = CASE WHEN totalproducts > 1 THEN (averageprice * totalproducts - @OldPrice) / (totalproducts - 1) ELSE 0 END, lastupdated = clock_timestamp() WHERE statid = 1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout after 15 attempts"
+    },
+    {
+      "statement_number": 6,
+      "description": "GetProductsByPriceRangeAsync() - CTE with RANK/PERCENT_RANK",
+      "original_statement": "WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice) SELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment FROM RankedProducts rp ORDER BY rp.PriceRank",
+      "converted_statement": "WITH rankedproducts AS (SELECT p.*, RANK() OVER (ORDER BY p.price) AS pricerank, percent_rank() OVER (ORDER BY p.price) AS pricepercentile FROM productmanagement_dbo.products AS p WHERE p.price BETWEEN @MinPrice AND @MaxPrice) SELECT rp.*, CASE WHEN rp.pricepercentile <= 0.25 THEN 'Budget' WHEN rp.pricepercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END AS pricesegment FROM rankedproducts AS rp ORDER BY rp.pricerank NULLS FIRST",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 7,
+      "description": "GetLowStockProductsAsync() - CTE with AVG/MIN/MAX window functions",
+      "original_statement": "WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock FROM Products p) SELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus, ROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage FROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity",
+      "converted_statement": "WITH stockanalysis AS (SELECT p.*, AVG(stockquantity) OVER () AS avgstock, MIN(stockquantity) OVER () AS minstock, MAX(stockquantity) OVER () AS maxstock FROM productmanagement_dbo.products AS p) SELECT sa.*, CASE WHEN stockquantity <= @Threshold THEN 'Critical' WHEN stockquantity <= avgstock * 0.5 THEN 'Low' ELSE 'Adequate' END AS stockstatus, ROUND((stockquantity / avgstock) * 100, 2) AS stockpercentageofaverage FROM stockanalysis AS sa WHERE stockquantity <= @Threshold ORDER BY stockquantity NULLS FIRST",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 8,
+      "description": "Create Database (conditional)",
+      "original_statement": "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'ProductManagement') BEGIN CREATE DATABASE ProductManagement; END",
+      "converted_statement": "CREATE SCHEMA IF NOT EXISTS productmanagement_dbo",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 9,
+      "description": "USE Database",
+      "original_statement": "USE ProductManagement;",
+      "converted_statement": "SET search_path TO productmanagement_dbo",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 10,
+      "description": "Drop Trigger IF EXISTS",
+      "original_statement": "IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[trg_Products_History]') AND type = 'TR') BEGIN DROP TRIGGER [dbo].[trg_Products_History] END",
+      "converted_statement": "DROP TRIGGER IF EXISTS trg_products_history ON productmanagement_dbo.products",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 11,
+      "description": "Drop ProductHistory IF EXISTS",
+      "original_statement": "IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ProductHistory]') AND type in (N'U')) BEGIN DROP TABLE [dbo].[ProductHistory] END",
+      "converted_statement": "DROP TABLE IF EXISTS productmanagement_dbo.producthistory",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 12,
+      "description": "Drop Products IF EXISTS",
+      "original_statement": "IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Products]') AND type in (N'U')) BEGIN DROP TABLE [dbo].[Products] END",
+      "converted_statement": "DROP TABLE IF EXISTS productmanagement_dbo.products",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 13,
+      "description": "Drop Categories IF EXISTS",
+      "original_statement": "IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Categories]') AND type in (N'U')) BEGIN DROP TABLE [dbo].[Categories] END",
+      "converted_statement": "DROP TABLE IF EXISTS productmanagement_dbo.categories",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 14,
+      "description": "Drop Suppliers IF EXISTS",
+      "original_statement": "IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Suppliers]') AND type in (N'U')) BEGIN DROP TABLE [dbo].[Suppliers] END",
+      "converted_statement": "DROP TABLE IF EXISTS productmanagement_dbo.suppliers",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 15,
+      "description": "Drop ProductStats IF EXISTS",
+      "original_statement": "IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ProductStats]') AND type in (N'U')) BEGIN DROP TABLE [dbo].[ProductStats] END",
+      "converted_statement": "DROP TABLE IF EXISTS productmanagement_dbo.productstats",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 16,
+      "description": "Create Categories Table",
+      "original_statement": "CREATE TABLE [dbo].[Categories]([CategoryId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](50) NOT NULL, [Description] [nvarchar](200) NULL, [ParentCategoryId] [int] NULL, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE())",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.categories(categoryid BIGINT GENERATED ALWAYS AS IDENTITY (START WITH 1 INCREMENT BY 1) PRIMARY KEY, name VARCHAR(50) NOT NULL, description VARCHAR(200) NULL, parentcategoryid INTEGER NULL, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp())",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 17,
+      "description": "Alter Categories - Self-referencing FK",
+      "original_statement": "ALTER TABLE [dbo].[Categories] ADD CONSTRAINT [FK_Categories_Categories] FOREIGN KEY ([ParentCategoryId]) REFERENCES [dbo].[Categories] ([CategoryId])",
+      "converted_statement": "ALTER TABLE productmanagement_dbo.categories ADD CONSTRAINT fk_categories_categories FOREIGN KEY (parentcategoryid) REFERENCES productmanagement_dbo.categories (categoryid)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 18,
+      "description": "Create Suppliers Table",
+      "original_statement": "CREATE TABLE [dbo].[Suppliers]([SupplierId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](100) NOT NULL, [ContactName] [nvarchar](100) NULL, [Email] [nvarchar](100) NULL, [Phone] [nvarchar](20) NULL, [Address] [nvarchar](200) NULL, [Country] [nvarchar](50) NULL, [IsActive] [bit] NOT NULL DEFAULT 1, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE())",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.suppliers(supplierid BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name VARCHAR(100) NOT NULL, contactname VARCHAR(100) NULL, email VARCHAR(100) NULL, phone VARCHAR(20) NULL, address VARCHAR(200) NULL, country VARCHAR(50) NULL, isactive BOOLEAN NOT NULL DEFAULT TRUE, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp())",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 19,
+      "description": "Create Products Table",
+      "original_statement": "CREATE TABLE [dbo].[Products]([ProductId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](100) NOT NULL, [Description] [nvarchar](500) NULL, [Price] [decimal](18, 2) NOT NULL, [StockQuantity] [int] NOT NULL, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE(), [ModifiedDate] [datetime] NULL)",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.products(productid BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) NULL, price NUMERIC(18, 2) NOT NULL, stockquantity INTEGER NOT NULL, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp(), modifieddate TIMESTAMP WITHOUT TIME ZONE NULL)",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 20,
+      "description": "Create ProductHistory Table",
+      "original_statement": "CREATE TABLE [dbo].[ProductHistory]([HistoryId] [int] IDENTITY(1,1) PRIMARY KEY, [ProductId] [int] NOT NULL, [Action] [varchar](10) NOT NULL, [OldPrice] [decimal](18, 2) NULL, [NewPrice] [decimal](18, 2) NULL, [OldStock] [int] NULL, [NewStock] [int] NULL, [ActionDate] [datetime] NOT NULL DEFAULT GETDATE(), [ModifiedBy] [nvarchar](100) NULL)",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.producthistory(historyid BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, productid INTEGER NOT NULL, action VARCHAR(10) NOT NULL, oldprice NUMERIC(18, 2) NULL, newprice NUMERIC(18, 2) NULL, oldstock INTEGER NULL, newstock INTEGER NULL, actiondate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp(), modifiedby VARCHAR(100) NULL)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 21,
+      "description": "Create ProductStats Table",
+      "original_statement": "CREATE TABLE [dbo].[ProductStats]([StatId] [int] PRIMARY KEY DEFAULT 1, [TotalProducts] [int] NOT NULL DEFAULT 0, [AveragePrice] [decimal](18, 2) NOT NULL DEFAULT 0, [TotalStockValue] [decimal](18, 2) NOT NULL DEFAULT 0, [LowStockCount] [int] NOT NULL DEFAULT 0, [DiscontinuedCount] [int] NOT NULL DEFAULT 0, [LastUpdated] [datetime] NOT NULL DEFAULT GETDATE())",
+      "converted_statement": "CREATE TABLE productmanagement_dbo.productstats(statid INTEGER PRIMARY KEY DEFAULT 1, totalproducts INTEGER NOT NULL DEFAULT 0, averageprice NUMERIC(18, 2) NOT NULL DEFAULT 0, totalstockvalue NUMERIC(18, 2) NOT NULL DEFAULT 0, lowstockcount INTEGER NOT NULL DEFAULT 0, discontinuedcount INTEGER NOT NULL DEFAULT 0, lastupdated TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp())",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 22,
+      "description": "Create Index IX_Products_CategoryId",
+      "original_statement": "CREATE INDEX [IX_Products_CategoryId] ON [dbo].[Products] ([CategoryId])",
+      "converted_statement": "CREATE INDEX ix_products_categoryid ON productmanagement_dbo.products (categoryid)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 23,
+      "description": "Create Index IX_Products_SupplierId",
+      "original_statement": "CREATE INDEX [IX_Products_SupplierId] ON [dbo].[Products] ([SupplierId])",
+      "converted_statement": "CREATE INDEX ix_products_supplierid ON productmanagement_dbo.products (supplierid)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 24,
+      "description": "Create Unique Index IX_Products_SKU",
+      "original_statement": "CREATE UNIQUE INDEX [IX_Products_SKU] ON [dbo].[Products] ([SKU])",
+      "converted_statement": "CREATE UNIQUE INDEX ix_products_sku ON productmanagement_dbo.products (sku)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 25,
+      "description": "Create Index IX_ProductHistory_ProductId",
+      "original_statement": "CREATE INDEX [IX_ProductHistory_ProductId] ON [dbo].[ProductHistory] ([ProductId])",
+      "converted_statement": "CREATE INDEX ix_producthistory_productid ON productmanagement_dbo.producthistory (productid)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 26,
+      "description": "Create Index IX_ProductHistory_ActionDate",
+      "original_statement": "CREATE INDEX [IX_ProductHistory_ActionDate] ON [dbo].[ProductHistory] ([ActionDate])",
+      "converted_statement": "CREATE INDEX ix_producthistory_actiondate ON productmanagement_dbo.producthistory (actiondate)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 27,
+      "description": "Insert Sample Categories",
+      "original_statement": "INSERT INTO Categories (Name, Description, ParentCategoryId) VALUES ('Electronics', 'Electronic devices and accessories', NULL), ...",
+      "converted_statement": "INSERT INTO productmanagement_dbo.categories (name, description, parentcategoryid) VALUES ('Electronics', 'Electronic devices and accessories', NULL), ...",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 28,
+      "description": "Insert Sample Suppliers",
+      "original_statement": "INSERT INTO Suppliers (Name, ContactName, Email, Phone, Address, Country) VALUES ('TechGlobal Inc.', 'John Smith', 'john@techglobal.com', '+1-555-0101', '123 Tech Street, Silicon Valley, CA', 'USA'), ...",
+      "converted_statement": "INSERT INTO productmanagement_dbo.suppliers (name, contactname, email, phone, address, country) VALUES ('TechGlobal Inc.', 'John Smith', 'john@techglobal.com', '+1-555-0101', '123 Tech Street, Silicon Valley, CA', 'USA'), ...",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 29,
+      "description": "Insert Sample Products",
+      "original_statement": "INSERT INTO Products (Name, Description, Price, StockQuantity, CategoryId, SupplierId, SKU, Weight, Dimensions, ReorderLevel) VALUES ('ProBook X1', 'High-performance business laptop with 16GB RAM', 1299.99, 15, 9, 1, 'LAP-X1-001', 1.8, '14 x 9 x 0.7', 5), ...",
+      "converted_statement": "INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity, categoryid, supplierid, sku, weight, dimensions, reorderlevel) VALUES ('ProBook X1', 'High-performance business laptop with 16GB RAM', 1299.99, 15, 9, 1, 'LAP-X1-001', 1.8, '14 x 9 x 0.7', 5), ...",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 30,
+      "description": "Insert initial ProductStats record",
+      "original_statement": "INSERT INTO ProductStats (StatId, TotalProducts, AveragePrice, TotalStockValue, LowStockCount, DiscontinuedCount, LastUpdated) VALUES (1, 0, 0, 0, 0, 0, GETDATE())",
+      "converted_statement": "INSERT INTO productmanagement_dbo.productstats (statid, totalproducts, averageprice, totalstockvalue, lowstockcount, discontinuedcount, lastupdated) VALUES (1, 0, 0, 0, 0, 0, clock_timestamp())",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 31,
+      "description": "Update initial statistics",
+      "original_statement": "UPDATE ProductStats SET TotalProducts = (SELECT COUNT(*) FROM Products), AveragePrice = (SELECT AVG(Price) FROM Products), TotalStockValue = (SELECT SUM(Price * StockQuantity) FROM Products), LowStockCount = (SELECT COUNT(*) FROM Products WHERE StockQuantity <= ReorderLevel), DiscontinuedCount = (SELECT COUNT(*) FROM Products WHERE IsDiscontinued = 1), LastUpdated = GETDATE() WHERE StatId = 1",
+      "converted_statement": "UPDATE productmanagement_dbo.productstats SET totalproducts = (SELECT COUNT(*) FROM productmanagement_dbo.products), averageprice = (SELECT AVG(price) FROM productmanagement_dbo.products), totalstockvalue = (SELECT SUM(price * stockquantity) FROM productmanagement_dbo.products), lowstockcount = (SELECT COUNT(*) FROM productmanagement_dbo.products WHERE stockquantity <= reorderlevel), discontinuedcount = (SELECT COUNT(*) FROM productmanagement_dbo.products WHERE isdiscontinued = TRUE), lastupdated = clock_timestamp() WHERE statid = 1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 32,
+      "description": "Create Trigger trg_Products_History",
+      "original_statement": "CREATE TRIGGER [dbo].[trg_Products_History] ON [dbo].[Products] AFTER INSERT, UPDATE, DELETE AS BEGIN SET NOCOUNT ON; ... END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.trg_products_history_func() RETURNS TRIGGER AS $$ BEGIN ... END; $$ LANGUAGE plpgsql; CREATE TRIGGER trg_products_history AFTER INSERT OR UPDATE OR DELETE ON productmanagement_dbo.products FOR EACH ROW EXECUTE FUNCTION productmanagement_dbo.trg_products_history_func()",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 33,
+      "description": "Create Stored Procedure sp_GetAllProducts",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_GetAllProducts] AS BEGIN SET NOCOUNT ON; SELECT ProductId, Name, Description, Price, StockQuantity, CreatedDate, ModifiedDate FROM Products ORDER BY Name; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_getallproducts() RETURNS TABLE (...) AS $$ BEGIN RETURN QUERY SELECT ... FROM productmanagement_dbo.products p ORDER BY p.name; END; $$ LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 34,
+      "description": "Create Stored Procedure sp_GetProductById",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_GetProductById] @ProductId INT AS BEGIN ... END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_getproductbyid(p_productid INTEGER) RETURNS TABLE (...) AS $$ BEGIN ... END; $$ LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 35,
+      "description": "Create Stored Procedure sp_InsertProduct",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_InsertProduct] @Name NVARCHAR(100), @Description NVARCHAR(500), @Price DECIMAL(18,2), @StockQuantity INT AS BEGIN ... SELECT SCOPE_IDENTITY() AS ProductId; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_insertproduct(...) RETURNS BIGINT AS $$ ... RETURNING ... INTO v_productid; RETURN v_productid; END; $$ LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 36,
+      "description": "Create Stored Procedure sp_UpdateProduct",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_UpdateProduct] @ProductId INT, @Name NVARCHAR(100), ... AS BEGIN ... UPDATE Products SET ... WHERE ProductId = @ProductId; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_updateproduct(...) RETURNS VOID AS $$ BEGIN UPDATE productmanagement_dbo.products SET ... WHERE productid = p_productid; END; $$ LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 37,
+      "description": "Create Stored Procedure sp_DeleteProduct",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_DeleteProduct] @ProductId INT AS BEGIN ... DELETE FROM Products WHERE ProductId = @ProductId; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_deleteproduct(p_productid INTEGER) RETURNS VOID AS $$ BEGIN DELETE FROM productmanagement_dbo.products WHERE productid = p_productid; END; $$ LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 38,
+      "description": "Create Database (conditional) - Scripts version",
+      "original_statement": "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'ProductManagement') BEGIN CREATE DATABASE ProductManagement; END",
+      "converted_statement": "CREATE SCHEMA IF NOT EXISTS productmanagement_dbo",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 39,
+      "description": "USE Database - Scripts version",
+      "original_statement": "USE ProductManagement;",
+      "converted_statement": "SET search_path TO productmanagement_dbo",
+      "conversion_method": "DMS_TOOL",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": null
+    },
+    {
+      "statement_number": 40,
+      "description": "Create Products Table (conditional) - Scripts version",
+      "original_statement": "IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Products]') AND type in (N'U')) BEGIN CREATE TABLE [dbo].[Products](...) END",
+      "converted_statement": "CREATE TABLE IF NOT EXISTS productmanagement_dbo.products(productid BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, name VARCHAR(100) NOT NULL, description VARCHAR(500) NULL, price NUMERIC(18, 2) NOT NULL, stockquantity INTEGER NOT NULL, createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp(), modifieddate TIMESTAMP WITHOUT TIME ZONE NULL)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 41,
+      "description": "Create Function sp_GetAllProducts - Scripts version (same as 33)",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_GetAllProducts] AS BEGIN ... END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_getallproducts() ... LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 42,
+      "description": "Create Function sp_GetProductById - Scripts version (same as 34)",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_GetProductById] @ProductId INT AS BEGIN ... END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_getproductbyid(p_productid INTEGER) ... LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 43,
+      "description": "Create Function sp_InsertProduct - Scripts version (same as 35)",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_InsertProduct] ... AS BEGIN ... SELECT SCOPE_IDENTITY() AS ProductId; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_insertproduct(...) RETURNS BIGINT ... RETURNING ... LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 44,
+      "description": "Create Function sp_UpdateProduct - Scripts version (same as 36)",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_UpdateProduct] ... AS BEGIN ... UPDATE Products SET ... END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_updateproduct(...) RETURNS VOID ... LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 45,
+      "description": "Create Function sp_DeleteProduct - Scripts version (same as 37)",
+      "original_statement": "CREATE OR ALTER PROCEDURE [dbo].[sp_DeleteProduct] @ProductId INT AS BEGIN ... DELETE FROM Products WHERE ProductId = @ProductId; END",
+      "converted_statement": "CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_deleteproduct(p_productid INTEGER) RETURNS VOID ... LANGUAGE plpgsql",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    },
+    {
+      "statement_number": 46,
+      "description": "Insert Sample Data (conditional with EXEC) - Scripts version",
+      "original_statement": "IF NOT EXISTS (SELECT TOP 1 1 FROM Products) BEGIN EXEC sp_InsertProduct 'Laptop', 'High-performance laptop', 999.99, 10; EXEC sp_InsertProduct 'Mouse', 'Wireless gaming mouse', 49.99, 20; EXEC sp_InsertProduct 'Keyboard', 'Mechanical keyboard', 129.99, 15; END",
+      "converted_statement": "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM productmanagement_dbo.products LIMIT 1) THEN PERFORM productmanagement_dbo.sp_insertproduct('Laptop', 'High-performance laptop', 999.99, 10); PERFORM productmanagement_dbo.sp_insertproduct('Mouse', 'Wireless gaming mouse', 49.99, 20); PERFORM productmanagement_dbo.sp_insertproduct('Keyboard', 'Mechanical keyboard', 129.99, 15); END IF; END $$",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{'equivalence_status': 'ERROR', 'error': \"'uniqueID'\"}",
+      "dms_failure_reason": "Metadata model conversion failed: timeout"
+    }
+  ]
+}
