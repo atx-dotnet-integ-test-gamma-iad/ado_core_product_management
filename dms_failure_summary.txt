@@ -1,0 +1,45 @@
+== DMS CONVERSION FAILURE SUMMARY ==
+Date: 2026-03-21
+Total DMS Attempts: 3 (plus all 7 statements attempted)
+DMS Error (consistent): Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+
+== DMS Attempts Log ==
+
+Attempt 1: Statement 1 (GetAllProductsAsync CTE query)
+  - Timestamp: 2026-03-21T02:37:35
+  - Status: error
+  - Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+  - Duration: ~2.5 minutes before failure
+
+Attempt 2: Statement 1 (retry with increased poll attempts=30, interval=15s)
+  - Timestamp: 2026-03-21T02:40:xx
+  - Status: error (timeout)
+  - Error: Command execution timed out after 300 seconds
+
+Attempt 3: Simple test query "SELECT ProductId, Name, Price FROM Products WHERE ProductId = @ProductId"
+  - Timestamp: 2026-03-21T02:45:29
+  - Status: error
+  - Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+
+Attempt 4: Minimal query "SELECT SCOPE_IDENTITY()"
+  - Timestamp: 2026-03-21T02:48:15
+  - Status: error
+  - Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+
+== Conclusion ==
+The DMS MCP tool is consistently failing at the metadata model creation step. The migration project's metadata model cannot be created within the allowed polling window. All 7 statements must be manually converted with lowercase schema object names per the transformation definition.
+
+== Manual Conversion Applied ==
+All 7 statements converted with:
+- conversion_method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+- Schema object names (tables, columns, aliases) converted to lowercase
+- SQL Server functions converted to PostgreSQL equivalents:
+  * SCOPE_IDENTITY() -> CTE with INSERT...RETURNING productid
+  * GETDATE() -> NOW()
+  * BEGIN TRANSACTION/COMMIT -> Restructured as CTE-based single statements
+  * DECLARE @var -> Eliminated using CTE subqueries
+  * Integer division -> ::numeric cast where needed
+- Parameter syntax (@param) preserved for Npgsql compatibility
