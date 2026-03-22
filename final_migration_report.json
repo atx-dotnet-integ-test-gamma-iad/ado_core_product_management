@@ -1,0 +1,308 @@
+{
+  "migration_metadata": {
+    "source_database": "Microsoft SQL Server 2019",
+    "target_database": "PostgreSQL 13",
+    "framework": ".NET 9.0",
+    "database_client_library": "Npgsql 8.0.6",
+    "project_name": "AdoCore",
+    "database_name": "ProductManagement",
+    "dms_migration_project": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "migration_date": "2026-03-22"
+  },
+  "sql_statement_processing_summary": {
+    "total_statements_processed": 15,
+    "successfully_converted_by_dms": 0,
+    "requiring_manual_intervention": 15,
+    "manual_conversion_reason": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+    "manual_conversion_details": {
+      "description": "All 15 SQL statements were passed through the DMS MCP tool (dms-mcp___statement_conversion_tool). All failed with metadata model creation/conversion timeout errors. Manual conversion was applied with lowercase schema object names for PostgreSQL compatibility.",
+      "key_changes_applied": [
+        "GETDATE() replaced with NOW()",
+        "SCOPE_IDENTITY() replaced with RETURNING productid",
+        "CAST(x AS DECIMAL) replaced with CAST(x AS NUMERIC)",
+        "PascalCase table/column names converted to lowercase (e.g., Products -> products, ProductId -> productid)",
+        "All SQL logic and structure preserved"
+      ],
+      "dms_error_types": [
+        "Metadata model conversion did not complete after 15 attempts",
+        "Metadata model creation did not complete after 15 attempts"
+      ]
+    }
+  },
+  "equivalency_validation_summary": {
+    "total_pairs_validated": 15,
+    "equivalent_count": 0,
+    "non_equivalent_count": 0,
+    "error_count": 15,
+    "validation_tool": "sql-equivalency___validate_sql_equivalence",
+    "error_details": "All 15 statement pairs returned ERROR with 'uniqueID' error from the SQL Equivalency tool. This appears to be a service-level issue affecting all validations regardless of statement complexity. Per transformation definition, all statuses come exclusively from the tool output - no agent judgment was used.",
+    "note": "The 'uniqueID' error was consistent across simple (SELECT, DELETE) and complex (CTE with window functions) statements, confirming a service-level issue rather than statement-specific problems."
+  },
+  "static_code_verification": {
+    "package_references": {
+      "status": "VERIFIED_COMPLIANT",
+      "details": "No Microsoft.Data.SqlClient or System.Data.SqlClient package references. Npgsql 8.0.6 properly referenced."
+    },
+    "imports": {
+      "status": "VERIFIED_COMPLIANT",
+      "details": "No SQL Server imports (Microsoft.Data.SqlClient or System.Data.SqlClient). ProductRepository.cs uses 'using Npgsql'."
+    },
+    "ado_net_classes": {
+      "status": "VERIFIED_COMPLIANT",
+      "details": "All SQL Server ADO.NET classes replaced: SqlConnection->NpgsqlConnection, SqlCommand->NpgsqlCommand, SqlDataReader->NpgsqlDataReader, SqlTransaction->NpgsqlTransaction. 30 Npgsql class references found, 0 SQL Server class references."
+    },
+    "connection_strings": {
+      "status": "VERIFIED_COMPLIANT",
+      "details": "Connection strings use PostgreSQL format: Host=localhost, Database=ProductManagement, Username=postgres. No Server= or Integrated Security= found."
+    },
+    "transaction_handling": {
+      "status": "VERIFIED_COMPLIANT",
+      "details": "BeginTransactionAsync, CommitAsync, RollbackAsync used with NpgsqlTransaction casts."
+    },
+    "remaining_sql_server_artifacts": {
+      "status": "NONE_FOUND",
+      "details": "Comprehensive search found no remaining SQL Server specific references in any .cs, .csproj, or .json files."
+    }
+  },
+  "build_verification": {
+    "status": "SUCCESS",
+    "errors": 0,
+    "warnings": 10,
+    "warning_details": "All 10 warnings are pre-existing nullable reference type warnings (CS8601, CS8618, CS8600, CS8603, CS8625) not related to the migration."
+  },
+  "files_modified_during_migration": [
+    {
+      "file": "sourceCode/DataAccess/ProductRepository.cs",
+      "changes": "SQL statements already in PostgreSQL-compatible format (lowercase names, NOW(), RETURNING, CAST AS NUMERIC). Npgsql classes already in use. No changes needed in this run."
+    },
+    {
+      "file": "sourceCode/extracted_statements.sql",
+      "changes": "Created with all 15 original MS SQL Server statements."
+    },
+    {
+      "file": "sourceCode/converted_statements.sql",
+      "changes": "Created with all 15 converted PostgreSQL statements with DMS conversion method documented."
+    },
+    {
+      "file": "sourceCode/dms_failure_log.txt",
+      "changes": "Created with all 15 DMS failure records including timestamps and error details."
+    },
+    {
+      "file": "sourceCode/sql_equivalency_validation_report.json",
+      "changes": "Created with all 15 statement pair validation results from sql-equivalency___validate_sql_equivalence tool."
+    },
+    {
+      "file": "sourceCode/final_migration_report.json",
+      "changes": "Created as comprehensive migration report."
+    }
+  ],
+  "files_verified_no_changes_needed": [
+    "sourceCode/AdoCore.csproj",
+    "sourceCode/Program.cs",
+    "sourceCode/appsettings.json",
+    "sourceCode/Business/ProductService.cs",
+    "sourceCode/CLI/CommandLineInterface.cs",
+    "sourceCode/CLI/InteractiveMenu.cs",
+    "sourceCode/Models/Product.cs",
+    "sourceCode/Scripts/01_InitialSetup.sql",
+    "sourceCode/Database/Scripts/01_InitialSetup.sql"
+  ],
+  "complete_statement_listing": [
+    {
+      "statement_number": 1,
+      "method": "GetAllProductsAsync",
+      "variable": "sql",
+      "type": "Complex SELECT with CTE, window functions, INNER JOIN, CASE, ROUND, ORDER BY",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 2,
+      "method": "GetProductByIdAsync",
+      "variable": "sql",
+      "type": "Complex SELECT with CTE, LAG window function, LEFT JOIN, CASE, parameterized",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 3,
+      "method": "InsertProductAsync",
+      "variable": "insertSql",
+      "type": "INSERT with SCOPE_IDENTITY() -> RETURNING",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 4,
+      "method": "InsertProductAsync",
+      "variable": "historySql",
+      "type": "INSERT into producthistory with GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 5,
+      "method": "InsertProductAsync",
+      "variable": "statsSql",
+      "type": "UPDATE productstats with GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 6,
+      "method": "UpdateProductAsync",
+      "variable": "selectSql",
+      "type": "SELECT old values before update",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 7,
+      "method": "UpdateProductAsync",
+      "variable": "updateSql",
+      "type": "UPDATE products with GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 8,
+      "method": "UpdateProductAsync",
+      "variable": "historySql",
+      "type": "INSERT into producthistory with GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 9,
+      "method": "UpdateProductAsync",
+      "variable": "statsSql",
+      "type": "UPDATE productstats with GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 10,
+      "method": "DeleteProductAsync",
+      "variable": "selectSql",
+      "type": "SELECT old values before delete (same SQL as Statement 6)",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 11,
+      "method": "DeleteProductAsync",
+      "variable": "historySql",
+      "type": "INSERT into producthistory for deletion with GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 12,
+      "method": "DeleteProductAsync",
+      "variable": "deleteSql",
+      "type": "DELETE FROM products",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 13,
+      "method": "DeleteProductAsync",
+      "variable": "statsSql",
+      "type": "UPDATE productstats with CASE and GETDATE() -> NOW()",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 14,
+      "method": "GetProductsByPriceRangeAsync",
+      "variable": "sql",
+      "type": "Complex SELECT with CTE, RANK, PERCENT_RANK, BETWEEN, CASE",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model conversion did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    },
+    {
+      "statement_number": 15,
+      "method": "GetLowStockProductsAsync",
+      "variable": "sql",
+      "type": "Complex SELECT with CTE, AVG/MIN/MAX window functions, CAST(x AS DECIMAL) -> CAST(x AS NUMERIC)",
+      "dms_status": "FAILED",
+      "dms_error": "Metadata model creation did not complete after 15 attempts",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_error": "'uniqueID'"
+    }
+  ],
+  "statements_requiring_manual_review": {
+    "count": 15,
+    "reason": "All 15 statements have equivalency_status of ERROR due to SQL Equivalency tool service issue ('uniqueID' error). Manual review is recommended to verify the conversions are correct.",
+    "note": "The manual conversions follow standard SQL Server to PostgreSQL migration patterns: GETDATE()->NOW(), SCOPE_IDENTITY()->RETURNING, PascalCase->lowercase, DECIMAL->NUMERIC. These are well-established conversion rules."
+  },
+  "transformation_artifacts": {
+    "extracted_statements_sql": {
+      "file": "sourceCode/extracted_statements.sql",
+      "statement_count": 15,
+      "status": "COMPLETE"
+    },
+    "converted_statements_sql": {
+      "file": "sourceCode/converted_statements.sql",
+      "statement_count": 15,
+      "status": "COMPLETE"
+    },
+    "dms_failure_log": {
+      "file": "sourceCode/dms_failure_log.txt",
+      "failure_count": 15,
+      "status": "COMPLETE"
+    },
+    "sql_equivalency_validation_report": {
+      "file": "sourceCode/sql_equivalency_validation_report.json",
+      "pair_count": 15,
+      "status": "COMPLETE"
+    },
+    "final_migration_report": {
+      "file": "sourceCode/final_migration_report.json",
+      "status": "COMPLETE"
+    }
+  }
+}

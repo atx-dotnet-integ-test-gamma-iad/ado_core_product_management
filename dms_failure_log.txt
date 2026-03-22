@@ -1,0 +1,154 @@
+================================================================================
+DMS FAILURE LOG
+All 15 SQL statements failed DMS conversion
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+Server: 172.31.83.165
+================================================================================
+
+--- Statement 1: GetAllProductsAsync - sql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:09:27.308891
+DMS Metadata Model: sql-conversion-1774134403 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+WITH ProductStats AS (SELECT ProductId, AVG(Price) OVER() as AvgPrice, COUNT(*) OVER() as TotalProducts FROM Products) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, CASE WHEN p.Price > ps.AvgPrice THEN 'Above Average' WHEN p.Price < ps.AvgPrice THEN 'Below Average' ELSE 'Average' END as PriceCategory, ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage FROM Products p INNER JOIN ProductStats ps ON p.ProductId = ps.ProductId ORDER BY CASE WHEN p.Price > ps.AvgPrice THEN 1 ELSE 2 END, p.Name
+Converted PostgreSQL Statement: Lowercase schema names applied (Products->products, ProductId->productid, etc.)
+
+--- Statement 2: GetProductByIdAsync - sql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:12:12.747720
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+WITH ProductHistory AS (SELECT ProductId, LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice, LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock FROM Products WHERE ProductId = @ProductId) SELECT p.ProductId, p.Name, p.Description, p.Price, p.StockQuantity, p.CreatedDate, p.ModifiedDate, ph.PreviousPrice, ph.PreviousStock, CASE WHEN ph.PreviousPrice IS NOT NULL THEN ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2) ELSE NULL END as PriceChangePercentage FROM Products p LEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId WHERE p.ProductId = @ProductId
+Converted PostgreSQL Statement: Lowercase schema names applied
+
+--- Statement 3: InsertProductAsync - insertSql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:16:23.292365
+DMS Metadata Model: sql-conversion-1774134743 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity); SELECT SCOPE_IDENTITY() AS ProductId
+Converted PostgreSQL Statement: SCOPE_IDENTITY() replaced with RETURNING productid, lowercase schema names
+
+--- Statement 4: InsertProductAsync - historySql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:19:08.644620
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE())
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 5: InsertProductAsync - statsSql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:23:18.761008
+DMS Metadata Model: sql-conversion-1774135159 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = GETDATE() WHERE StatId = 1
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 6: UpdateProductAsync - selectSql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:26:02.129412
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId
+Converted PostgreSQL Statement: Lowercase schema names applied
+
+--- Statement 7: UpdateProductAsync - updateSql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:30:11.923621
+DMS Metadata Model: sql-conversion-1774135573 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 8: UpdateProductAsync - historySql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:32:55.844440
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE())
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 9: UpdateProductAsync - statsSql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:37:17.808191
+DMS Metadata Model: sql-conversion-1774135987 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 10: DeleteProductAsync - selectSql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:58:26.165752
+DMS Metadata Model: sql-conversion-1774137267 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Note: Statement 10 is identical SQL to Statement 6. Both were separately attempted through DMS.
+Original MS SQL Statement:
+SELECT Price, StockQuantity FROM Products WHERE ProductId = @ProductId
+Converted PostgreSQL Statement: Lowercase schema names applied
+
+--- Statement 11: DeleteProductAsync - historySql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:40:07.801704
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE())
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 12: DeleteProductAsync - deleteSql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:44:17.281321
+DMS Metadata Model: sql-conversion-1774136417 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+DELETE FROM Products WHERE ProductId = @ProductId
+Converted PostgreSQL Statement: Lowercase schema names applied
+
+--- Statement 13: DeleteProductAsync - statsSql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:47:01.665362
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1
+Converted PostgreSQL Statement: GETDATE() replaced with NOW(), lowercase schema names
+
+--- Statement 14: GetProductsByPriceRangeAsync - sql ---
+DMS Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:51:27.238857
+DMS Metadata Model: sql-conversion-1774136837 (created successfully, conversion failed)
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+WITH RankedProducts AS (SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice) SELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment FROM RankedProducts rp ORDER BY rp.PriceRank
+Converted PostgreSQL Statement: Lowercase schema names applied
+
+--- Statement 15: GetLowStockProductsAsync - sql ---
+DMS Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+DMS Timestamp: 2026-03-21T23:54:13.790161
+Manual Conversion: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Original MS SQL Statement:
+WITH StockAnalysis AS (SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock FROM Products p) SELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus, ROUND((CAST(StockQuantity AS DECIMAL) / AvgStock) * 100, 2) as StockPercentageOfAverage FROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity
+Converted PostgreSQL Statement: CAST(x AS DECIMAL) replaced with CAST(x AS NUMERIC), lowercase schema names
+
+================================================================================
+SUMMARY
+================================================================================
+Total Statements Attempted: 15
+DMS Successes: 0
+DMS Failures: 15
+Manual Conversions: 15 (all with reason DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+All DMS failures were due to metadata model creation/conversion timeouts.
+Key manual conversion changes applied:
+  - GETDATE() -> NOW()
+  - SCOPE_IDENTITY() -> RETURNING productid
+  - CAST(x AS DECIMAL) -> CAST(x AS NUMERIC)
+  - PascalCase table/column names -> lowercase (Products -> products, ProductId -> productid, etc.)
+  - All SQL logic and structure preserved
