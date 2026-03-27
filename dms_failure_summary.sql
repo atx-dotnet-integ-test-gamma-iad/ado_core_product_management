@@ -1,0 +1,20 @@
+-- ============================================
+-- DMS FAILURE SUMMARY LOG
+-- ============================================
+-- All 7 SQL statements were passed to the DMS MCP tool (dms-mcp___statement_conversion_tool)
+-- All 7 failed with the same error: Metadata model conversion timed out
+-- 
+-- DMS Error: "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}"
+-- Additional attempts with increased poll_attempts (30) and poll_interval_seconds (15) also timed out (300s Command execution timeout)
+-- A simplified test query also timed out, confirming the DMS service was unavailable
+--
+-- Resolution: Manual conversion applied with lowercase schema object names per transformation definition
+-- Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+--
+-- Statement 1 (GetAllProductsAsync): DMS timeout -> Manual conversion with lowercase schema
+-- Statement 2 (GetProductByIdAsync): DMS timeout -> Manual conversion with lowercase schema
+-- Statement 3 (InsertProductAsync): DMS timeout -> Manual conversion with lowercase schema + restructured for PostgreSQL (RETURNING clause, NOW(), split transaction statements)
+-- Statement 4 (UpdateProductAsync): DMS timeout -> Manual conversion with lowercase schema + restructured for PostgreSQL (separate statements, NOW())
+-- Statement 5 (DeleteProductAsync): DMS timeout -> Manual conversion with lowercase schema + restructured for PostgreSQL (separate statements, NOW())
+-- Statement 6 (GetProductsByPriceRangeAsync): DMS timeout -> Manual conversion with lowercase schema
+-- Statement 7 (GetLowStockProductsAsync): DMS timeout -> Manual conversion with lowercase schema + CAST for integer division
