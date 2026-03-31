@@ -1,0 +1,85 @@
+=== DMS Conversion Log ===
+Date: 2026-03-31
+Source: DataAccess/ProductRepository.cs
+Total Statements: 7
+
+DMS Tool Status: FAILED - All attempts resulted in metadata model creation/conversion timeouts
+Fallback: Manual conversion with lowercase schema object names (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Attempt 1: schema_name='dbo', max_poll_attempts=15, poll_interval_seconds=10
+DMS Output: {"status": "error", "error": "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}"}
+DMS Attempt 2: schema_name='dbo', max_poll_attempts=30, poll_interval_seconds=15
+DMS Output: Command execution timed out after 300 seconds
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - Products -> products
+  - ProductId -> productid
+  - Price -> price
+  - Name -> name
+  - Description -> description
+  - StockQuantity -> stockquantity
+  - CreatedDate -> createddate
+  - ModifiedDate -> modifieddate
+  - All CTE and alias names lowercased
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Attempt: schema_name='dbo' (DMS service was down - same metadata model creation failure)
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}"}
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - All table/column names lowercased
+  - LAG window function syntax preserved (compatible)
+
+--- Statement 3: InsertProductAsync ---
+DMS Attempt: schema_name='dbo' (DMS service was down - same metadata model creation failure)
+DMS Output: {"status": "error", "error": "Metadata model creation failed"}
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - DECLARE @NewProductId INT -> DECLARE v_newproductid INT in DO block
+  - BEGIN TRANSACTION/COMMIT -> DO $$ BEGIN/END $$ block
+  - SCOPE_IDENTITY() -> RETURNING productid INTO v_newproductid
+  - GETDATE() -> NOW()
+  - All table/column names lowercased
+
+--- Statement 4: UpdateProductAsync ---
+DMS Attempt: schema_name='dbo' (DMS service was down - same metadata model creation failure)
+DMS Output: {"status": "error", "error": "Metadata model creation failed"}
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - DECLARE @OldPrice/@OldStock -> DECLARE v_oldprice/v_oldstock in DO block
+  - BEGIN TRANSACTION/COMMIT -> DO $$ BEGIN/END $$ block
+  - SELECT INTO variable syntax adjusted for PostgreSQL
+  - GETDATE() -> NOW()
+  - All table/column names lowercased
+
+--- Statement 5: DeleteProductAsync ---
+DMS Attempt: schema_name='dbo' (DMS service was down - same metadata model creation failure)
+DMS Output: {"status": "error", "error": "Metadata model creation failed"}
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - DECLARE @OldPrice/@OldStock -> DECLARE v_oldprice/v_oldstock in DO block
+  - BEGIN TRANSACTION/COMMIT -> DO $$ BEGIN/END $$ block
+  - SELECT INTO variable syntax adjusted for PostgreSQL
+  - GETDATE() -> NOW()
+  - CASE expression preserved (compatible)
+  - All table/column names lowercased
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Attempt: schema_name='dbo' (DMS service was down - same metadata model creation failure)
+DMS Output: {"status": "error", "error": "Metadata model creation failed"}
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - All table/column names lowercased
+  - RANK() and PERCENT_RANK() syntax preserved (compatible)
+  - BETWEEN syntax preserved (compatible)
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Attempt: schema_name='dbo' (DMS service was down - same metadata model creation failure)
+DMS Output: {"status": "error", "error": "Metadata model creation failed"}
+Resolution: Manual conversion with lowercase schema - DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - All table/column names lowercased
+  - AVG/MIN/MAX window functions preserved (compatible)
+  - ROUND with CAST added for integer division handling
+  - CASE expression preserved (compatible)
