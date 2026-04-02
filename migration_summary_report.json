@@ -1,0 +1,113 @@
+{
+  "migration_summary": {
+    "title": "SQL Server to PostgreSQL Migration Report",
+    "source_database": "Microsoft SQL Server 2019",
+    "target_database": "PostgreSQL 13",
+    "application_framework": ".NET 9.0 ADO.NET",
+    "migration_date": "2026-04-02",
+    "status": "COMPLETED"
+  },
+  "sql_statements": {
+    "total_statements_processed": 7,
+    "dms_conversion_attempted": 7,
+    "dms_conversion_succeeded": 0,
+    "dms_conversion_failed": 7,
+    "manual_conversion_applied": 7,
+    "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+    "dms_failure_reason": "Metadata model creation failed: did not complete after 15 attempts",
+    "dms_schema_mapping_used": true,
+    "schema_mappings": {
+      "Products": "products (productmanagement_dbo.products)",
+      "ProductHistory": "producthistory (productmanagement_dbo.producthistory)",
+      "ProductStats": "productstats (productmanagement_dbo.productstats)"
+    }
+  },
+  "equivalency_validation": {
+    "total_validated": 7,
+    "equivalent": 0,
+    "non_equivalent": 0,
+    "errors": 7,
+    "error_reason": "SQL Equivalency tool returned ERROR ('uniqueID') for all statement pairs - service-level issue",
+    "agent_judgment_used": false
+  },
+  "sql_transformations": [
+    {
+      "method": "GetAllProductsAsync",
+      "type": "SELECT with CTE, window functions",
+      "key_changes": "Table/column names to lowercase, CTE renamed to avoid table name conflict"
+    },
+    {
+      "method": "GetProductByIdAsync",
+      "type": "SELECT with CTE, LAG window function",
+      "key_changes": "Table/column names to lowercase, CTE renamed to avoid table name conflict"
+    },
+    {
+      "method": "InsertProductAsync",
+      "type": "Transaction block (INSERT, SCOPE_IDENTITY, UPDATE)",
+      "key_changes": "SCOPE_IDENTITY() -> RETURNING clause, GETDATE() -> NOW(), Restructured from single batch to multiple NpgsqlCommand instances with C# transaction"
+    },
+    {
+      "method": "UpdateProductAsync",
+      "type": "Transaction block (DECLARE, SELECT, UPDATE, INSERT)",
+      "key_changes": "DECLARE @var -> C# variables via separate SELECT query, GETDATE() -> NOW(), Restructured to multiple NpgsqlCommand instances"
+    },
+    {
+      "method": "DeleteProductAsync",
+      "type": "Transaction block (DECLARE, SELECT, INSERT, DELETE, UPDATE, CASE)",
+      "key_changes": "Same DECLARE pattern as UpdateProductAsync, GETDATE() -> NOW(), Restructured to multiple NpgsqlCommand instances"
+    },
+    {
+      "method": "GetProductsByPriceRangeAsync",
+      "type": "SELECT with CTE, RANK/PERCENT_RANK",
+      "key_changes": "Table/column names to lowercase"
+    },
+    {
+      "method": "GetLowStockProductsAsync",
+      "type": "SELECT with CTE, AVG/MIN/MAX window functions",
+      "key_changes": "Table/column names to lowercase, Added CAST(stockquantity AS NUMERIC) for integer division"
+    }
+  ],
+  "static_code_changes": {
+    "package_references": {
+      "removed": "Microsoft.Data.SqlClient 5.1.4",
+      "added": "Npgsql 8.0.6"
+    },
+    "class_replacements": {
+      "SqlConnection": "NpgsqlConnection",
+      "SqlCommand": "NpgsqlCommand",
+      "SqlDataReader": "NpgsqlDataReader",
+      "SqlTransaction": "NpgsqlTransaction"
+    },
+    "namespace_changes": {
+      "removed": "using Microsoft.Data.SqlClient",
+      "added": "using Npgsql"
+    },
+    "connection_string_changes": {
+      "old_format": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+      "new_format": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres"
+    }
+  },
+  "files_modified": [
+    "sourceCode/DataAccess/ProductRepository.cs",
+    "sourceCode/AdoCore.csproj",
+    "sourceCode/appsettings.json"
+  ],
+  "files_created": [
+    "sourceCode/extracted_statements.sql",
+    "sourceCode/converted_statements.sql",
+    "sourceCode/sql_equivalency_validation_report.json",
+    "sourceCode/migration_summary_report.json"
+  ],
+  "build_status": {
+    "final_build": "SUCCEEDED",
+    "errors": 0,
+    "warnings": 10,
+    "warnings_note": "All pre-existing nullable reference warnings, not introduced by migration"
+  },
+  "manual_interventions": {
+    "count": 7,
+    "reason": "DMS statement_conversion_tool failed for all 7 statements with 'Metadata model creation failed'",
+    "approach": "Used DMS schema_mapping_tool results to guide manual conversion with lowercase schema object names",
+    "documented_in": "sql_equivalency_validation_report.json"
+  }
+}
