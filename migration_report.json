@@ -1,0 +1,136 @@
+{
+  "migration_report": {
+    "title": "SQL Server to PostgreSQL Migration Report",
+    "date": "2026-04-03",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "application_type": ".NET ADO.NET Application",
+    "project": "AdoCore"
+  },
+  "sql_statements_summary": {
+    "total_statements_processed": 7,
+    "dms_conversion_results": {
+      "successfully_converted_by_dms": 0,
+      "failed_dms_manually_converted": 7,
+      "dms_failure_reason": "DMS MCP tool consistently failed with metadata model creation/conversion timeouts on all attempts (4 attempts total including simple queries). DMS was completely unresponsive."
+    },
+    "equivalency_validation_results": {
+      "total_validated": 7,
+      "equivalent": 0,
+      "non_equivalent": 0,
+      "error": 7,
+      "error_reason": "SQL Equivalency tool returned ERROR with 'uniqueID' error on all 7 calls. Appears to be a service infrastructure issue."
+    }
+  },
+  "statement_details": [
+    {
+      "id": 1,
+      "method": "GetAllProductsAsync",
+      "type": "SELECT with CTE + window functions",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "Table/column names lowercased",
+      "equivalency_status": "ERROR"
+    },
+    {
+      "id": 2,
+      "method": "GetProductByIdAsync",
+      "type": "SELECT with CTE + LAG window function",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "Table/column names lowercased",
+      "equivalency_status": "ERROR"
+    },
+    {
+      "id": 3,
+      "method": "InsertProductAsync",
+      "type": "Transaction block (INSERT + SCOPE_IDENTITY + GETDATE)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "SCOPE_IDENTITY() → RETURNING clause; GETDATE() → NOW(); Single SQL block → 3 separate NpgsqlCommands with NpgsqlTransaction; DECLARE/SET → C# variables",
+      "equivalency_status": "ERROR"
+    },
+    {
+      "id": 4,
+      "method": "UpdateProductAsync",
+      "type": "Transaction block (DECLARE + SELECT INTO + UPDATE + INSERT + GETDATE)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "GETDATE() → NOW(); Single SQL block → 4 separate NpgsqlCommands with NpgsqlTransaction; DECLARE/SET → C# variables",
+      "equivalency_status": "ERROR"
+    },
+    {
+      "id": 5,
+      "method": "DeleteProductAsync",
+      "type": "Transaction block (DECLARE + SELECT INTO + INSERT + DELETE + UPDATE + GETDATE)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "GETDATE() → NOW(); Single SQL block → 4 separate NpgsqlCommands with NpgsqlTransaction; DECLARE/SET → C# variables",
+      "equivalency_status": "ERROR"
+    },
+    {
+      "id": 6,
+      "method": "GetProductsByPriceRangeAsync",
+      "type": "SELECT with CTE + RANK/PERCENT_RANK",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "Table/column names lowercased",
+      "equivalency_status": "ERROR"
+    },
+    {
+      "id": 7,
+      "method": "GetLowStockProductsAsync",
+      "type": "SELECT with CTE + window aggregates",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "key_changes": "Table/column names lowercased; StockQuantity/AvgStock division → ::numeric cast for proper decimal division",
+      "equivalency_status": "ERROR"
+    }
+  ],
+  "files_modified": [
+    {
+      "file": "DataAccess/ProductRepository.cs",
+      "changes": [
+        "Replaced using Microsoft.Data.SqlClient with using Npgsql",
+        "SqlConnection → NpgsqlConnection",
+        "SqlCommand → NpgsqlCommand",
+        "SqlDataReader → NpgsqlDataReader",
+        "All 7 SQL statements converted to PostgreSQL syntax",
+        "Transaction methods restructured with NpgsqlTransaction"
+      ]
+    },
+    {
+      "file": "AdoCore.csproj",
+      "changes": [
+        "Replaced Microsoft.Data.SqlClient 5.1.4 with Npgsql 8.0.6"
+      ]
+    },
+    {
+      "file": "appsettings.json",
+      "changes": [
+        "Connection strings converted to PostgreSQL format",
+        "Server= → Host=",
+        "Removed Trusted_Connection, MultipleActiveResultSets, TrustServerCertificate",
+        "Added Username and Password parameters"
+      ]
+    }
+  ],
+  "artifacts_generated": [
+    "extracted_statements.sql - Catalog of all 7 original MS SQL statements",
+    "converted_statements.sql - Catalog of all 7 converted PostgreSQL statements",
+    "sql_equivalency_validation_report.json - Comprehensive equivalency validation report",
+    "dms_conversion_log.txt - DMS failure documentation",
+    "migration_report.json - This final migration report"
+  ],
+  "build_status": {
+    "final_build": "SUCCESS",
+    "errors": 0,
+    "warnings": 10,
+    "warnings_note": "All warnings are pre-existing nullable reference type warnings, not introduced by migration"
+  },
+  "manual_interventions": {
+    "count": 7,
+    "reason": "DMS MCP tool was completely unresponsive (metadata model creation timeouts). All 7 statements manually converted with lowercase schema object names per DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA rule.",
+    "conversions_applied": [
+      "All table/column names → lowercase (Products → products, ProductId → productid, etc.)",
+      "SCOPE_IDENTITY() → RETURNING clause",
+      "GETDATE() → NOW()",
+      "DECLARE/SET variable patterns → Split into multiple C# commands with NpgsqlTransaction",
+      "Transaction blocks (Statements 3,4,5) → Split into individual SQL commands",
+      "Integer division in ROUND → Cast to numeric (::numeric) for proper PostgreSQL decimal division"
+    ]
+  }
+}
