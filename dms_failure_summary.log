@@ -1,0 +1,103 @@
+===============================================================
+DMS Migration Failure Summary Log
+Date: 2026-04-04
+Source: DataAccess/ProductRepository.cs
+===============================================================
+
+OVERVIEW:
+- Total SQL statements: 7
+- DMS successful conversions: 0
+- DMS failed conversions: 7
+- Manual conversions required: 7
+- Conversion method for all: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+DMS FAILURE DETAILS:
+====================
+
+All 7 statements encountered the same DMS failure. Three separate attempts were made:
+
+Attempt 1: Statement 1 (GetAllProductsAsync)
+- DMS Tool Status: error
+- Error: "Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}"
+- Workflow: create_metadata_model succeeded (2 poll attempts), convert_metadata_model timed out
+- Timestamp: 2026-04-04T06:18:16.118044
+
+Attempt 2: Statement 1 (retry with max_poll_attempts=30, poll_interval_seconds=10)
+- DMS Tool Status: error
+- Error: Command execution timed out after 300 seconds
+
+Attempt 3: Simple SELECT statement test
+- DMS Tool Status: error
+- Error: "Metadata model creation failed: {'error': 'Metadata model creation did not complete after 20 attempts'}"
+- Workflow: create_metadata_model timed out
+- Timestamp: 2026-04-04T06:25:28.468678
+
+CONCLUSION: DMS service is experiencing persistent timeout issues. All conversions performed manually.
+
+SCHEMA MAPPING (from DMS schema_mapping_tool - successful):
+===========================================================
+Source: dbo.Products -> Target: productmanagement_dbo.products
+  Columns: ProductId->productid, Name->name, Description->description, Price->price,
+           StockQuantity->stockquantity, CreatedDate->createddate, ModifiedDate->modifieddate
+
+Source: dbo.ProductHistory -> Target: productmanagement_dbo.producthistory
+  Columns: HistoryId->historyid, ProductId->productid, Action->action, OldPrice->oldprice,
+           NewPrice->newprice, OldStock->oldstock, NewStock->newstock, ActionDate->actiondate
+
+Source: dbo.ProductStats -> Target: productmanagement_dbo.productstats
+  Columns: StatId->statid, TotalProducts->totalproducts, AveragePrice->averageprice,
+           LastUpdated->lastupdated
+
+MANUAL CONVERSION RULES APPLIED:
+=================================
+1. All table names converted to lowercase (Products->products, ProductHistory->producthistory, ProductStats->productstats)
+2. All column names converted to lowercase per DMS schema mapping
+3. SCOPE_IDENTITY() -> lastval() (PostgreSQL equivalent for last generated identity value)
+4. GETDATE() -> NOW() (PostgreSQL equivalent for current timestamp)
+5. BEGIN TRANSACTION -> BEGIN (PostgreSQL transaction syntax)
+6. DECLARE @var / SET @var = ... -> Replaced with subqueries/CTEs where possible for ADO.NET compatibility
+7. CTE name 'ProductStats' renamed to 'productstats_cte' to avoid conflict with table name 'productstats'
+8. CTE name 'ProductHistory' renamed to 'producthistory_cte' to avoid conflict with table name 'producthistory'
+9. Integer division in ROUND() wrapped with CAST(... AS numeric) for proper decimal division in PostgreSQL
+10. Transaction statement ordering adjusted in Delete to capture values before deletion
+
+SQL EQUIVALENCY VALIDATION:
+============================
+All 7 statement pairs were submitted to the SQL Equivalency tool.
+All 7 returned ERROR status with error "'uniqueID'" - appears to be a service-level issue.
+Per transformation rules, these are marked as ERROR (not agent-judged).
+
+STATEMENT-BY-STATEMENT MANUAL CONVERSION LOG:
+==============================================
+
+Statement 1 (GetAllProductsAsync):
+- Type: SELECT with CTE, window functions
+- Changes: Lowercase schema objects, renamed CTE from 'ProductStats' to 'productstats_cte'
+- PostgreSQL-compatible constructs: CTE, AVG() OVER(), COUNT() OVER(), CASE, ROUND, INNER JOIN, ORDER BY
+
+Statement 2 (GetProductByIdAsync):
+- Type: SELECT with CTE, LAG window function
+- Changes: Lowercase schema objects, renamed CTE from 'ProductHistory' to 'producthistory_cte'
+- PostgreSQL-compatible constructs: CTE, LAG() OVER(), LEFT JOIN, CASE, ROUND
+
+Statement 3 (InsertProductAsync):
+- Type: Transaction block with INSERT, SCOPE_IDENTITY, UPDATE
+- Changes: Lowercase schema objects, SCOPE_IDENTITY()->lastval(), GETDATE()->NOW(), BEGIN TRANSACTION->BEGIN, removed DECLARE
+
+Statement 4 (UpdateProductAsync):
+- Type: Transaction block with DECLARE, SELECT INTO vars, UPDATE, INSERT
+- Changes: Lowercase schema objects, GETDATE()->NOW(), BEGIN TRANSACTION->BEGIN, DECLARE/SELECT vars -> subquery approach
+
+Statement 5 (DeleteProductAsync):
+- Type: Transaction block with DECLARE, SELECT INTO vars, INSERT, DELETE, UPDATE
+- Changes: Lowercase schema objects, GETDATE()->NOW(), BEGIN TRANSACTION->BEGIN, DECLARE/SELECT vars -> subquery approach, reordered operations
+
+Statement 6 (GetProductsByPriceRangeAsync):
+- Type: SELECT with CTE, RANK, PERCENT_RANK
+- Changes: Lowercase schema objects only
+- PostgreSQL-compatible constructs: CTE, RANK(), PERCENT_RANK(), BETWEEN, CASE
+
+Statement 7 (GetLowStockProductsAsync):
+- Type: SELECT with CTE, AVG/MIN/MAX window functions
+- Changes: Lowercase schema objects, added CAST(stockquantity AS numeric) for integer division
+- PostgreSQL-compatible constructs: CTE, AVG/MIN/MAX OVER(), CASE, ROUND
