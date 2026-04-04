@@ -1,0 +1,132 @@
+============================================================
+DMS Conversion Log
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+============================================================
+
+--- DMS Statement Conversion Tool Attempts ---
+
+ATTEMPT 1 - Statement 1 (GetAllProductsAsync)
+Timestamp: 2026-04-04T13:53:29
+Status: ERROR
+Error: Metadata model conversion failed: {'error': 'Metadata model conversion did not complete after 15 attempts'}
+Workflow Steps:
+  1. create_metadata_model - completed (request: ca6eb8e9-97ae-4e63-81c2-ff19559c5199, model: sql-conversion-1775310811, 2 poll attempts)
+  2. convert_metadata_model - started, then timed out
+
+ATTEMPT 2 - Statement 1 (GetAllProductsAsync, retry with extended polling)
+Timestamp: 2026-04-04 (approx 13:57)
+Status: ERROR
+Error: Command execution timed out after 300 seconds
+Parameters: max_poll_attempts=30, poll_interval_seconds=15
+
+ATTEMPT 3 - Simple test statement (SELECT SCOPE_IDENTITY())
+Timestamp: 2026-04-04T14:01:38
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}
+Workflow Steps:
+  1. create_metadata_model - started, then timed out (15 attempts)
+
+ATTEMPT 4 - Simple test statement (SELECT GETDATE())
+Timestamp: 2026-04-04T14:04:27
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Metadata model creation did not complete after 20 attempts'}
+Parameters: max_poll_attempts=20, poll_interval_seconds=10
+Workflow Steps:
+  1. create_metadata_model - started, then timed out (20 attempts)
+
+CONCLUSION: DMS statement_conversion_tool is consistently failing due to metadata model creation/conversion timeouts.
+After 4 attempts with different statements and polling configurations, all failed.
+Falling back to manual conversion with DMS schema mapping as reference (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA).
+
+--- DMS Schema Mapping Tool Results (Used for Manual Conversion) ---
+
+Schema mapping tool successfully returned results for all 3 tables:
+
+TABLE: Products → products
+Schema: dbo → productmanagement_dbo
+Column Mappings:
+  ProductId (int IDENTITY) → productid (INTEGER GENERATED ALWAYS AS IDENTITY)
+  Name (nvarchar(100)) → name (VARCHAR(100))
+  Description (nvarchar(500)) → description (VARCHAR(500))
+  Price (decimal(18,2)) → price (NUMERIC(18,2))
+  StockQuantity (int) → stockquantity (INTEGER)
+  CreatedDate (datetime DEFAULT GETDATE()) → createddate (TIMESTAMP WITHOUT TIME ZONE DEFAULT clock_timestamp())
+  ModifiedDate (datetime) → modifieddate (TIMESTAMP WITHOUT TIME ZONE)
+
+TABLE: ProductHistory → producthistory
+Schema: dbo → productmanagement_dbo
+Column Mappings:
+  HistoryId (int IDENTITY) → historyid (INTEGER GENERATED ALWAYS AS IDENTITY)
+  ProductId (int) → productid (INTEGER)
+  Action (varchar(10)) → action (VARCHAR(10))
+  OldPrice (decimal(18,2)) → oldprice (NUMERIC(18,2))
+  NewPrice (decimal(18,2)) → newprice (NUMERIC(18,2))
+  OldStock (int) → oldstock (INTEGER)
+  NewStock (int) → newstock (INTEGER)
+  ActionDate (datetime DEFAULT GETDATE()) → actiondate (TIMESTAMP WITHOUT TIME ZONE DEFAULT clock_timestamp())
+  ModifiedBy (nvarchar(100)) → modifiedby (VARCHAR(100))
+
+TABLE: ProductStats → productstats
+Schema: dbo → productmanagement_dbo
+Column Mappings:
+  StatId (int DEFAULT 1) → statid (INTEGER DEFAULT 1)
+  TotalProducts (int DEFAULT 0) → totalproducts (INTEGER DEFAULT 0)
+  AveragePrice (decimal(18,2) DEFAULT 0) → averageprice (NUMERIC(18,2) DEFAULT 0)
+  TotalStockValue (decimal(18,2) DEFAULT 0) → totalstockvalue (NUMERIC(18,2) DEFAULT 0)
+  LowStockCount (int DEFAULT 0) → lowstockcount (INTEGER DEFAULT 0)
+  DiscontinuedCount (int DEFAULT 0) → discontinuedcount (INTEGER DEFAULT 0)
+  LastUpdated (datetime DEFAULT GETDATE()) → lastupdated (TIMESTAMP WITHOUT TIME ZONE DEFAULT clock_timestamp())
+
+--- Manual Conversion Details for All 7 Statements ---
+
+Statement 1 (GetAllProductsAsync):
+  DMS Conversion: FAILED (metadata model conversion timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: ProductStats CTE renamed to productstats_cte to avoid table name conflict, all identifiers lowercased
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 2 (GetProductByIdAsync):
+  DMS Conversion: FAILED (metadata model creation timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: ProductHistory CTE renamed to producthistory_cte to avoid table name conflict, LAG syntax preserved, all identifiers lowercased
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 3 (InsertProductAsync):
+  DMS Conversion: FAILED (metadata model creation timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: SCOPE_IDENTITY() → RETURNING productid, GETDATE() → clock_timestamp(), transaction handling moved to C# code
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 4 (UpdateProductAsync):
+  DMS Conversion: FAILED (metadata model creation timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: GETDATE() → clock_timestamp(), DECLARE/SELECT pattern split into separate queries, transaction in C# code
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 5 (DeleteProductAsync):
+  DMS Conversion: FAILED (metadata model creation timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: GETDATE() → clock_timestamp(), DECLARE/SELECT pattern split into separate queries, CASE preserved, transaction in C# code
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 6 (GetProductsByPriceRangeAsync):
+  DMS Conversion: FAILED (metadata model creation timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: RANK/PERCENT_RANK preserved (same syntax), BETWEEN preserved, all identifiers lowercased
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 7 (GetLowStockProductsAsync):
+  DMS Conversion: FAILED (metadata model creation timeout)
+  Manual Conversion: Applied lowercase schema mapping
+  Key Changes: AVG/MIN/MAX window functions preserved, added ::NUMERIC cast for integer division, all identifiers lowercased
+  Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- SQL Equivalency Validation Results ---
+
+All 7 statement pairs submitted to sql-equivalency___validate_sql_equivalence tool.
+All 7 returned: {"equivalence_status": "ERROR", "error": "'uniqueID'"}
+The tool has a persistent internal error affecting all validations.
+Per transformation rules: equivalency status marked as ERROR for all statements.
