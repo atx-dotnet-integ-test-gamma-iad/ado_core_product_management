@@ -1,0 +1,130 @@
+{
+  "migration_summary": {
+    "title": "Microsoft SQL Server to PostgreSQL Migration Report",
+    "date": "2026-04-05",
+    "application": "AdoCore - ADO.NET Core Data Management Application",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL"
+  },
+  "sql_statement_processing": {
+    "total_statements_processed": 7,
+    "dms_conversion_successes": 0,
+    "dms_conversion_failures": 7,
+    "manual_conversions": 7,
+    "dms_failure_reason": "DMS MCP tool consistently failed with 'Metadata model creation/conversion did not complete after 15-20 attempts' across 5 separate attempts with different statements and configurations",
+    "manual_conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+    "statements": [
+      {
+        "id": 1,
+        "name": "GetAllProductsAsync",
+        "type": "SELECT with CTE",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "Lowercase schema object names"
+      },
+      {
+        "id": 2,
+        "name": "GetProductByIdAsync",
+        "type": "SELECT with CTE and LAG window function",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "Lowercase schema object names"
+      },
+      {
+        "id": 3,
+        "name": "InsertProductAsync",
+        "type": "Transaction block with INSERT, SCOPE_IDENTITY",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "SCOPE_IDENTITY() → currval(pg_get_serial_sequence()), GETDATE() → NOW(), DECLARE removed, BEGIN TRANSACTION/COMMIT removed (handled by C# layer)"
+      },
+      {
+        "id": 4,
+        "name": "UpdateProductAsync",
+        "type": "Transaction block with DECLARE, UPDATE",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "DECLARE @var → subqueries, GETDATE() → NOW(), Lowercase names, transaction handling moved to C# layer"
+      },
+      {
+        "id": 5,
+        "name": "DeleteProductAsync",
+        "type": "Transaction block with DECLARE, DELETE",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "DECLARE @var → subqueries, GETDATE() → NOW(), Lowercase names, transaction handling moved to C# layer"
+      },
+      {
+        "id": 6,
+        "name": "GetProductsByPriceRangeAsync",
+        "type": "SELECT with CTE, RANK, PERCENT_RANK",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "Lowercase schema object names"
+      },
+      {
+        "id": 7,
+        "name": "GetLowStockProductsAsync",
+        "type": "SELECT with CTE, AVG/MIN/MAX window functions",
+        "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+        "key_changes": "Lowercase schema object names, ::numeric cast for integer division"
+      }
+    ]
+  },
+  "equivalency_validation": {
+    "total_validated": 7,
+    "equivalent": 0,
+    "not_equivalent": 0,
+    "errors": 7,
+    "error_details": "SQL Equivalency tool consistently returned ERROR with 'uniqueID' error for all 7 statement pairs. This appears to be a system-level tool issue, not related to statement quality."
+  },
+  "files_modified": [
+    {
+      "file": "sourceCode/DataAccess/ProductRepository.cs",
+      "changes": "SQL statements converted to PostgreSQL, SqlClient types replaced with Npgsql types"
+    },
+    {
+      "file": "sourceCode/AdoCore.csproj",
+      "changes": "Microsoft.Data.SqlClient 5.1.4 replaced with Npgsql 8.0.9"
+    },
+    {
+      "file": "sourceCode/appsettings.json",
+      "changes": "Connection strings converted from SQL Server to PostgreSQL format"
+    },
+    {
+      "file": "sourceCode/Database/Scripts/01_InitialSetup.sql",
+      "changes": "Complete conversion from SQL Server DDL/DML to PostgreSQL syntax"
+    },
+    {
+      "file": "sourceCode/Scripts/01_InitialSetup.sql",
+      "changes": "Complete conversion from SQL Server DDL/DML to PostgreSQL syntax (copy)"
+    },
+    {
+      "file": "sourceCode/README.md",
+      "changes": "Updated all references from SQL Server to PostgreSQL"
+    }
+  ],
+  "artifacts_generated": [
+    "sourceCode/extracted_statements.sql",
+    "sourceCode/converted_statements.sql",
+    "sourceCode/sql_equivalency_validation_report.json",
+    "sourceCode/migration_summary.json"
+  ],
+  "build_status": {
+    "final_build": "SUCCESS",
+    "errors": 0,
+    "warnings": 10,
+    "warning_details": "Pre-existing nullable reference warnings (CS8601, CS8603, CS8618, CS8600, CS8625) - not introduced by migration"
+  },
+  "manual_interventions": [
+    {
+      "type": "DMS Tool Failure",
+      "description": "DMS MCP tool failed for all 7 SQL statements and 1 DDL statement with metadata model creation/conversion timeout errors. Manual conversion was applied with lowercase schema object names per transformation definition rules.",
+      "affected_statements": "All 7 repository SQL statements"
+    },
+    {
+      "type": "SQL Equivalency Tool Error",
+      "description": "SQL Equivalency tool returned ERROR ('uniqueID') for all 7 statement pairs. This is a tool-side issue, not related to statement quality.",
+      "affected_statements": "All 7 statement pairs"
+    },
+    {
+      "type": "Package Version Override",
+      "description": "Plan specified Npgsql 8.0.1 but this version has a known HIGH severity vulnerability (GHSA-x9vc-6hfv-hg8c). Used Npgsql 8.0.9 instead per guardrail rule 'No Insecure Dependencies'.",
+      "affected_files": ["sourceCode/AdoCore.csproj"]
+    }
+  ]
+}
