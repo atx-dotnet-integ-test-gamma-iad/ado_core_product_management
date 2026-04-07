@@ -1,0 +1,129 @@
+========================================
+FINAL MIGRATION REPORT
+MS SQL Server to PostgreSQL Migration
+========================================
+Date: 2026-04-07
+Project: AdoCore - ADO.NET Core Application
+
+========================================
+1. MIGRATION SUMMARY
+========================================
+
+Total SQL Statements Processed: 9
+  - From ProductRepository.cs: 7 statements
+  - From SQL Script Files: 2 additional statements (DDL + DML)
+
+Statements Converted by DMS MCP Tool: 0
+  - All DMS conversion attempts failed with timeout errors
+  - DMS Error: "Metadata model creation/conversion did not complete after max poll attempts"
+  - Multiple retry attempts made with increased polling parameters
+
+Statements Manually Converted: 9
+  - Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+  - All schema objects converted to lowercase for PostgreSQL compatibility
+
+========================================
+2. EQUIVALENCY VALIDATION RESULTS
+========================================
+
+Statements Validated via SQL Equivalency Tool: 9
+  - EQUIVALENT: 0
+  - NOT_EQUIVALENT: 0
+  - ERROR: 9
+  - Tool Error: All calls returned {"equivalence_status": "ERROR", "error": "'uniqueID'"}
+  - This appears to be a service-level issue with the SQL Equivalency tool
+  - Per transformation rules: "If sql-equivalency___validate_sql_equivalence returns an error, mark the equivalency status as ERROR"
+
+========================================
+3. STATEMENTS REQUIRING MANUAL REVIEW
+========================================
+
+ALL 9 statements require manual review due to:
+1. DMS tool was unable to convert (timeout on all attempts)
+2. SQL Equivalency tool returned ERROR for all validation attempts
+
+Statement 1 (GetAllProductsAsync): CTE + window functions - straightforward conversion (lowercase only)
+Statement 2 (GetProductByIdAsync): CTE + LAG window functions - straightforward conversion (lowercase only)
+Statement 3 (InsertProductAsync): Major restructuring - SCOPE_IDENTITY() -> RETURNING, GETDATE() -> NOW(), T-SQL variables -> C# sequential commands with NpgsqlTransaction
+Statement 4 (UpdateProductAsync): Major restructuring - DECLARE/@variables -> C# variables, GETDATE() -> NOW(), T-SQL batch -> sequential NpgsqlCommands with NpgsqlTransaction
+Statement 5 (DeleteProductAsync): Major restructuring - same pattern as Statement 4
+Statement 6 (GetProductsByPriceRangeAsync): CTE + RANK/PERCENT_RANK - straightforward conversion (lowercase only)
+Statement 7 (GetLowStockProductsAsync): CTE + window functions + ::numeric cast for integer division
+Statement 8 (Products DDL): IDENTITY -> SERIAL, NVARCHAR -> VARCHAR, DATETIME -> TIMESTAMP, BIT -> BOOLEAN, GETDATE() -> NOW()
+Statement 9 (ProductStats UPDATE): IsDiscontinued = 1 -> isdiscontinued = TRUE, GETDATE() -> NOW()
+
+========================================
+4. FILES MODIFIED DURING MIGRATION
+========================================
+
+Source Code Files:
+  - DataAccess/ProductRepository.cs (complete rewrite - SQL + ADO.NET classes)
+  - AdoCore.csproj (Microsoft.Data.SqlClient 5.1.4 -> Npgsql 8.0.6)
+  - appsettings.json (SQL Server -> PostgreSQL connection strings)
+  - README.md (updated all references from SQL Server to PostgreSQL)
+
+SQL Script Files:
+  - Scripts/01_InitialSetup.sql (converted to PostgreSQL DDL/functions)
+  - Database/Scripts/01_InitialSetup.sql (converted to PostgreSQL DDL/functions/triggers)
+
+Files NOT Modified (no changes needed):
+  - Program.cs (no SQL Server references)
+  - Models/Product.cs (no SQL Server references)
+  - Business/ProductService.cs (no SQL Server references)
+  - CLI/CommandLineInterface.cs (no SQL Server references)
+  - CLI/InteractiveMenu.cs (no SQL Server references)
+
+========================================
+5. KEY CONVERSIONS APPLIED
+========================================
+
+SQL Syntax:
+  - SCOPE_IDENTITY() -> RETURNING clause
+  - GETDATE() -> NOW()
+  - DECLARE @variable / SET @variable -> C# variables with sequential NpgsqlCommands
+  - BEGIN TRANSACTION/COMMIT -> NpgsqlTransaction in C#
+  - BIT -> BOOLEAN
+  - NVARCHAR -> VARCHAR
+  - DATETIME -> TIMESTAMP
+  - IDENTITY(1,1) -> SERIAL
+  - [dbo].[TableName] -> tablename (lowercase, no brackets)
+  - GO statements -> removed
+  - IF EXISTS (SELECT FROM sys.objects...) -> DROP IF EXISTS
+  - CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION
+  - SYSTEM_USER -> current_user
+  - Integer division in ROUND -> ::numeric cast
+
+ADO.NET Classes:
+  - SqlConnection -> NpgsqlConnection
+  - SqlCommand -> NpgsqlCommand
+  - SqlDataReader -> NpgsqlDataReader
+  - using Microsoft.Data.SqlClient -> using Npgsql
+
+Configuration:
+  - Server=localhost -> Host=localhost
+  - Trusted_Connection=True -> Username=postgres;Password=postgres
+  - MultipleActiveResultSets=true -> removed (not applicable in PostgreSQL)
+  - TrustServerCertificate=True -> removed (not applicable in PostgreSQL)
+
+========================================
+6. TRANSFORMATION ARTIFACTS
+========================================
+
+  - extracted_statements.sql: Complete catalog of all 7 original SQL statements from ProductRepository.cs
+  - converted_statements.sql: Complete catalog of all 7 converted PostgreSQL statements
+  - sql_equivalency_validation_report.json: Complete equivalency report with 9 statement pairs
+  - dms_conversion_summary.txt: DMS failure documentation
+  - build.log: Final build output (0 errors, 10 warnings)
+
+========================================
+7. BUILD STATUS
+========================================
+
+Final Build: SUCCESS
+  - 0 Errors
+  - 10 Warnings (all pre-existing nullable reference type warnings, not introduced by migration)
+  - Application compiles successfully with Npgsql 8.0.6
+
+========================================
+END OF MIGRATION REPORT
+========================================

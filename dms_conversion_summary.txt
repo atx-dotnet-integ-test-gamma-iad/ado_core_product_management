@@ -1,0 +1,41 @@
+========================================
+DMS CONVERSION FAILURE SUMMARY
+========================================
+
+All 7 SQL statements from ProductRepository.cs were passed through the DMS MCP tool 
+(dms-mcp___statement_conversion_tool) and ALL failed due to metadata model creation/conversion timeout.
+
+DMS Configuration Used:
+- migration_project_identifier: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+- database_name: ProductManagement
+- schema_name: dbo
+- region: us-east-1
+
+DMS Error for all statements:
+"Metadata model creation/conversion failed: Metadata model creation/conversion did not complete after max poll attempts"
+
+Multiple retry attempts were made with increased poll_interval_seconds (12-15) and max_poll_attempts (25-30),
+all resulting in the same timeout error.
+
+Per the transformation definition, manual conversion was applied with lowercase schema object names
+for PostgreSQL compatibility.
+
+Conversion Method Applied: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statements Affected:
+1. GetAllProductsAsync - CTE with window functions (AVG OVER, COUNT OVER, ROUND, CASE)
+2. GetProductByIdAsync - CTE with LAG window functions
+3. InsertProductAsync - Transaction with SCOPE_IDENTITY, GETDATE, variable declarations
+4. UpdateProductAsync - Transaction with variable declarations, GETDATE
+5. DeleteProductAsync - Transaction with variable declarations, GETDATE
+6. GetProductsByPriceRangeAsync - CTE with RANK, PERCENT_RANK window functions
+7. GetLowStockProductsAsync - CTE with window functions (AVG OVER, MIN OVER, MAX OVER)
+
+Key Manual Conversion Rules Applied:
+- All schema object names converted to lowercase (Products -> products, ProductId -> productid, etc.)
+- SCOPE_IDENTITY() -> RETURNING clause
+- GETDATE() -> NOW()
+- DECLARE @variable / SET @variable -> Restructured using sequential statements with C# NpgsqlTransaction
+- BEGIN TRANSACTION/COMMIT -> Managed by C# NpgsqlTransaction
+- T-SQL variable assignments -> C# code captures values and passes as parameters
+- ROUND with integer division -> Added ::numeric cast where needed for proper decimal division
