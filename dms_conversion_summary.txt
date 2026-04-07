@@ -1,0 +1,54 @@
+== DMS CONVERSION FAILURE SUMMARY ==
+All 7 SQL statements failed DMS conversion due to the same systemic error.
+Manual conversion was applied with lowercase schema object names per transformation definition rules.
+
+== DMS Error (consistent across all 7 statements) ==
+Error: "Metadata model creation failed: {'error': 'Metadata model creation did not complete after 15 attempts'}"
+Status: error
+Tool: dms-mcp___statement_conversion_tool
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+== Statement 1: GetAllProductsAsync ==
+DMS Timestamp: 2026-04-07T15:16:33 (first attempt), 2026-04-07T15:24:40 (retry with timeout)
+DMS Error: Metadata model conversion/creation failed
+Manual Conversion: Lowercase schema objects (Products->products, ProductId->productid, etc.)
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+== Statement 2: GetProductByIdAsync ==
+DMS Timestamp: 2026-04-07T15:27:33
+DMS Error: Metadata model creation failed
+Manual Conversion: Lowercase schema objects
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+== Statement 3: InsertProductAsync ==
+DMS Timestamp: 2026-04-07T15:30:26
+DMS Error: Metadata model creation failed
+Manual Conversion: Lowercase schema objects + SCOPE_IDENTITY()->lastval(), GETDATE()->NOW(), BEGIN TRANSACTION->BEGIN, DECLARE removed
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+== Statement 4: UpdateProductAsync ==
+DMS Timestamp: 2026-04-07T15:33:10
+DMS Error: Metadata model creation failed
+Manual Conversion: Lowercase schema objects + DECLARE removed (use subquery), GETDATE()->NOW(), BEGIN TRANSACTION->BEGIN
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+== Statement 5: DeleteProductAsync ==
+DMS Timestamp: 2026-04-07T15:35:54
+DMS Error: Metadata model creation failed
+Manual Conversion: Lowercase schema objects + DECLARE removed (use subquery), GETDATE()->NOW(), BEGIN TRANSACTION->BEGIN
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+== Statement 6: GetProductsByPriceRangeAsync ==
+DMS Timestamp: 2026-04-07T15:38:42
+DMS Error: Metadata model creation failed
+Manual Conversion: Lowercase schema objects
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+== Statement 7: GetLowStockProductsAsync ==
+DMS Timestamp: 2026-04-07T15:41:28
+DMS Error: Metadata model creation failed
+Manual Conversion: Lowercase schema objects + cast for ROUND (stockquantity::numeric)
+Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
