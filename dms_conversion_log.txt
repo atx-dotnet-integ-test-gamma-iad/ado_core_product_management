@@ -1,0 +1,105 @@
+============================================================
+DMS CONVERSION LOG
+Migration: MS SQL Server to PostgreSQL
+Source File: DataAccess/ProductRepository.cs
+Total Statements Attempted: 7
+DMS Successes: 0
+DMS Failures: 7
+============================================================
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:10:52
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Retry Attempted: Yes (with increased poll_attempts=30, poll_interval=15s)
+Retry Status: ERROR (same error)
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied: Table/column names lowercased. CTE and window functions syntax is compatible between SQL Server and PostgreSQL.
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:10:56
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied: Table/column names lowercased. CTE alias renamed from 'ProductHistory' to 'producthistory_cte' to avoid conflict with actual table name 'producthistory'. LAG window function syntax is compatible.
+
+--- Statement 3: InsertProductAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:11:39
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - SCOPE_IDENTITY() replaced with INSERT...RETURNING clause via CTE chain
+  - GETDATE() replaced with NOW()
+  - BEGIN TRANSACTION/COMMIT removed (restructured as single statement using writable CTEs)
+  - DECLARE/@variable pattern replaced with CTE subquery pattern
+  - Table/column names lowercased
+  - Restructured as WITH...INSERT...RETURNING + chained CTEs for history logging and stats update
+
+--- Statement 4: UpdateProductAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:11:43
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - DECLARE/@variable pattern replaced with CTE subquery to capture old values
+  - GETDATE() replaced with NOW()
+  - BEGIN TRANSACTION/COMMIT removed (restructured as single statement using writable CTEs)
+  - Table/column names lowercased
+  - Restructured as WITH old_values AS... chained CTEs for update, history logging, and stats update
+
+--- Statement 5: DeleteProductAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:11:46
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied:
+  - DECLARE/@variable pattern replaced with CTE subquery to capture old values
+  - GETDATE() replaced with NOW()
+  - BEGIN TRANSACTION/COMMIT removed (restructured as single statement using writable CTEs)
+  - CASE expression in UPDATE preserved (compatible with PostgreSQL)
+  - Table/column names lowercased
+  - Restructured as WITH old_values AS... chained CTEs for history logging, delete, and stats update
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:11:50
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied: Table/column names lowercased. RANK(), PERCENT_RANK(), BETWEEN, and CASE syntax are compatible between SQL Server and PostgreSQL.
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Tool Call Timestamp: 2026-04-10T22:11:53
+Database: ProductManagement
+Schema: dbo
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema naming
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Changes Applied: Table/column names lowercased. Added CAST(stockquantity AS DECIMAL) to avoid integer division in PostgreSQL (SQL Server auto-converts, PostgreSQL does integer division for int/int). AVG/MIN/MAX window functions are compatible.
+
+============================================================
+SQL EQUIVALENCY VALIDATION SUMMARY
+All 7 statement pairs were submitted to the SQL Equivalency tool.
+All 7 returned ERROR status with error message: 'uniqueID'
+This appears to be an internal tool error, not related to the SQL statements themselves.
+Per transformation rules: All marked as ERROR since tool results must be used, not agent judgment.
+============================================================
