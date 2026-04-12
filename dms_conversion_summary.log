@@ -1,0 +1,46 @@
+================================================================================
+DMS STATEMENT CONVERSION FAILURE LOG
+Date: 2026-04-12
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+================================================================================
+
+SUMMARY:
+- DMS statement_conversion_tool failed for ALL 7 statements
+- DMS schema_mapping_tool succeeded for all 3 tables
+- Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+- Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+DMS ATTEMPTS:
+1. Statement 1 (GetAllProductsAsync): FAILED - Metadata model creation failed
+   Attempted with: database_name=ProductManagement, schema_name=dbo, max_poll_attempts=30
+2. Statement 2 (test simple SELECT): FAILED - Same error
+   Attempted with: database_name=ProductManagement, schema_name=dbo, server_name=172.31.83.165
+
+All subsequent statements were attempted but returned the same metadata model creation error.
+
+SCHEMA MAPPING RESULTS (from DMS schema_mapping_tool - SUCCESS):
+- dbo.Products -> productmanagement_dbo.products
+  Columns: productid, name, description, price, stockquantity, categoryid, supplierid, sku, weight, dimensions, isdiscontinued, reorderlevel, createddate, modifieddate
+- dbo.ProductHistory -> productmanagement_dbo.producthistory
+  Columns: historyid, productid, action, oldprice, newprice, oldstock, newstock, actiondate, modifiedby
+- dbo.ProductStats -> productmanagement_dbo.productstats
+  Columns: statid, totalproducts, averageprice, totalstockvalue, lowstockcount, discontinuedcount, lastupdated
+
+MANUAL CONVERSION RULES APPLIED:
+1. All table names converted to lowercase with schema prefix: productmanagement_dbo.<tablename>
+2. All column names converted to lowercase
+3. GETDATE() -> clock_timestamp() (as per DMS schema mapping defaults)
+4. SCOPE_IDENTITY() -> lastval()
+5. DECLARE @variable / BEGIN TRANSACTION blocks -> DO $$ DECLARE ... BEGIN ... END $$
+6. ROUND with integer division -> ROUND with ::numeric cast where needed
+7. Window functions (AVG OVER, COUNT OVER, LAG, RANK, PERCENT_RANK) -> compatible PostgreSQL syntax
+8. CTE names adjusted to avoid conflicts with table names (ProductStats -> productstats_cte, etc.)
+
+STATEMENTS CONVERTED:
+1. GetAllProductsAsync - CTE with window functions - MANUALLY CONVERTED
+2. GetProductByIdAsync - CTE with LAG window functions - MANUALLY CONVERTED
+3. InsertProductAsync - Transaction block with SCOPE_IDENTITY - MANUALLY CONVERTED (DO block)
+4. UpdateProductAsync - Transaction block with variables - MANUALLY CONVERTED (DO block)
+5. DeleteProductAsync - Transaction block with variables - MANUALLY CONVERTED (DO block)
+6. GetProductsByPriceRangeAsync - CTE with RANK/PERCENT_RANK - MANUALLY CONVERTED
+7. GetLowStockProductsAsync - CTE with AVG/MIN/MAX window functions - MANUALLY CONVERTED
