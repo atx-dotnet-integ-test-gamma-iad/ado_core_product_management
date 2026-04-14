@@ -1,0 +1,75 @@
+============================================================================
+DMS CONVERSION FAILURE SUMMARY LOG
+Date: 2026-04-14
+============================================================================
+
+DMS Tool: dms-mcp___statement_conversion_tool
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Consistent Error: YES - All 7 statements failed with the same error
+
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Server: 172.31.83.165
+
+DMS Schema Mapping Tool: WORKING
+- Products -> productmanagement_dbo.products (lowercase columns)
+- ProductHistory -> productmanagement_dbo.producthistory (lowercase columns)
+- ProductStats -> productmanagement_dbo.productstats (lowercase columns)
+
+SQL Equivalency Tool: sql-equivalency___validate_sql_equivalence
+Error: All 7 validations returned ERROR with "'uniqueID'" error
+Note: This is a tool-level issue, not a conversion issue
+
+============================================================================
+MANUAL CONVERSION DETAILS
+============================================================================
+
+All 7 statements were manually converted applying the following rules:
+1. All schema object names (tables, columns) converted to lowercase per DMS schema mapping
+2. SCOPE_IDENTITY() replaced with RETURNING clause
+3. GETDATE() replaced with clock_timestamp() (per DMS schema mapping DDL defaults)
+4. BEGIN TRANSACTION/COMMIT replaced with individual statements (transactions managed by ADO.NET)
+5. DECLARE @var TYPE / SET @var = value replaced with C# variables + separate SQL queries
+6. CTE aliases renamed where they conflict with actual table names (ProductStats -> productstats_cte, ProductHistory -> producthistory_cte)
+7. Integer division in ROUND() fixed with CAST(... AS NUMERIC) for PostgreSQL compatibility
+8. Window functions (LAG, RANK, PERCENT_RANK, AVG/COUNT/MIN/MAX OVER) preserved as-is (PostgreSQL compatible)
+
+============================================================================
+STATEMENT-BY-STATEMENT DMS ATTEMPTS
+============================================================================
+
+Statement 1 (GetAllProductsAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: Applied lowercase schema mapping
+
+Statement 2 (GetProductByIdAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: Applied lowercase schema mapping
+
+Statement 3 (InsertProductAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: SCOPE_IDENTITY() -> RETURNING, GETDATE() -> clock_timestamp(), restructured for ADO.NET transaction handling
+
+Statement 4 (UpdateProductAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: DECLARE/SET -> C# variables + separate queries, GETDATE() -> clock_timestamp()
+
+Statement 5 (DeleteProductAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: DECLARE/SET -> C# variables + separate queries, GETDATE() -> clock_timestamp()
+
+Statement 6 (GetProductsByPriceRangeAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: Applied lowercase schema mapping
+
+Statement 7 (GetLowStockProductsAsync):
+  DMS Attempt: Failed
+  DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Manual Conversion: Applied lowercase schema mapping, added CAST for integer division
