@@ -1,46 +1,15 @@
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Threading.Tasks;
-using Npgsql;
-using Microsoft.Extensions.Configuration;
-using AdoCore.Models;
+-- ================================================================
+-- Converted SQL Statements (PostgreSQL) from ProductRepository.cs
+-- Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+-- DMS schema mapping used for table/column name mapping
+-- DMS Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+-- Total Statements: 7
+-- ================================================================
 
-namespace AdoCore.DataAccess
-{
-    public class ProductRepository : IAsyncDisposable
-    {
-        private readonly string _connectionString;
-        private NpgsqlConnection _connection;
-        private readonly IConfiguration _configuration;
+-- ================================================================
+-- Statement 1: GetAllProductsAsync (SELECT with CTE + window functions)
+-- ================================================================
 
-        public ProductRepository(IConfiguration configuration)
-        {
-            _configuration = configuration;
-            var environment = _configuration["Environment"];
-            var connectionName = environment == "Production" ? "ProdConnection" : "DevConnection";
-            _connectionString = _configuration.GetConnectionString(connectionName);
-        }
-
-        private async Task<NpgsqlConnection> GetConnectionAsync()
-        {
-            if (_connection == null)
-            {
-                _connection = new NpgsqlConnection(_connectionString);
-            }
-            if (_connection.State != ConnectionState.Open)
-            {
-                await _connection.OpenAsync();
-            }
-            return _connection;
-        }
-
-        public async Task<List<Product>> GetAllProductsAsync()
-        {
-            var products = new List<Product>();
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH productstats AS (
                     SELECT 
                         productid,
@@ -69,23 +38,12 @@ namespace AdoCore.DataAccess
                         WHEN p.price > ps.avgprice THEN 1
                         ELSE 2
                     END,
-                    p.name";
+                    p.name
 
-            using var command = new NpgsqlCommand(sql, connection);
-            using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                products.Add(MapProductFromReader(reader));
-            }
+-- ================================================================
+-- Statement 2: GetProductByIdAsync (SELECT with CTE + LAG)
+-- ================================================================
 
-            return products;
-        }
-
-        public async Task<Product> GetProductByIdAsync(int productId)
-        {
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH producthistory AS (
                     SELECT 
                         productid,
@@ -111,25 +69,12 @@ namespace AdoCore.DataAccess
                     END as pricechangepercentage
                 FROM products p
                 LEFT JOIN producthistory ph ON p.productid = ph.productid
-                WHERE p.productid = @ProductId";
+                WHERE p.productid = @ProductId
 
-            using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", productId);
+-- ================================================================
+-- Statement 3: InsertProductAsync (INSERT with CTE chain + RETURNING)
+-- ================================================================
 
-            using var reader = await command.ExecuteReaderAsync();
-            if (await reader.ReadAsync())
-            {
-                return MapProductFromReader(reader);
-            }
-
-            return null;
-        }
-
-        public async Task<int> InsertProductAsync(Product product)
-        {
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH new_product AS (
                     INSERT INTO products (name, description, price, stockquantity)
                     VALUES (@Name, @Description, @Price, @StockQuantity)
@@ -150,22 +95,12 @@ namespace AdoCore.DataAccess
                     WHERE statid = 1
                     RETURNING statid
                 )
-                SELECT productid FROM new_product";
+                SELECT productid FROM new_product
 
-            using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Name", product.Name);
-            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("@Price", product.Price);
-            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+-- ================================================================
+-- Statement 4: UpdateProductAsync (UPDATE with CTE chain)
+-- ================================================================
 
-            return Convert.ToInt32(await command.ExecuteScalarAsync());
-        }
-
-        public async Task UpdateProductAsync(Product product)
-        {
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH old_values AS (
                     SELECT price as oldprice, stockquantity as oldstock
                     FROM products
@@ -192,23 +127,12 @@ namespace AdoCore.DataAccess
                 SET 
                     averageprice = (averageprice * totalproducts - (SELECT oldprice FROM old_values) + @Price) / totalproducts,
                     lastupdated = NOW()
-                WHERE statid = 1";
+                WHERE statid = 1
 
-            using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", product.ProductId);
-            command.Parameters.AddWithValue("@Name", product.Name);
-            command.Parameters.AddWithValue("@Description", (object)product.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("@Price", product.Price);
-            command.Parameters.AddWithValue("@StockQuantity", product.StockQuantity);
+-- ================================================================
+-- Statement 5: DeleteProductAsync (DELETE with CTE chain)
+-- ================================================================
 
-            await command.ExecuteNonQueryAsync();
-        }
-
-        public async Task DeleteProductAsync(int productId)
-        {
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH old_values AS (
                     SELECT price as oldprice, stockquantity as oldstock
                     FROM products
@@ -234,20 +158,12 @@ namespace AdoCore.DataAccess
                         ELSE 0
                     END,
                     lastupdated = NOW()
-                WHERE statid = 1";
+                WHERE statid = 1
 
-            using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@ProductId", productId);
+-- ================================================================
+-- Statement 6: GetProductsByPriceRangeAsync (SELECT with CTE + RANK/PERCENT_RANK)
+-- ================================================================
 
-            await command.ExecuteNonQueryAsync();
-        }
-
-        public async Task<List<Product>> GetProductsByPriceRangeAsync(decimal minPrice, decimal maxPrice)
-        {
-            var products = new List<Product>();
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH rankedproducts AS (
                     SELECT 
                         p.*,
@@ -264,27 +180,12 @@ namespace AdoCore.DataAccess
                         ELSE 'Premium'
                     END as pricesegment
                 FROM rankedproducts rp
-                ORDER BY rp.pricerank";
+                ORDER BY rp.pricerank
 
-            using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@MinPrice", minPrice);
-            command.Parameters.AddWithValue("@MaxPrice", maxPrice);
+-- ================================================================
+-- Statement 7: GetLowStockProductsAsync (SELECT with CTE + window functions)
+-- ================================================================
 
-            using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                products.Add(MapProductFromReader(reader));
-            }
-
-            return products;
-        }
-
-        public async Task<List<Product>> GetLowStockProductsAsync(int threshold)
-        {
-            var products = new List<Product>();
-            var connection = await GetConnectionAsync();
-
-            const string sql = @"
                 WITH stockanalysis AS (
                     SELECT 
                         p.*,
@@ -303,61 +204,4 @@ namespace AdoCore.DataAccess
                     ROUND((CAST(stockquantity AS NUMERIC) / avgstock) * 100, 2) as stockpercentageofaverage
                 FROM stockanalysis sa
                 WHERE stockquantity <= @Threshold
-                ORDER BY stockquantity";
-
-            using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("@Threshold", threshold);
-
-            using var reader = await command.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-            {
-                products.Add(MapProductFromReader(reader));
-            }
-
-            return products;
-        }
-
-        public async Task ExecuteInTransactionAsync(Func<Task> action)
-        {
-            var connection = await GetConnectionAsync();
-            using var transaction = await connection.BeginTransactionAsync();
-            try
-            {
-                await action();
-                await transaction.CommitAsync();
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
-        }
-
-        private static Product MapProductFromReader(NpgsqlDataReader reader)
-        {
-            return new Product
-            {
-                ProductId = Convert.ToInt32(reader["ProductId"]),
-                Name = reader["Name"].ToString(),
-                Description = reader["Description"] == DBNull.Value ? null : reader["Description"].ToString(),
-                Price = Convert.ToDecimal(reader["Price"]),
-                StockQuantity = Convert.ToInt32(reader["StockQuantity"]),
-                CreatedDate = Convert.ToDateTime(reader["CreatedDate"]),
-                ModifiedDate = reader["ModifiedDate"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(reader["ModifiedDate"])
-            };
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            if (_connection != null)
-            {
-                if (_connection.State == ConnectionState.Open)
-                {
-                    await _connection.CloseAsync();
-                }
-                await _connection.DisposeAsync();
-                _connection = null;
-            }
-        }
-    }
-}
+                ORDER BY stockquantity
