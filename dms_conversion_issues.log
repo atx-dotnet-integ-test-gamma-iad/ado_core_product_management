@@ -1,0 +1,97 @@
+===============================================================================
+DMS CONVERSION ISSUES LOG
+Generated during MS SQL Server to PostgreSQL migration
+===============================================================================
+
+DMS Tool Configuration:
+- migration_project_identifier: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+- database_name: ProductManagement
+- schema_name: dbo
+- region: us-east-1
+- server_name: 172.31.83.165
+
+===============================================================================
+SUMMARY: ALL 7 statements failed DMS conversion with the same error.
+Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+All statements were manually converted with lowercase schema mapping.
+Reason Code: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+===============================================================================
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:48:00 (first), 2026-04-17T17:48:17 (second), 2026-04-17T17:48:34 (third)
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 3
+Manual Conversion Applied: Yes
+Conversion Details:
+  - Schema objects converted to lowercase (Products -> products, ProductId -> productid, etc.)
+  - ROUND function preserved (compatible with PostgreSQL)
+  - Window functions (AVG OVER, COUNT OVER) preserved (compatible with PostgreSQL)
+  - CASE expressions preserved (compatible with PostgreSQL)
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:48:56
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 1
+Manual Conversion Applied: Yes
+Conversion Details:
+  - Schema objects converted to lowercase
+  - LAG window function preserved (compatible with PostgreSQL)
+  - ROUND function preserved
+  - @ProductId parameter preserved (Npgsql compatible)
+
+--- Statement 3: InsertProductAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:49:10
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 1
+Manual Conversion Applied: Yes
+Conversion Details:
+  - SCOPE_IDENTITY() -> RETURNING clause with lastval()
+  - GETDATE() -> NOW()
+  - BEGIN TRANSACTION/COMMIT -> Implicit transaction in Npgsql
+  - DECLARE @var -> Restructured for C# multi-statement approach
+  - Schema objects converted to lowercase
+
+--- Statement 4: UpdateProductAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:49:24
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 1
+Manual Conversion Applied: Yes
+Conversion Details:
+  - DECLARE variables -> Restructured for C# approach with separate SELECT
+  - GETDATE() -> NOW()
+  - BEGIN TRANSACTION/COMMIT -> Implicit transaction in Npgsql
+  - Schema objects converted to lowercase
+
+--- Statement 5: DeleteProductAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:49:37
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 1
+Manual Conversion Applied: Yes
+Conversion Details:
+  - DECLARE variables -> Restructured for C# approach with separate SELECT
+  - GETDATE() -> NOW()
+  - BEGIN TRANSACTION/COMMIT -> Implicit transaction in Npgsql
+  - CASE expression in UPDATE preserved (compatible)
+  - Schema objects converted to lowercase
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:49:51
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 1
+Manual Conversion Applied: Yes
+Conversion Details:
+  - Schema objects converted to lowercase
+  - RANK() and PERCENT_RANK() window functions preserved (compatible)
+  - BETWEEN preserved (compatible)
+  - CASE expressions preserved (compatible)
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Attempt Timestamp: 2026-04-17T17:50:06
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+DMS Attempts: 1
+Manual Conversion Applied: Yes
+Conversion Details:
+  - Schema objects converted to lowercase
+  - AVG/MIN/MAX window functions preserved (compatible)
+  - ROUND function preserved
+  - CASE expressions preserved (compatible)
