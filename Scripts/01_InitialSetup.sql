@@ -1,3 +1,8 @@
+-- NOTE: This script was written for Microsoft SQL Server and needs to be converted
+-- to PostgreSQL equivalents for the target database. The application has been migrated
+-- to use PostgreSQL (Npgsql) but this setup script has not been converted.
+-- Please create a PostgreSQL-compatible version of this script before execution.
+--
 -- Create ProductManagement Database
 IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'ProductManagement')
 BEGIN
