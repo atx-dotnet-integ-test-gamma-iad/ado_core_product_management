@@ -1,0 +1,97 @@
+================================================================
+DMS Conversion Failure Log
+================================================================
+DMS Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+All 7 SQL statements failed DMS conversion with the same error.
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+
+Manual conversion applied with lowercase schema object names per transformation rules.
+Conversion method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 1: GetAllProductsAsync
+================================================================
+DMS Attempt Timestamps: 2026-04-18T05:49:15, 2026-04-18T05:49:33 (2 attempts)
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- Table names: Products -> products, ProductStats CTE -> productstats
+- Column names: ProductId -> productid, Price -> price, Name -> name, etc.
+- ROUND with ::numeric cast for PostgreSQL compatibility
+
+================================================================
+Statement 2: GetProductByIdAsync
+================================================================
+DMS Attempt Timestamp: 2026-04-18T05:50:07
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- Table names: Products -> products, ProductHistory CTE -> producthistory
+- Column names: all to lowercase
+- ROUND with ::numeric cast for PostgreSQL compatibility
+- LAG window function syntax preserved (compatible)
+
+================================================================
+Statement 3: InsertProductAsync
+================================================================
+DMS Attempt Timestamp: 2026-04-18T05:50:23
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- SCOPE_IDENTITY() -> RETURNING productid clause
+- GETDATE() -> NOW()
+- DECLARE @variable pattern removed (handled in application code)
+- BEGIN TRANSACTION/COMMIT -> handled by application-level transaction
+- Table/column names to lowercase
+
+================================================================
+Statement 4: UpdateProductAsync
+================================================================
+DMS Attempt Timestamp: 2026-04-18T05:50:38
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- GETDATE() -> NOW()
+- DECLARE @variable pattern removed (replaced with SELECT query + application variables)
+- BEGIN TRANSACTION/COMMIT -> handled by application-level transaction
+- Table/column names to lowercase
+
+================================================================
+Statement 5: DeleteProductAsync
+================================================================
+DMS Attempt Timestamp: 2026-04-18T05:50:52
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- GETDATE() -> NOW()
+- DECLARE @variable pattern removed (replaced with SELECT query + application variables)
+- BEGIN TRANSACTION/COMMIT -> handled by application-level transaction
+- Table/column names to lowercase
+
+================================================================
+Statement 6: GetProductsByPriceRangeAsync
+================================================================
+DMS Attempt Timestamp: 2026-04-18T05:51:09
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- Table names: Products -> products, RankedProducts CTE -> rankedproducts
+- Column names: all to lowercase
+- RANK() and PERCENT_RANK() window functions preserved (compatible)
+
+================================================================
+Statement 7: GetLowStockProductsAsync
+================================================================
+DMS Attempt Timestamp: 2026-04-18T05:51:25
+DMS Output: {"status": "error", "error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"}
+Manual Conversion Applied:
+- Table names: Products -> products, StockAnalysis CTE -> stockanalysis
+- Column names: all to lowercase
+- ROUND with ::numeric cast for PostgreSQL compatibility (integer division issue)
+- AVG, MIN, MAX window functions preserved (compatible)
+
+================================================================
+SQL Equivalency Tool Results
+================================================================
+All 7 statement pairs returned ERROR from the SQL Equivalency tool.
+Error: "'uniqueID'" for all pairs.
+Status: Marked as ERROR per transformation rules.
+Note: Equivalency tool errors do not indicate conversion quality - they are tool-level errors.
