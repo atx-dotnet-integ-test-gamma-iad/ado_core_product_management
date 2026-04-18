@@ -1,0 +1,70 @@
+================================================================================
+DMS CONVERSION FAILURE SUMMARY
+================================================================================
+Date: 2026-04-18
+DMS Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+
+DMS Error (consistent across all 7 statements):
+  Status: error
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  
+All 7 SQL statements were passed through the DMS MCP tool and all failed with 
+the same metadata model creation error. The DMS tool's schema_mapping_tool 
+DID work successfully and provided the following schema mappings:
+
+Schema Mappings Retrieved from DMS:
+  - dbo.Products → productmanagement_dbo.products
+  - dbo.ProductHistory → productmanagement_dbo.producthistory  
+  - dbo.ProductStats → productmanagement_dbo.productstats
+
+Column Mappings (Products):
+  ProductId → productid
+  Name → name
+  Description → description
+  Price → price
+  StockQuantity → stockquantity
+  CreatedDate → createddate
+  ModifiedDate → modifieddate
+
+Column Mappings (ProductHistory):
+  HistoryId → historyid
+  ProductId → productid
+  Action → action
+  OldPrice → oldprice
+  NewPrice → newprice
+  OldStock → oldstock
+  NewStock → newstock
+  ActionDate → actiondate
+
+Column Mappings (ProductStats):
+  StatId → statid
+  TotalProducts → totalproducts
+  AveragePrice → averageprice
+  LastUpdated → lastupdated
+
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Applied lowercase schema object names as per DMS schema mapping output.
+
+Key Conversions Applied:
+  - SCOPE_IDENTITY() → RETURNING clause with writable CTE
+  - GETDATE() → NOW()
+  - DECLARE @var / SET @var → CTE-based approach
+  - BEGIN TRANSACTION/COMMIT → Removed (handled at ADO.NET/Npgsql level)
+  - All table/column names → lowercase per DMS schema mapping
+  - Integer division → CAST to NUMERIC for proper decimal division in PostgreSQL
+  - Window functions (LAG, RANK, PERCENT_RANK, AVG OVER, etc.) → Compatible syntax preserved
+
+SQL Equivalency Validation:
+  All 7 statement pairs returned ERROR from the SQL Equivalency tool.
+  Error: 'uniqueID' (systemic tool issue, not related to query quality)
+  No agent judgment was used to determine equivalency.
+
+Statements Processed:
+  1. GetAllProductsAsync - CTE with AVG/COUNT window functions
+  2. GetProductByIdAsync - CTE with LAG window functions
+  3. InsertProductAsync - Transaction with SCOPE_IDENTITY
+  4. UpdateProductAsync - Transaction with DECLARE variables
+  5. DeleteProductAsync - Transaction with DECLARE variables and CASE
+  6. GetProductsByPriceRangeAsync - CTE with RANK/PERCENT_RANK
+  7. GetLowStockProductsAsync - CTE with AVG/MIN/MAX window functions
+================================================================================
