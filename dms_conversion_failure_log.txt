@@ -1,0 +1,60 @@
+============================================================================
+DMS CONVERSION FAILURE LOG
+============================================================================
+Date: 2026-04-18
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+============================================================================
+FAILURE SUMMARY
+============================================================================
+Tool: dms-mcp___statement_conversion_tool
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Status: Persistent failure across all 7 statements and multiple retry attempts
+Attempts: 5 total attempts with varying parameters (different poll intervals, max attempts, server names)
+
+DMS Schema Mapping Tool (dms-mcp___schema_mapping_tool): WORKING
+- Successfully retrieved schema mappings for Products, ProductHistory, ProductStats tables
+- Schema mappings used as basis for manual conversion
+
+SQL Equivalency Tool (sql-equivalency___validate_sql_equivalence): PERSISTENT ERROR
+- Error: 'uniqueID' for all 7 statement pairs
+- All 7 statements validated through tool, all returned ERROR
+- Per transformation definition: equivalency status marked as ERROR, agent judgment NOT used
+
+============================================================================
+CONVERSION APPROACH
+============================================================================
+Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Basis: DMS schema_mapping_tool outputs used for accurate schema name mapping
+
+Schema Mappings Applied:
+  Source Table -> Target Table (Target Schema: productmanagement_dbo)
+  Products -> products
+  ProductHistory -> producthistory
+  ProductStats -> productstats
+
+Column Mappings Applied (all lowercase per DMS schema mapping):
+  Products: productid, name, description, price, stockquantity, createddate, modifieddate
+  ProductHistory: historyid, productid, action, oldprice, newprice, oldstock, newstock, actiondate
+  ProductStats: statid, totalproducts, averageprice, lastupdated
+
+SQL Server -> PostgreSQL Syntax Conversions Applied:
+  SCOPE_IDENTITY() -> RETURNING clause
+  GETDATE() -> NOW()
+  BEGIN TRANSACTION/COMMIT -> C# managed transactions (BeginTransactionAsync)
+  DECLARE @var / SET @var -> C# variables with separate SELECT queries
+  Integer division -> ::numeric cast for proper decimal division
+
+============================================================================
+STATEMENTS PROCESSED
+============================================================================
+1. GetAllProductsAsync - Manual conversion (lowercase schema) - Equivalency: ERROR
+2. GetProductByIdAsync - Manual conversion (lowercase schema) - Equivalency: ERROR
+3. InsertProductAsync - Manual conversion (restructured transaction) - Equivalency: ERROR
+4. UpdateProductAsync - Manual conversion (restructured transaction) - Equivalency: ERROR
+5. DeleteProductAsync - Manual conversion (restructured transaction) - Equivalency: ERROR
+6. GetProductsByPriceRangeAsync - Manual conversion (lowercase schema) - Equivalency: ERROR
+7. GetLowStockProductsAsync - Manual conversion (lowercase schema + ::numeric cast) - Equivalency: ERROR
