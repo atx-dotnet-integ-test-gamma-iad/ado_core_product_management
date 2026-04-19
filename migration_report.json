@@ -1,0 +1,174 @@
+{
+  "migration_report": {
+    "title": "SQL Server to PostgreSQL Migration Report",
+    "date": "2026-04-19",
+    "source_database": "Microsoft SQL Server 2019",
+    "target_database": "PostgreSQL 13",
+    "application": "AdoCore - ADO.NET Core Data Management Application",
+    "framework": ".NET 9.0"
+  },
+  "sql_statement_conversion": {
+    "total_statements_processed": 7,
+    "dms_conversion_successful": 0,
+    "dms_conversion_failed": 7,
+    "manual_conversion_required": 7,
+    "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+    "dms_project_arn": "arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4",
+    "conversion_method_used": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+    "statements": [
+      {
+        "id": 1,
+        "method": "GetAllProductsAsync",
+        "type": "SELECT with CTE, Window Functions, CASE, ROUND, INNER JOIN",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": ["Table/column names lowercased", "SQL syntax PostgreSQL compatible (no changes needed for CTE/window functions)"]
+      },
+      {
+        "id": 2,
+        "method": "GetProductByIdAsync",
+        "type": "SELECT with CTE, LAG() window function, LEFT JOIN, CASE, ROUND",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": ["Table/column names lowercased", "LAG() function compatible"]
+      },
+      {
+        "id": 3,
+        "method": "InsertProductAsync",
+        "type": "Transaction block with DECLARE, INSERT, SCOPE_IDENTITY(), UPDATE, GETDATE()",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": [
+          "SCOPE_IDENTITY() replaced with RETURNING clause",
+          "GETDATE() replaced with NOW()",
+          "Single SQL block restructured into multiple C# commands with NpgsqlTransaction",
+          "DECLARE @var removed - handled in C# code",
+          "Table/column names lowercased"
+        ]
+      },
+      {
+        "id": 4,
+        "method": "UpdateProductAsync",
+        "type": "Transaction block with DECLARE, SELECT INTO vars, UPDATE, INSERT, GETDATE()",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": [
+          "GETDATE() replaced with NOW()",
+          "BEGIN TRANSACTION replaced with C# BeginTransactionAsync()",
+          "DECLARE @var removed - old values fetched via C# DataReader",
+          "Table/column names lowercased"
+        ]
+      },
+      {
+        "id": 5,
+        "method": "DeleteProductAsync",
+        "type": "Transaction block with DECLARE, SELECT INTO vars, INSERT, DELETE, UPDATE with CASE, GETDATE()",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": [
+          "GETDATE() replaced with NOW()",
+          "BEGIN TRANSACTION replaced with C# BeginTransactionAsync()",
+          "DECLARE @var removed - old values fetched via C# DataReader",
+          "Table/column names lowercased"
+        ]
+      },
+      {
+        "id": 6,
+        "method": "GetProductsByPriceRangeAsync",
+        "type": "SELECT with CTE, RANK(), PERCENT_RANK(), CASE, BETWEEN",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": ["Table/column names lowercased", "RANK()/PERCENT_RANK() compatible"]
+      },
+      {
+        "id": 7,
+        "method": "GetLowStockProductsAsync",
+        "type": "SELECT with CTE, AVG/MIN/MAX() OVER(), CASE, ROUND",
+        "dms_status": "FAILED",
+        "manual_conversion": true,
+        "key_changes": [
+          "Table/column names lowercased",
+          "Added CAST(stockquantity AS NUMERIC) for integer division in ROUND()"
+        ]
+      }
+    ]
+  },
+  "equivalency_validation": {
+    "total_pairs_validated": 7,
+    "equivalent": 0,
+    "non_equivalent": 0,
+    "errors": 7,
+    "tool_error": "'uniqueID' - systemic tool error affecting all validations",
+    "note": "All equivalency statuses determined exclusively by sql-equivalency___validate_sql_equivalence tool, not by agent judgment"
+  },
+  "package_dependency_changes": {
+    "removed": {
+      "package": "Microsoft.Data.SqlClient",
+      "version": "5.1.4"
+    },
+    "added": {
+      "package": "Npgsql",
+      "version": "8.0.6"
+    },
+    "unchanged": [
+      "Microsoft.Extensions.Configuration 8.0.0",
+      "Microsoft.Extensions.Configuration.Json 8.0.0",
+      "Microsoft.Extensions.DependencyInjection 8.0.0"
+    ]
+  },
+  "code_class_replacements": {
+    "using_statement": "Microsoft.Data.SqlClient -> Npgsql",
+    "connection": "SqlConnection -> NpgsqlConnection",
+    "command": "SqlCommand -> NpgsqlCommand",
+    "reader": "SqlDataReader -> NpgsqlDataReader",
+    "transaction": "SqlTransaction -> NpgsqlTransaction"
+  },
+  "connection_string_changes": {
+    "original": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+    "converted": "Host=localhost;Database=ProductManagement;Username=postgres;Password=postgres",
+    "parameter_mapping": {
+      "Server": "Host",
+      "Database": "Database (unchanged)",
+      "Trusted_Connection": "Replaced with Username/Password",
+      "MultipleActiveResultSets": "Removed (not applicable)",
+      "TrustServerCertificate": "Removed (not applicable)"
+    }
+  },
+  "script_conversion_summary": {
+    "files_converted": [
+      "Database/Scripts/01_InitialSetup.sql",
+      "Scripts/01_InitialSetup.sql"
+    ],
+    "key_conversions": [
+      "IF NOT EXISTS (sys.objects) -> DROP IF EXISTS / CREATE TABLE IF NOT EXISTS",
+      "GO statements -> Removed",
+      "[dbo].[TableName] -> tablename (lowercase, no schema prefix)",
+      "INT IDENTITY(1,1) -> SERIAL",
+      "NVARCHAR(N) -> VARCHAR(N)",
+      "DECIMAL(P,S) -> NUMERIC(P,S)",
+      "DATETIME -> TIMESTAMP",
+      "BIT -> BOOLEAN",
+      "GETDATE() -> NOW()",
+      "CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION ... LANGUAGE plpgsql",
+      "SCOPE_IDENTITY() -> RETURNING ... INTO variable",
+      "CREATE TRIGGER (inserted/deleted) -> CREATE TRIGGER with TG_OP/NEW/OLD",
+      "SYSTEM_USER -> current_user"
+    ]
+  },
+  "files_modified": [
+    "DataAccess/ProductRepository.cs",
+    "AdoCore.csproj",
+    "appsettings.json",
+    "Database/Scripts/01_InitialSetup.sql",
+    "Scripts/01_InitialSetup.sql",
+    "README.md"
+  ],
+  "files_created": [
+    "extracted_statements.sql",
+    "converted_statements.sql",
+    "dms_conversion_summary.txt",
+    "sql_equivalency_validation_report.json",
+    "migration_report.json"
+  ],
+  "build_status": "SUCCESS - 0 errors, 10 warnings (all pre-existing nullable reference warnings)"
+}

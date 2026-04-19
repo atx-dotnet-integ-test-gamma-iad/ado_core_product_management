@@ -1,0 +1,38 @@
+============================================================
+DMS CONVERSION FAILURE SUMMARY
+============================================================
+
+All 7 SQL statements from ProductRepository.cs were submitted to the DMS MCP tool
+(dms-mcp___statement_conversion_tool) for conversion. All 7 failed with the same error.
+
+DMS Configuration Used:
+- migration_project_identifier: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+- database_name: ProductManagement
+- schema_name: dbo
+- region: us-east-1
+
+Error Details (same for all 7 statements):
+- Status: error
+- Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+- The error occurred at the create_metadata_model workflow step
+
+Statements Affected:
+1. GetAllProductsAsync - CTE with AVG/COUNT OVER(), CASE, ROUND, INNER JOIN
+2. GetProductByIdAsync - CTE with LAG() OVER(), LEFT JOIN, CASE, ROUND
+3. InsertProductAsync - Transaction block with DECLARE, SCOPE_IDENTITY(), GETDATE()
+4. UpdateProductAsync - Transaction block with DECLARE, SELECT INTO vars, GETDATE()
+5. DeleteProductAsync - Transaction block with DECLARE, SELECT INTO vars, GETDATE()
+6. GetProductsByPriceRangeAsync - CTE with RANK(), PERCENT_RANK(), CASE, BETWEEN
+7. GetLowStockProductsAsync - CTE with AVG/MIN/MAX() OVER(), CASE, ROUND
+
+Resolution:
+All statements were manually converted to PostgreSQL syntax following the transformation
+definition rules for DMS failure:
+- Applied lowercase schema object names for PostgreSQL compatibility
+- Converted SQL Server-specific functions to PostgreSQL equivalents:
+  * SCOPE_IDENTITY() -> RETURNING clause
+  * GETDATE() -> NOW()
+  * BEGIN TRANSACTION/COMMIT -> BEGIN/COMMIT
+  * DECLARE @var TYPE -> Handled via C# code restructuring
+  * Integer division in ROUND() -> CAST to NUMERIC
+- Conversion method documented as: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
