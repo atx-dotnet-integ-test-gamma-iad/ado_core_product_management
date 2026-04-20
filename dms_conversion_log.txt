@@ -1,0 +1,82 @@
+============================================================
+DMS Conversion Log
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema: dbo
+Region: us-east-1
+============================================================
+
+============================================================
+Schema Mapping Results (Successful)
+============================================================
+
+[SUCCESS] Products -> productmanagement_dbo.products
+  Source DDL: CREATE TABLE [dbo].[Products](ProductId int IDENTITY(1,1), Name nvarchar(100), Description nvarchar(500), Price decimal(18,2), StockQuantity int, ...)
+  Target DDL: CREATE TABLE productmanagement_dbo.products(productid INTEGER GENERATED ALWAYS AS IDENTITY, name VARCHAR(100), description VARCHAR(500), price NUMERIC(18,2), stockquantity INTEGER, ...)
+
+[SUCCESS] ProductHistory -> productmanagement_dbo.producthistory
+  Source DDL: CREATE TABLE [dbo].[ProductHistory](HistoryId int IDENTITY(1,1), ProductId int, Action varchar(10), OldPrice decimal(18,2), ...)
+  Target DDL: CREATE TABLE productmanagement_dbo.producthistory(historyid INTEGER GENERATED ALWAYS AS IDENTITY, productid INTEGER, action VARCHAR(10), oldprice NUMERIC(18,2), ...)
+
+[SUCCESS] ProductStats -> productmanagement_dbo.productstats
+  Source DDL: CREATE TABLE [dbo].[ProductStats](StatId int DEFAULT 1, TotalProducts int, AveragePrice decimal(18,2), ...)
+  Target DDL: CREATE TABLE productmanagement_dbo.productstats(statid INTEGER DEFAULT 1, totalproducts INTEGER, averageprice NUMERIC(18,2), ...)
+
+============================================================
+Statement Conversion Attempts
+============================================================
+
+--- Statement 1: GetAllProductsAsync ---
+Timestamp: 2026-04-20T08:00:56 (attempt 1), 2026-04-20T08:01:11 (attempt 2), 2026-04-20T08:01:25 (attempt 3)
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+--- Statement 2: GetProductByIdAsync ---
+Timestamp: 2026-04-20T08:02:00
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+--- Statement 3: InsertProductAsync ---
+Timestamp: 2026-04-20T08:02:15
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+Notes: SCOPE_IDENTITY() converted to RETURNING clause + lastval(). GETDATE() -> clock_timestamp(). BEGIN TRANSACTION -> BEGIN. DECLARE @var pattern replaced with CTE RETURNING approach.
+
+--- Statement 4: UpdateProductAsync ---
+Timestamp: 2026-04-20T08:02:29
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+Notes: DECLARE @OldPrice/@OldStock replaced with subquery approach. GETDATE() -> clock_timestamp(). BEGIN TRANSACTION -> BEGIN. Order of operations adjusted to capture old values before update.
+
+--- Statement 5: DeleteProductAsync ---
+Timestamp: 2026-04-20T08:02:43
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+Notes: DECLARE @OldPrice/@OldStock replaced with subquery approach. GETDATE() -> clock_timestamp(). BEGIN TRANSACTION -> BEGIN. Order of operations adjusted to capture old values before delete.
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+Timestamp: 2026-04-20T08:02:57
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+--- Statement 7: GetLowStockProductsAsync ---
+Timestamp: 2026-04-20T08:03:16
+Status: ERROR
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema applied (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+Notes: Added CAST(stockquantity AS NUMERIC) for integer division to produce correct ROUND results in PostgreSQL.
+
+============================================================
+Summary
+============================================================
+Total Statements: 7
+DMS Successful Conversions: 0
+DMS Failed Conversions: 7
+Manual Conversions Applied: 7
+DMS Error (consistent): Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+All schema mappings were successfully retrieved from DMS schema_mapping_tool and used to guide manual conversion.
