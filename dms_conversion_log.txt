@@ -1,0 +1,106 @@
+============================================================
+DMS Conversion Log
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Source: MS SQL Server 2019 (ProductManagement database, dbo schema)
+Target: PostgreSQL 13 (postgres database)
+============================================================
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:28:34.530691
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - All table/column names converted to lowercase (Products -> products, ProductId -> productid, etc.)
+  - ROUND function compatible with PostgreSQL (numeric division preserved)
+  - Window functions (AVG OVER, COUNT OVER) compatible with PostgreSQL
+  - CTE syntax compatible with PostgreSQL
+  - CASE expressions compatible with PostgreSQL
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:28:52.849704
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - All table/column names converted to lowercase
+  - LAG window function compatible with PostgreSQL
+  - ROUND function compatible with PostgreSQL
+  - Parameter @ProductId preserved as-is (Npgsql supports @ parameter prefix)
+
+--- Statement 3: InsertProductAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:29:10.150572
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - SCOPE_IDENTITY() replaced with INSERT...RETURNING clause via writable CTE
+  - GETDATE() replaced with NOW()
+  - DECLARE/SET @NewProductId replaced with CTE chain (new_product, log_history, update_stats)
+  - BEGIN TRANSACTION/COMMIT removed (transaction managed by Npgsql in C# code)
+  - All table/column names converted to lowercase
+  - Multi-statement transaction block restructured as writable CTE for single-statement execution
+
+--- Statement 4: UpdateProductAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:29:25.436498
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - DECLARE @OldPrice/@OldStock replaced with CTE (old_values) to capture previous values
+  - GETDATE() replaced with NOW()
+  - BEGIN TRANSACTION/COMMIT removed (transaction managed by Npgsql in C# code)
+  - All table/column names converted to lowercase
+  - Multi-statement transaction block restructured as writable CTE
+
+--- Statement 5: DeleteProductAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:29:40.757934
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - DECLARE @OldPrice/@OldStock replaced with CTE (old_values) to capture previous values
+  - GETDATE() replaced with NOW()
+  - BEGIN TRANSACTION/COMMIT removed (transaction managed by Npgsql in C# code)
+  - All table/column names converted to lowercase
+  - CASE expression in UPDATE preserved (compatible with PostgreSQL)
+  - Multi-statement transaction block restructured as writable CTE
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:29:56.505349
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - All table/column names converted to lowercase
+  - RANK() and PERCENT_RANK() window functions compatible with PostgreSQL
+  - BETWEEN operator compatible with PostgreSQL
+  - CASE expressions compatible with PostgreSQL
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Attempt Timestamp: 2026-04-21T18:30:13.759510
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Action: Manual conversion with lowercase schema object names
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+Manual Conversion Notes:
+  - All table/column names converted to lowercase
+  - AVG/MIN/MAX window functions compatible with PostgreSQL
+  - ROUND with integer division: Added CAST(stockquantity AS numeric) to avoid integer division truncation
+  - CASE expressions compatible with PostgreSQL
+
+============================================================
+SUMMARY
+============================================================
+Total Statements Attempted: 7
+DMS Successful Conversions: 0
+DMS Failed Conversions: 7
+Manual Conversions Required: 7
+Common DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+All conversions documented with reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
