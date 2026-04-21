@@ -1,0 +1,128 @@
+{
+  "number_of_statements_processed": 10,
+  "number_of_statements_equivalent": 0,
+  "number_of_statements_non_equivalent": 0,
+  "number_of_statements_with_equivalency_error": 10,
+  "dms_conversion_summary": {
+    "total_statements": 10,
+    "dms_successful": 0,
+    "dms_failed": 10,
+    "dms_error": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+    "manual_conversions": 10,
+    "schema_mapping_used": true,
+    "schema_mapping_source": "dms-mcp___schema_mapping_tool (successful for all 5 tables: Products, ProductHistory, ProductStats, Categories, Suppliers)"
+  },
+  "equivalency_tool_note": "The sql-equivalency___validate_sql_equivalence tool returned ERROR with 'uniqueID' for all 10 statement pairs. This appears to be a systemic tool issue, not related to individual statement quality.",
+  "statement_details": [
+    {
+      "statement_number": 1,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "GetAllProductsAsync",
+      "original_statement": "WITH ProductStats AS (\n    SELECT \n        ProductId,\n        AVG(Price) OVER() as AvgPrice,\n        COUNT(*) OVER() as TotalProducts\n    FROM Products\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 'Above Average'\n        WHEN p.Price < ps.AvgPrice THEN 'Below Average'\n        ELSE 'Average'\n    END as PriceCategory,\n    ROUND((p.Price / ps.AvgPrice) * 100, 2) as PricePercentageOfAverage\nFROM Products p\nINNER JOIN ProductStats ps ON p.ProductId = ps.ProductId\nORDER BY \n    CASE \n        WHEN p.Price > ps.AvgPrice THEN 1\n        ELSE 2\n    END,\n    p.Name",
+      "converted_statement": "WITH productstats_cte AS (\n    SELECT \n        productid,\n        AVG(price) OVER() as avgprice,\n        COUNT(*) OVER() as totalproducts\n    FROM products\n)\nSELECT \n    p.productid,\n    p.name,\n    p.description,\n    p.price,\n    p.stockquantity,\n    p.createddate,\n    p.modifieddate,\n    CASE \n        WHEN p.price > ps.avgprice THEN 'Above Average'\n        WHEN p.price < ps.avgprice THEN 'Below Average'\n        ELSE 'Average'\n    END as pricecategory,\n    ROUND((p.price / ps.avgprice) * 100, 2) as pricepercentageofaverage\nFROM products p\nINNER JOIN productstats_cte ps ON p.productid = ps.productid\nORDER BY \n    CASE \n        WHEN p.price > ps.avgprice THEN 1\n        ELSE 2\n    END,\n    p.name",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:53:43.959330\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 2,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "GetProductByIdAsync",
+      "original_statement": "WITH ProductHistory AS (\n    SELECT \n        ProductId,\n        LAG(Price) OVER (ORDER BY ModifiedDate) as PreviousPrice,\n        LAG(StockQuantity) OVER (ORDER BY ModifiedDate) as PreviousStock\n    FROM Products\n    WHERE ProductId = @ProductId\n)\nSELECT \n    p.ProductId,\n    p.Name,\n    p.Description,\n    p.Price,\n    p.StockQuantity,\n    p.CreatedDate,\n    p.ModifiedDate,\n    ph.PreviousPrice,\n    ph.PreviousStock,\n    CASE \n        WHEN ph.PreviousPrice IS NOT NULL THEN \n            ROUND(((p.Price - ph.PreviousPrice) / ph.PreviousPrice) * 100, 2)\n        ELSE NULL\n    END as PriceChangePercentage\nFROM Products p\nLEFT JOIN ProductHistory ph ON p.ProductId = ph.ProductId\nWHERE p.ProductId = @ProductId",
+      "converted_statement": "WITH producthistory_cte AS (\n    SELECT \n        productid,\n        LAG(price) OVER (ORDER BY modifieddate) as previousprice,\n        LAG(stockquantity) OVER (ORDER BY modifieddate) as previousstock\n    FROM products\n    WHERE productid = @ProductId\n)\nSELECT \n    p.productid,\n    p.name,\n    p.description,\n    p.price,\n    p.stockquantity,\n    p.createddate,\n    p.modifieddate,\n    ph.previousprice,\n    ph.previousstock,\n    CASE \n        WHEN ph.previousprice IS NOT NULL THEN \n            ROUND(((p.price - ph.previousprice) / ph.previousprice) * 100, 2)\n        ELSE NULL\n    END as pricechangepercentage\nFROM products p\nLEFT JOIN producthistory_cte ph ON p.productid = ph.productid\nWHERE p.productid = @ProductId",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:54:43.691646\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 3,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "InsertProductAsync",
+      "original_statement": "DECLARE @NewProductId INT;\nBEGIN TRANSACTION;\n    INSERT INTO Products (Name, Description, Price, StockQuantity) VALUES (@Name, @Description, @Price, @StockQuantity);\n    SET @NewProductId = SCOPE_IDENTITY();\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, GETDATE());\n    UPDATE ProductStats SET TotalProducts = TotalProducts + 1, AveragePrice = (AveragePrice * TotalProducts + @Price) / (TotalProducts + 1), LastUpdated = GETDATE() WHERE StatId = 1;\nCOMMIT;\nSELECT @NewProductId;",
+      "converted_statement": "INSERT INTO products (name, description, price, stockquantity) VALUES (@Name, @Description, @Price, @StockQuantity) RETURNING productid;\nINSERT INTO producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@NewProductId, 'INSERT', NULL, @Price, NULL, @StockQuantity, clock_timestamp());\nUPDATE productstats SET totalproducts = totalproducts + 1, averageprice = (averageprice * totalproducts + @Price) / (totalproducts + 1), lastupdated = clock_timestamp() WHERE statid = 1;",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:54:44.759145\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 4,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "UpdateProductAsync",
+      "original_statement": "BEGIN TRANSACTION;\n    DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT;\n    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;\n    UPDATE Products SET Name = @Name, Description = @Description, Price = @Price, StockQuantity = @StockQuantity, ModifiedDate = GETDATE() WHERE ProductId = @ProductId;\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, GETDATE());\n    UPDATE ProductStats SET AveragePrice = (AveragePrice * TotalProducts - @OldPrice + @Price) / TotalProducts, LastUpdated = GETDATE() WHERE StatId = 1;\nCOMMIT;",
+      "converted_statement": "SELECT price, stockquantity FROM products WHERE productid = @ProductId;\nUPDATE products SET name = @Name, description = @Description, price = @Price, stockquantity = @StockQuantity, modifieddate = clock_timestamp() WHERE productid = @ProductId;\nINSERT INTO producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@ProductId, 'UPDATE', @OldPrice, @Price, @OldStock, @StockQuantity, clock_timestamp());\nUPDATE productstats SET averageprice = (averageprice * totalproducts - @OldPrice + @Price) / totalproducts, lastupdated = clock_timestamp() WHERE statid = 1;",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:55:10.167682\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 5,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "DeleteProductAsync",
+      "original_statement": "BEGIN TRANSACTION;\n    DECLARE @OldPrice DECIMAL(18,2); DECLARE @OldStock INT;\n    SELECT @OldPrice = Price, @OldStock = StockQuantity FROM Products WHERE ProductId = @ProductId;\n    INSERT INTO ProductHistory (ProductId, Action, OldPrice, NewPrice, OldStock, NewStock, ActionDate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, GETDATE());\n    DELETE FROM Products WHERE ProductId = @ProductId;\n    UPDATE ProductStats SET TotalProducts = TotalProducts - 1, AveragePrice = CASE WHEN TotalProducts > 1 THEN (AveragePrice * TotalProducts - @OldPrice) / (TotalProducts - 1) ELSE 0 END, LastUpdated = GETDATE() WHERE StatId = 1;\nCOMMIT;",
+      "converted_statement": "SELECT price, stockquantity FROM products WHERE productid = @ProductId;\nINSERT INTO producthistory (productid, action, oldprice, newprice, oldstock, newstock, actiondate) VALUES (@ProductId, 'DELETE', @OldPrice, NULL, @OldStock, NULL, clock_timestamp());\nDELETE FROM products WHERE productid = @ProductId;\nUPDATE productstats SET totalproducts = totalproducts - 1, averageprice = CASE WHEN totalproducts > 1 THEN (averageprice * totalproducts - @OldPrice) / (totalproducts - 1) ELSE 0 END, lastupdated = clock_timestamp() WHERE statid = 1;",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:55:11.229211\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 6,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "GetProductsByPriceRangeAsync",
+      "original_statement": "WITH RankedProducts AS (\n    SELECT p.*, RANK() OVER (ORDER BY p.Price) as PriceRank, PERCENT_RANK() OVER (ORDER BY p.Price) as PricePercentile\n    FROM Products p WHERE p.Price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT rp.*, CASE WHEN rp.PricePercentile <= 0.25 THEN 'Budget' WHEN rp.PricePercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as PriceSegment\nFROM RankedProducts rp ORDER BY rp.PriceRank",
+      "converted_statement": "WITH rankedproducts AS (\n    SELECT p.*, RANK() OVER (ORDER BY p.price) as pricerank, PERCENT_RANK() OVER (ORDER BY p.price) as pricepercentile\n    FROM products p WHERE p.price BETWEEN @MinPrice AND @MaxPrice\n)\nSELECT rp.*, CASE WHEN rp.pricepercentile <= 0.25 THEN 'Budget' WHEN rp.pricepercentile <= 0.75 THEN 'Mid-Range' ELSE 'Premium' END as pricesegment\nFROM rankedproducts rp ORDER BY rp.pricerank",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:55:30.957563\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 7,
+      "source_file": "DataAccess/ProductRepository.cs",
+      "method_name": "GetLowStockProductsAsync",
+      "original_statement": "WITH StockAnalysis AS (\n    SELECT p.*, AVG(StockQuantity) OVER() as AvgStock, MIN(StockQuantity) OVER() as MinStock, MAX(StockQuantity) OVER() as MaxStock\n    FROM Products p\n)\nSELECT sa.*, CASE WHEN StockQuantity <= @Threshold THEN 'Critical' WHEN StockQuantity <= AvgStock * 0.5 THEN 'Low' ELSE 'Adequate' END as StockStatus,\nROUND((StockQuantity / AvgStock) * 100, 2) as StockPercentageOfAverage\nFROM StockAnalysis sa WHERE StockQuantity <= @Threshold ORDER BY StockQuantity",
+      "converted_statement": "WITH stockanalysis AS (\n    SELECT p.*, AVG(stockquantity) OVER() as avgstock, MIN(stockquantity) OVER() as minstock, MAX(stockquantity) OVER() as maxstock\n    FROM products p\n)\nSELECT sa.*, CASE WHEN stockquantity <= @Threshold THEN 'Critical' WHEN stockquantity <= avgstock * 0.5 THEN 'Low' ELSE 'Adequate' END as stockstatus,\nROUND((CAST(stockquantity AS NUMERIC) / avgstock) * 100, 2) as stockpercentageofaverage\nFROM stockanalysis sa WHERE stockquantity <= @Threshold ORDER BY stockquantity",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T10:55:32.015412\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 8,
+      "source_file": "Database/Scripts/01_InitialSetup.sql",
+      "method_name": "DDL_CreateCategoriesTable",
+      "original_statement": "CREATE TABLE [dbo].[Categories]([CategoryId] [int] IDENTITY(1,1) PRIMARY KEY, [Name] [nvarchar](50) NOT NULL, [Description] [nvarchar](200) NULL, [ParentCategoryId] [int] NULL, [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE())",
+      "converted_statement": "CREATE TABLE categories (categoryid SERIAL PRIMARY KEY, name VARCHAR(50) NOT NULL, description VARCHAR(200), parentcategoryid INTEGER, createddate TIMESTAMP NOT NULL DEFAULT clock_timestamp())",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T11:08:06.453057\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 9,
+      "source_file": "Database/Scripts/01_InitialSetup.sql",
+      "method_name": "DML_InsertCategories",
+      "original_statement": "INSERT INTO Categories (Name, Description, ParentCategoryId) VALUES ('Electronics', 'Electronic devices and accessories', NULL)",
+      "converted_statement": "INSERT INTO categories (name, description, parentcategoryid) VALUES ('Electronics', 'Electronic devices and accessories', NULL)",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T11:08:07.488275\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    },
+    {
+      "statement_number": 10,
+      "source_file": "Database/Scripts/01_InitialSetup.sql",
+      "method_name": "DML_UpdateProductStats",
+      "original_statement": "UPDATE ProductStats SET TotalProducts = (SELECT COUNT(*) FROM Products), AveragePrice = (SELECT AVG(Price) FROM Products), TotalStockValue = (SELECT SUM(Price * StockQuantity) FROM Products), LowStockCount = (SELECT COUNT(*) FROM Products WHERE StockQuantity <= ReorderLevel), DiscontinuedCount = (SELECT COUNT(*) FROM Products WHERE IsDiscontinued = 1), LastUpdated = GETDATE() WHERE StatId = 1",
+      "converted_statement": "UPDATE productstats SET totalproducts = (SELECT COUNT(*) FROM products), averageprice = (SELECT AVG(price) FROM products), totalstockvalue = (SELECT SUM(price * stockquantity) FROM products), lowstockcount = (SELECT COUNT(*) FROM products WHERE stockquantity <= reorderlevel), discontinuedcount = (SELECT COUNT(*) FROM products WHERE isdiscontinued = TRUE), lastupdated = clock_timestamp() WHERE statid = 1",
+      "conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_status": "ERROR",
+      "equivalency_tool_output": "{\"equivalence_status\": \"ERROR\", \"error\": \"'uniqueID'\", \"timestamp\": \"2026-04-21T11:08:08.531703\"}",
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+    }
+  ]
+}
