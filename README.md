@@ -1,13 +1,15 @@
-# ADO.NET Core SQL Server Data Management Application
+# ADO.NET Core PostgreSQL Data Management Application
 
-This is a .NET Core application demonstrating modern ADO.NET integration with SQL Server, following best practices for data access and application architecture.
+This is a .NET Core application demonstrating modern ADO.NET integration with PostgreSQL using Npgsql, following best practices for data access and application architecture.
+
+> **Migration Note**: This application was migrated from Microsoft SQL Server to PostgreSQL. All SQL Server-specific packages, classes, and SQL syntax have been replaced with PostgreSQL equivalents.
 
 ## Prerequisites
 
 - Visual Studio 2022 or later
 - .NET 9.0 SDK or later
-- SQL Server 2019 or later (Developer Edition is free and recommended for development)
-- SQL Server Management Studio (SSMS) or Azure Data Studio
+- PostgreSQL 14 or later
+- pgAdmin or any PostgreSQL client tool
 
 ## Project Structure
 
@@ -41,8 +43,8 @@ AdoCore/
    - Select "Restore NuGet Packages"
 
 3. **Database Setup**:
-   - Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   - Connect to your local SQL Server instance
+   - Open pgAdmin or your preferred PostgreSQL client tool
+   - Connect to your local PostgreSQL instance
    - Open and run the script: `Database/Scripts/01_InitialSetup.sql`
 
 4. **Update Connection String**:
@@ -51,7 +53,7 @@ AdoCore/
    ```json
    {
      "ConnectionStrings": {
-       "DevConnection": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+       "DevConnection": "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres",
        "ProdConnection": "your-production-connection-string"
      },
      "Environment": "Development"
@@ -70,26 +72,28 @@ AdoCore/
    # Verify .NET 9.0 SDK is installed
    dotnet --version
    # Should show 9.0.x
+
+   # Verify PostgreSQL is running
+   psql --version
    ```
 
 2. **Database Setup**:
    ```bash
-   # Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   # Connect to your local SQL Server instance
-   # Open and run the script: Database/Scripts/01_InitialSetup.sql
+   # Connect to PostgreSQL and run the setup script
+   psql -U postgres -f Database/Scripts/01_InitialSetup.sql
    ```
 
 3. **Project Setup**:
    ```bash
    # Navigate to project directory
-   cd D:\ado_core
+   cd AdoCore
 
    # Restore NuGet packages
    dotnet restore
 
    # Update connection string in appsettings.json if needed
    # Current connection string is:
-   # "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+   # "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres"
    ```
 
 4. **Build and Run**:
@@ -159,9 +163,9 @@ dotnet run -- stock 1 20
 - Modern async/await patterns for all database operations
 - Proper resource management with IAsyncDisposable
 - Dependency injection for configuration
-- Transaction support with async operations
+- Transaction support with async operations using Npgsql
 - Parameterized queries for security
-- Connection pooling and management
+- Connection pooling and management via Npgsql
 - Error handling and logging
 
 ## Testing the Application
@@ -184,9 +188,9 @@ dotnet run -- stock 1 20
 ## Troubleshooting
 
 If you encounter errors:
-1. Verify SQL Server is running (check Services)
-2. Confirm your connection string matches your SQL Server instance name
-3. Ensure the `ProductManagement` database was created successfully
+1. Verify PostgreSQL is running (check with `pg_isready` or `systemctl status postgresql`)
+2. Confirm your connection string matches your PostgreSQL instance configuration
+3. Ensure the database schema was created successfully by running the setup script
 4. Check you have appropriate permissions to access the database
 5. Make sure all required NuGet packages are restored:
    ```bash
@@ -195,7 +199,7 @@ If you encounter errors:
 
 ## Required NuGet Packages
 
-- Microsoft.Data.SqlClient
+- Npgsql
 - Microsoft.Extensions.Configuration
 - Microsoft.Extensions.Configuration.Json
 - Microsoft.Extensions.DependencyInjection
@@ -206,21 +210,20 @@ If you encounter errors:
 - Connection strings are stored securely in configuration
 - Proper error handling and logging is implemented
 - All database resources are properly disposed using async patterns
-- TrustServerCertificate option for development environments
 
 ## Best Practices Implemented
 
 - Modern async/await patterns
 - Proper resource disposal with IAsyncDisposable
-- Transaction management with async support
+- Transaction management with async support (BeginTransactionAsync/CommitAsync/RollbackAsync)
 - Error handling and logging
 - Configuration management using .NET Core's IConfiguration
 - Security best practices
 - Dependency injection
 - Separation of concerns (layered architecture)
 
-## Deployment to AWS EC2
+## Deployment
 
-1. Ensure SQL Server is installed and configured on the EC2 instance
+1. Ensure PostgreSQL is installed and configured on the target environment
 2. Update the production connection string in appsettings.json
-3. Deploy the application using Visual Studio's Publish feature 
+3. Deploy the application using Visual Studio's Publish feature or `dotnet publish`
