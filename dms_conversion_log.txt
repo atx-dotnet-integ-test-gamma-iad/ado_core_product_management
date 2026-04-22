@@ -1,0 +1,120 @@
+============================================================
+DMS CONVERSION LOG
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Server: 172.31.83.165
+Region: us-east-1
+============================================================
+
+--- SCHEMA MAPPING RESULTS (SUCCESSFUL) ---
+
+Schema Mapping 1: Products
+  Status: SUCCESS
+  Source: [dbo].[Products] -> Target: productmanagement_dbo.products
+  Target DDL: CREATE TABLE productmanagement_dbo.products(
+    productid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    price NUMERIC(18,2) NOT NULL,
+    stockquantity INTEGER NOT NULL,
+    categoryid INTEGER,
+    supplierid INTEGER,
+    sku VARCHAR(50),
+    weight NUMERIC(10,2),
+    dimensions VARCHAR(50),
+    isdiscontinued NUMERIC(1,0) NOT NULL DEFAULT (0),
+    reorderlevel INTEGER NOT NULL DEFAULT (10),
+    createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (clock_timestamp()),
+    modifieddate TIMESTAMP WITHOUT TIME ZONE
+  )
+
+Schema Mapping 2: ProductHistory
+  Status: SUCCESS
+  Source: [dbo].[ProductHistory] -> Target: productmanagement_dbo.producthistory
+  Target DDL: CREATE TABLE productmanagement_dbo.producthistory(
+    historyid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY,
+    productid INTEGER NOT NULL,
+    action VARCHAR(10) NOT NULL,
+    oldprice NUMERIC(18,2),
+    newprice NUMERIC(18,2),
+    oldstock INTEGER,
+    newstock INTEGER,
+    actiondate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (clock_timestamp()),
+    modifiedby VARCHAR(100)
+  )
+
+Schema Mapping 3: ProductStats
+  Status: SUCCESS
+  Source: [dbo].[ProductStats] -> Target: productmanagement_dbo.productstats
+  Target DDL: CREATE TABLE productmanagement_dbo.productstats(
+    statid INTEGER NOT NULL DEFAULT (1),
+    totalproducts INTEGER NOT NULL DEFAULT (0),
+    averageprice NUMERIC(18,2) NOT NULL DEFAULT (0),
+    totalstockvalue NUMERIC(18,2) NOT NULL DEFAULT (0),
+    lowstockcount INTEGER NOT NULL DEFAULT (0),
+    discontinuedcount INTEGER NOT NULL DEFAULT (0),
+    lastupdated TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (clock_timestamp())
+  )
+
+============================================================
+--- STATEMENT CONVERSION ATTEMPTS (ALL FAILED) ---
+============================================================
+
+Statement 1: GetAllProductsAsync
+  Timestamp: 2026-04-22T18:37:43 (first attempt), 2026-04-22T18:37:59 (second attempt), 2026-04-22T18:39:05 (third attempt)
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 2: GetProductByIdAsync
+  Timestamp: 2026-04-22T18:39:37
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 3: InsertProductAsync
+  Timestamp: 2026-04-22T18:39:53
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 4: UpdateProductAsync
+  Timestamp: 2026-04-22T18:40:08
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 5: DeleteProductAsync
+  Timestamp: 2026-04-22T18:40:21
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 6: GetProductsByPriceRangeAsync
+  Timestamp: 2026-04-22T18:40:34
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Statement 7: GetLowStockProductsAsync
+  Timestamp: 2026-04-22T18:40:48
+  Status: ERROR
+  Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  Workflow Step: create_metadata_model - started
+  Fallback: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+============================================================
+SUMMARY:
+  Total statements attempted: 7
+  Successful conversions: 0
+  Failed conversions: 7
+  All failures due to: Metadata model creation failed with status RECEIVED
+  Fallback applied: Manual conversion with lowercase schema mapping based on DMS Schema Mapping Tool results
+============================================================
