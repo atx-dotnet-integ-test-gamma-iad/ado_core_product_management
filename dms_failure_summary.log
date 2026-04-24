@@ -1,0 +1,71 @@
+============================================================================
+DMS MCP Tool Failure Summary Log
+============================================================================
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+============================================================================
+
+All 7 SQL statements were submitted to the DMS MCP tool for conversion.
+All 7 statements failed with the SAME error.
+
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Error Type: Infrastructure/Service error - metadata model creation step failed before conversion could begin.
+
+Retry Attempts:
+- Statement 1 was attempted 3 times (with varying poll intervals: 10s, 15s, 20s and max attempts: 15, 25, 30)
+- Statements 2-7 were each attempted 1 time after confirming the persistent failure pattern
+
+All statements were manually converted using lowercase schema object names per the
+DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA protocol.
+
+============================================================================
+Statement-by-Statement DMS Submission Log
+============================================================================
+
+Statement 1: GetAllProductsAsync (CTE with AVG/COUNT window functions)
+  - DMS Submission Time: 2026-04-24T05:53:33 (1st attempt), 2026-04-24T05:53:48 (2nd), 2026-04-24T05:54:02 (3rd)
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+Statement 2: GetProductByIdAsync (CTE with LAG window function)
+  - DMS Submission Time: 2026-04-24T05:54:18
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+Statement 3: InsertProductAsync (Transaction block with SCOPE_IDENTITY, GETDATE)
+  - DMS Submission Time: 2026-04-24T05:54:33
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+  - Key Conversions: SCOPE_IDENTITY() → RETURNING + currval(), GETDATE() → NOW(), DECLARE → DO $$ block
+
+Statement 4: UpdateProductAsync (Transaction block with DECLARE, GETDATE)
+  - DMS Submission Time: 2026-04-24T05:54:47
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+  - Key Conversions: GETDATE() → NOW(), DECLARE/@var → DO $$ with v_ prefixed vars
+
+Statement 5: DeleteProductAsync (Transaction block with DECLARE, DELETE, CASE)
+  - DMS Submission Time: 2026-04-24T05:55:00
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+  - Key Conversions: GETDATE() → NOW(), DECLARE/@var → DO $$ with v_ prefixed vars
+
+Statement 6: GetProductsByPriceRangeAsync (CTE with RANK, PERCENT_RANK)
+  - DMS Submission Time: 2026-04-24T05:55:14
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+
+Statement 7: GetLowStockProductsAsync (CTE with AVG/MIN/MAX window functions)
+  - DMS Submission Time: 2026-04-24T05:55:27
+  - DMS Status: error
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion Applied: Yes (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+  - Key Conversions: Added CAST(stockquantity AS NUMERIC) for integer division fix
