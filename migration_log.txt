@@ -1,0 +1,94 @@
+============================================================
+SQL Migration Log - MS SQL Server to PostgreSQL
+============================================================
+Date: 2026-04-25
+Source: sourceCode/DataAccess/ProductRepository.cs
+Total Statements: 7
+DMS Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+============================================================
+
+DMS SCHEMA MAPPING RESULTS (Successfully Retrieved):
+-----------------------------------------------------
+Table: Products -> products (schema: productmanagement_dbo)
+  Columns: ProductId->productid, Name->name, Description->description, Price->price,
+           StockQuantity->stockquantity, CreatedDate->createddate, ModifiedDate->modifieddate,
+           CategoryId->categoryid, SupplierId->supplierid, SKU->sku, Weight->weight,
+           Dimensions->dimensions, IsDiscontinued->isdiscontinued, ReorderLevel->reorderlevel
+
+Table: ProductHistory -> producthistory (schema: productmanagement_dbo)
+  Columns: HistoryId->historyid, ProductId->productid, Action->action, OldPrice->oldprice,
+           NewPrice->newprice, OldStock->oldstock, NewStock->newstock, ActionDate->actiondate,
+           ModifiedBy->modifiedby
+
+Table: ProductStats -> productstats (schema: productmanagement_dbo)
+  Columns: StatId->statid, TotalProducts->totalproducts, AveragePrice->averageprice,
+           TotalStockValue->totalstockvalue, LowStockCount->lowstockcount,
+           DiscontinuedCount->discontinuedcount, LastUpdated->lastupdated
+
+DMS STATEMENT CONVERSION RESULTS:
+-----------------------------------------------------
+All 7 statements failed with same error:
+Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+Statement 1 (GetAllProductsAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:40:58
+  - Conversion: Lowercase schema objects per DMS mapping
+  - Key changes: Table/column names lowercased
+
+Statement 2 (GetProductByIdAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:42:19
+  - Conversion: Lowercase schema objects per DMS mapping
+  - Key changes: Table/column names lowercased
+
+Statement 3 (InsertProductAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:42:33
+  - Conversion: Lowercase schema, SCOPE_IDENTITY() -> RETURNING, GETDATE() -> NOW()
+  - Key changes: Restructured to use CTE with RETURNING clause, removed DECLARE/SET
+
+Statement 4 (UpdateProductAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:42:50
+  - Conversion: Lowercase schema, GETDATE() -> NOW(), DECLARE -> CTE with subqueries
+  - Key changes: Restructured to use CTE pattern, removed DECLARE variables
+
+Statement 5 (DeleteProductAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:43:07
+  - Conversion: Lowercase schema, GETDATE() -> NOW(), DECLARE -> CTE with subqueries
+  - Key changes: Restructured to use CTE pattern, removed DECLARE variables
+
+Statement 6 (GetProductsByPriceRangeAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:43:21
+  - Conversion: Lowercase schema objects per DMS mapping
+  - Key changes: Table/column names lowercased
+
+Statement 7 (GetLowStockProductsAsync): DMS FAILED - Manual conversion applied
+  - DMS Attempt Timestamp: 2026-04-25T18:43:36
+  - Conversion: Lowercase schema, added CAST for integer division
+  - Key changes: Table/column names lowercased, CAST(stockquantity AS NUMERIC)
+
+SQL EQUIVALENCY VALIDATION RESULTS:
+-----------------------------------------------------
+All 7 statement pairs returned ERROR from equivalency tool.
+Error for all: "'uniqueID'" 
+Status: All marked as ERROR per transformation definition requirements.
+
+Statement 1: ERROR - "'uniqueID'" (2026-04-25T18:44:38)
+Statement 2: ERROR - "'uniqueID'" (2026-04-25T18:44:54)
+Statement 3: ERROR - "'uniqueID'" (2026-04-25T18:45:09)
+Statement 4: ERROR - "'uniqueID'" (2026-04-25T18:45:25)
+Statement 5: ERROR - "'uniqueID'" (2026-04-25T18:45:41)
+Statement 6: ERROR - "'uniqueID'" (2026-04-25T18:45:57)
+Statement 7: ERROR - "'uniqueID'" (2026-04-25T18:46:12)
+
+IMPORTANT NOTES FOR INTEGRATION:
+-----------------------------------------------------
+1. For Statements 3, 4, 5 (transaction blocks with DECLARE/SET):
+   - The CTE-based approach works for PostgreSQL but changes the structure significantly
+   - In the C# code integration, a simpler approach may be needed:
+     - Split into individual statements executed sequentially
+     - Use ADO.NET transaction management (BeginTransactionAsync) instead of SQL-level transactions
+     - Use RETURNING clause for INSERT to get new IDs
+   
+2. Parameter placeholders (@ParameterName) are compatible with Npgsql
+   
+3. Column name references in C# reader code (reader["ColumnName"]) must match
+   the lowercase PostgreSQL column names (reader["productid"] etc.)
