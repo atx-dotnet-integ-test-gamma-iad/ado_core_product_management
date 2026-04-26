@@ -1,13 +1,15 @@
-# ADO.NET Core SQL Server Data Management Application
+# ADO.NET Core PostgreSQL Data Management Application
 
-This is a .NET Core application demonstrating modern ADO.NET integration with SQL Server, following best practices for data access and application architecture.
+This is a .NET Core application demonstrating modern ADO.NET integration with PostgreSQL using Npgsql, following best practices for data access and application architecture.
+
+> **Note:** This application was migrated from Microsoft SQL Server to PostgreSQL. All SQL statements, connection strings, and database access code have been converted to use PostgreSQL-compatible syntax and the Npgsql library.
 
 ## Prerequisites
 
 - Visual Studio 2022 or later
 - .NET 9.0 SDK or later
-- SQL Server 2019 or later (Developer Edition is free and recommended for development)
-- SQL Server Management Studio (SSMS) or Azure Data Studio
+- PostgreSQL 13 or later
+- pgAdmin or any PostgreSQL client tool
 
 ## Project Structure
 
@@ -41,9 +43,13 @@ AdoCore/
    - Select "Restore NuGet Packages"
 
 3. **Database Setup**:
-   - Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   - Connect to your local SQL Server instance
-   - Open and run the script: `Database/Scripts/01_InitialSetup.sql`
+   - Open pgAdmin or your preferred PostgreSQL client
+   - Connect to your PostgreSQL instance
+   - Create the `ProductManagement` database if it doesn't exist:
+     ```sql
+     CREATE DATABASE "ProductManagement";
+     ```
+   - Connect to the `ProductManagement` database and run the script: `Database/Scripts/01_InitialSetup.sql`
 
 4. **Update Connection String**:
    - In Solution Explorer, open `appsettings.json`
@@ -51,7 +57,7 @@ AdoCore/
    ```json
    {
      "ConnectionStrings": {
-       "DevConnection": "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True",
+       "DevConnection": "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres",
        "ProdConnection": "your-production-connection-string"
      },
      "Environment": "Development"
@@ -70,26 +76,31 @@ AdoCore/
    # Verify .NET 9.0 SDK is installed
    dotnet --version
    # Should show 9.0.x
+
+   # Verify PostgreSQL is running
+   psql --version
    ```
 
 2. **Database Setup**:
    ```bash
-   # Open SQL Server Management Studio (SSMS) or Azure Data Studio
-   # Connect to your local SQL Server instance
-   # Open and run the script: Database/Scripts/01_InitialSetup.sql
+   # Connect to PostgreSQL and create the database
+   psql -U postgres -c "CREATE DATABASE \"ProductManagement\";"
+
+   # Run the initialization script
+   psql -U postgres -d ProductManagement -f Database/Scripts/01_InitialSetup.sql
    ```
 
 3. **Project Setup**:
    ```bash
    # Navigate to project directory
-   cd D:\ado_core
+   cd AdoCore
 
    # Restore NuGet packages
    dotnet restore
 
    # Update connection string in appsettings.json if needed
    # Current connection string is:
-   # "Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
+   # "Host=localhost;Port=5432;Database=ProductManagement;Username=postgres;Password=postgres"
    ```
 
 4. **Build and Run**:
@@ -159,9 +170,9 @@ dotnet run -- stock 1 20
 - Modern async/await patterns for all database operations
 - Proper resource management with IAsyncDisposable
 - Dependency injection for configuration
-- Transaction support with async operations
+- Transaction support with async operations (using Npgsql transactions)
 - Parameterized queries for security
-- Connection pooling and management
+- Connection pooling and management via Npgsql
 - Error handling and logging
 
 ## Testing the Application
@@ -184,8 +195,8 @@ dotnet run -- stock 1 20
 ## Troubleshooting
 
 If you encounter errors:
-1. Verify SQL Server is running (check Services)
-2. Confirm your connection string matches your SQL Server instance name
+1. Verify PostgreSQL is running (`pg_isready` or check the service status)
+2. Confirm your connection string matches your PostgreSQL instance configuration
 3. Ensure the `ProductManagement` database was created successfully
 4. Check you have appropriate permissions to access the database
 5. Make sure all required NuGet packages are restored:
@@ -195,7 +206,7 @@ If you encounter errors:
 
 ## Required NuGet Packages
 
-- Microsoft.Data.SqlClient
+- Npgsql
 - Microsoft.Extensions.Configuration
 - Microsoft.Extensions.Configuration.Json
 - Microsoft.Extensions.DependencyInjection
@@ -203,24 +214,27 @@ If you encounter errors:
 ## Security Considerations
 
 - All database queries use parameterization to prevent SQL injection
-- Connection strings are stored securely in configuration
+- Connection strings are stored in configuration (use environment variables or secrets manager for production)
 - Proper error handling and logging is implemented
 - All database resources are properly disposed using async patterns
-- TrustServerCertificate option for development environments
 
 ## Best Practices Implemented
 
 - Modern async/await patterns
 - Proper resource disposal with IAsyncDisposable
-- Transaction management with async support
+- Transaction management with async support (BeginTransactionAsync/CommitAsync/RollbackAsync)
 - Error handling and logging
 - Configuration management using .NET Core's IConfiguration
 - Security best practices
 - Dependency injection
 - Separation of concerns (layered architecture)
 
-## Deployment to AWS EC2
+## Migration Notes
 
-1. Ensure SQL Server is installed and configured on the EC2 instance
-2. Update the production connection string in appsettings.json
-3. Deploy the application using Visual Studio's Publish feature 
+This application was migrated from Microsoft SQL Server to PostgreSQL. Key changes include:
+- **Package:** `Microsoft.Data.SqlClient` replaced with `Npgsql`
+- **Classes:** `SqlConnection`/`SqlCommand`/`SqlDataReader` replaced with `NpgsqlConnection`/`NpgsqlCommand`/`NpgsqlDataReader`
+- **SQL Syntax:** All table and column names converted to lowercase for PostgreSQL compatibility
+- **Transactions:** Restructured from SQL-embedded transactions to C# Npgsql transaction management
+- **Functions:** `SCOPE_IDENTITY()` replaced with `RETURNING` clause; `GETDATE()` replaced with `NOW()`
+- **DDL:** SQL Server stored procedures converted to PostgreSQL functions; triggers converted to PostgreSQL trigger functions
