@@ -1,0 +1,40 @@
+DMS CONVERSION FAILURE LOG
+===========================
+
+All 7 SQL statements were submitted to the DMS MCP tool (dms-mcp___statement_conversion_tool) 
+and ALL failed with the same error.
+
+DMS Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+Each statement was attempted with:
+- database_name: ProductManagement
+- schema_name: dbo
+- region: us-east-1
+
+Multiple retry strategies were attempted:
+1. Default parameters (max_poll_attempts=15, poll_interval_seconds=10)
+2. Extended polling (max_poll_attempts=30, poll_interval_seconds=15)
+3. Maximum polling (max_poll_attempts=50, poll_interval_seconds=20)
+
+All attempts resulted in the same error, indicating a service-side issue with the DMS migration project's
+metadata model creation process.
+
+Per the transformation definition, all 7 statements were manually converted using the 
+DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA approach:
+- All schema object names converted to lowercase
+- SCOPE_IDENTITY() -> lastval()
+- GETDATE() -> NOW()
+- DECLARE @variable patterns restructured for PostgreSQL compatibility
+- Transaction blocks restructured (BEGIN TRANSACTION/COMMIT handled at application level)
+
+Statement Conversion Summary:
+-----------------------------
+| # | Method Name                  | DMS Status | Manual Conversion Applied |
+|---|------------------------------|-----------|--------------------------|
+| 1 | GetAllProductsAsync          | FAILED    | Lowercase schema objects  |
+| 2 | GetProductByIdAsync          | FAILED    | Lowercase schema objects  |
+| 3 | InsertProductAsync           | FAILED    | Lowercase + SCOPE_IDENTITY->lastval + GETDATE->NOW |
+| 4 | UpdateProductAsync           | FAILED    | Lowercase + DECLARE removal + GETDATE->NOW |
+| 5 | DeleteProductAsync           | FAILED    | Lowercase + DECLARE removal + GETDATE->NOW |
+| 6 | GetProductsByPriceRangeAsync | FAILED    | Lowercase schema objects  |
+| 7 | GetLowStockProductsAsync     | FAILED    | Lowercase + CAST for integer division |
