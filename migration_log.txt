@@ -1,0 +1,80 @@
+== SQL Migration Log ==
+Date: 2026-04-27
+Source: ProductRepository.cs (sourceCode/DataAccess/ProductRepository.cs)
+Migration Direction: MS SQL Server -> PostgreSQL
+
+== DMS Tool Status ==
+All 7 DMS conversion attempts failed with:
+  Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+  Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+  Attempts per statement: 1 (after 3 initial diagnostic attempts)
+  All statements converted manually using DMS schema mappings (which succeeded)
+
+== DMS Schema Mapping Results (Successful) ==
+  Products -> productmanagement_dbo.products (all columns lowercase)
+  ProductHistory -> productmanagement_dbo.producthistory (all columns lowercase)
+  ProductStats -> productmanagement_dbo.productstats (all columns lowercase)
+
+== SQL Equivalency Tool Status ==
+All 7 equivalency validations returned ERROR with: "'uniqueID'"
+Equivalency tool appears to have a systemic issue unrelated to the statement content.
+
+== Statement Processing Log ==
+
+--- Statement 1: GetAllProductsAsync ---
+Source Location: ProductRepository.cs, line ~42
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: Table/column names lowercased, ROUND wrapped with CAST AS NUMERIC, CTE alias renamed to avoid conflict with table name
+Equivalency Check: ERROR ('uniqueID')
+
+--- Statement 2: GetProductByIdAsync ---
+Source Location: ProductRepository.cs, line ~80
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: Table/column names lowercased, ROUND wrapped with CAST AS NUMERIC, CTE alias renamed
+Equivalency Check: ERROR ('uniqueID')
+
+--- Statement 3: InsertProductAsync ---
+Source Location: ProductRepository.cs, line ~112
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: SCOPE_IDENTITY() -> lastval(), GETDATE() -> NOW(), BEGIN TRANSACTION -> BEGIN, DECLARE @var removed (using lastval() directly), table/column names lowercased
+Equivalency Check: ERROR ('uniqueID')
+
+--- Statement 4: UpdateProductAsync ---
+Source Location: ProductRepository.cs, line ~145
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: DECLARE/SET variables -> DO $$ block with PL/pgSQL DECLARE, SELECT INTO, GETDATE() -> NOW(), BEGIN TRANSACTION/COMMIT -> implicit in DO block, table/column names lowercased
+Equivalency Check: ERROR ('uniqueID')
+
+--- Statement 5: DeleteProductAsync ---
+Source Location: ProductRepository.cs, line ~188
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: DECLARE/SET variables -> DO $$ block with PL/pgSQL DECLARE, SELECT INTO, GETDATE() -> NOW(), BEGIN TRANSACTION/COMMIT -> implicit in DO block, table/column names lowercased
+Equivalency Check: ERROR ('uniqueID')
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+Source Location: ProductRepository.cs, line ~216
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: Table/column names lowercased, CTE alias lowercased, RANK/PERCENT_RANK syntax compatible (no changes needed)
+Equivalency Check: ERROR ('uniqueID')
+
+--- Statement 7: GetLowStockProductsAsync ---
+Source Location: ProductRepository.cs, line ~249
+DMS Conversion: FAILED (Metadata model creation failed)
+Manual Conversion: Applied lowercase schema object names per DMS schema mappings
+Key Changes: Table/column names lowercased, ROUND wrapped with CAST AS NUMERIC, AVG/MIN/MAX syntax compatible
+Equivalency Check: ERROR ('uniqueID')
+
+== Summary ==
+Total Statements: 7
+DMS Successful: 0
+DMS Failed: 7
+Manual Conversions: 7
+Equivalency EQUIVALENT: 0
+Equivalency NOT_EQUIVALENT: 0
+Equivalency ERROR: 7
