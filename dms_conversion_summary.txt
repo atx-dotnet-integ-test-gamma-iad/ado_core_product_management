@@ -1,0 +1,80 @@
+============================================================================
+DMS CONVERSION FAILURE SUMMARY
+============================================================================
+Date: 2026-04-29
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+Server: 172.31.83.165
+
+============================================================================
+FAILURE DETAILS
+============================================================================
+DMS Error (consistent across ALL 7 statements):
+  Status: error
+  Error Message: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+  
+The DMS tool was attempted multiple times with various configurations:
+  - Attempt 1: Statement 1 (GetAllProductsAsync) - poll 15, interval 10s - FAILED
+  - Attempt 2: Statement 1 (GetAllProductsAsync) - poll 30, interval 15s - FAILED
+  - Attempt 3: Statement 1 (GetAllProductsAsync) - poll 50, interval 30s - FAILED
+  - Attempt 4: Simple test query "SELECT ProductId, Name FROM Products" - poll 60, interval 30s - FAILED
+  - Attempt 5: Simple test query with explicit server_name - poll 60, interval 30s - FAILED
+  - Attempt 6: Statement 2 (GetProductByIdAsync) - default params - FAILED
+  - Attempt 7: Statement 3 (InsertProductAsync) - default params - FAILED
+  - Attempt 8: Statement 4 (UpdateProductAsync) - default params - FAILED
+  - Attempt 9: Statement 5 (DeleteProductAsync) - default params - FAILED
+  - Attempt 10: Statement 6 (GetProductsByPriceRangeAsync) - default params - FAILED
+  - Attempt 11: Statement 7 (GetLowStockProductsAsync) - default params - FAILED
+
+============================================================================
+MANUAL CONVERSION APPROACH (DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA)
+============================================================================
+Since DMS failed for ALL statements, manual conversion was applied with:
+1. All schema object names (tables, columns, aliases) converted to lowercase
+2. SCOPE_IDENTITY() -> lastval()
+3. GETDATE() -> NOW()
+4. T-SQL DECLARE @var / SET @var syntax -> restructured as PostgreSQL multi-statement batches
+5. BEGIN TRANSACTION -> BEGIN
+6. CTE, window functions, CASE, ROUND preserved (compatible with PostgreSQL)
+7. ROUND with integer division: added CAST to NUMERIC where needed
+
+============================================================================
+STATEMENT-BY-STATEMENT CONVERSION LOG
+============================================================================
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased all identifiers. SQL structure (CTEs, window functions, CASE, ROUND) is PostgreSQL-compatible.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased all identifiers. LAG() window function, CTE, CASE, ROUND preserved.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 3: InsertProductAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased identifiers. SCOPE_IDENTITY() -> lastval(). GETDATE() -> NOW(). DECLARE/SET removed, restructured as multi-statement batch.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 4: UpdateProductAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased identifiers. GETDATE() -> NOW(). DECLARE/SET removed. Reordered operations: log history first (to capture old values), then update stats, then update product.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 5: DeleteProductAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased identifiers. GETDATE() -> NOW(). DECLARE/SET removed. Reordered operations: log history first, update stats, then delete product.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased identifiers. RANK(), PERCENT_RANK(), BETWEEN, CASE preserved.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Attempt: FAILED (Metadata model creation failed)
+Manual Conversion: Lowercased identifiers. AVG/MIN/MAX window functions, CASE preserved. Added CAST(stockquantity AS NUMERIC) for integer division in ROUND.
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA

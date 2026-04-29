@@ -1,0 +1,125 @@
+============================================================================
+FINAL MIGRATION REPORT
+MS SQL Server to PostgreSQL Migration for .NET ADO Application
+============================================================================
+Date: 2026-04-29
+Project: AdoCore - ProductManagement
+
+============================================================================
+1. SQL STATEMENT CONVERSION SUMMARY
+============================================================================
+Total SQL Statements: 7
+Successfully converted by DMS: 0
+DMS Failures (manually converted): 7
+DMS Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+DMS Attempts: 11 (including retries with different configurations)
+
+Statement Details:
+  1. GetAllProductsAsync - CTE with window functions, CASE, ROUND, JOIN
+     Conversion: Lowercased all identifiers. SQL structure PostgreSQL-compatible.
+  
+  2. GetProductByIdAsync - CTE with LAG(), CASE, ROUND, LEFT JOIN
+     Conversion: Lowercased all identifiers. SQL structure PostgreSQL-compatible.
+  
+  3. InsertProductAsync - Transaction block
+     Conversion: SCOPE_IDENTITY() -> lastval(), GETDATE() -> NOW(),
+     BEGIN TRANSACTION -> BEGIN, removed DECLARE/SET
+  
+  4. UpdateProductAsync - Transaction block
+     Conversion: GETDATE() -> NOW(), removed DECLARE/SET,
+     reordered: log history before update, update stats before update product
+  
+  5. DeleteProductAsync - Transaction block
+     Conversion: GETDATE() -> NOW(), removed DECLARE/SET,
+     reordered: log history before delete, update stats before delete product
+  
+  6. GetProductsByPriceRangeAsync - CTE with RANK(), PERCENT_RANK(), BETWEEN
+     Conversion: Lowercased all identifiers. SQL structure PostgreSQL-compatible.
+  
+  7. GetLowStockProductsAsync - CTE with AVG/MIN/MAX window functions
+     Conversion: Lowercased identifiers, added CAST(stockquantity AS NUMERIC)
+     for integer division in ROUND.
+
+============================================================================
+2. SQL EQUIVALENCY VALIDATION SUMMARY
+============================================================================
+Statements validated: 7
+Equivalent: 0
+Not equivalent: 0
+Errors: 7
+Tool Error: "'uniqueID'" - consistent across all 7 statements and 1 additional test
+Note: Tool-level issue (session/authentication), not statement-level.
+
+============================================================================
+3. PACKAGE DEPENDENCY CHANGES
+============================================================================
+Removed: Microsoft.Data.SqlClient 5.1.4
+Added: Npgsql 8.0.6
+
+Class Replacements:
+  - SqlConnection -> NpgsqlConnection
+  - SqlCommand -> NpgsqlCommand (7 occurrences)
+  - SqlDataReader -> NpgsqlDataReader
+  - using Microsoft.Data.SqlClient -> using Npgsql
+
+============================================================================
+4. CONNECTION STRING CHANGES
+============================================================================
+Before (SQL Server):
+  Server=localhost;Database=ProductManagement;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True
+
+After (PostgreSQL):
+  Host=localhost;Database=ProductManagement;Username=postgres;Password=postgres
+
+Parameter Mapping:
+  Server -> Host
+  Trusted_Connection=True -> Username=postgres;Password=postgres
+  MultipleActiveResultSets=true -> Removed (not applicable)
+  TrustServerCertificate=True -> Removed (not applicable)
+
+============================================================================
+5. FILES MODIFIED
+============================================================================
+  1. sourceCode/DataAccess/ProductRepository.cs
+     - 7 SQL statements replaced with PostgreSQL equivalents
+     - using directive updated (SqlClient -> Npgsql)
+     - All ADO.NET class references updated
+  
+  2. sourceCode/AdoCore.csproj
+     - Package reference: Microsoft.Data.SqlClient -> Npgsql
+  
+  3. sourceCode/appsettings.json
+     - Connection strings updated to PostgreSQL format
+
+============================================================================
+6. ARTIFACTS GENERATED
+============================================================================
+  1. sourceCode/extracted_statements.sql - All 7 original MS SQL statements
+  2. sourceCode/converted_statements.sql - All 7 converted PostgreSQL statements
+  3. sourceCode/dms_conversion_summary.txt - DMS failure details and manual conversion log
+  4. sourceCode/sql_equivalency_validation_report.json - Equivalency validation report
+  5. sourceCode/migration_report.txt - This report
+
+============================================================================
+7. BUILD VERIFICATION
+============================================================================
+Final Build: SUCCESS
+  0 Errors
+  10 Warnings (all pre-existing nullable reference warnings, not migration-related)
+
+============================================================================
+8. SQL SETUP SCRIPTS NOTE
+============================================================================
+The SQL setup scripts (Scripts/01_InitialSetup.sql and Database/Scripts/01_InitialSetup.sql)
+contain SQL Server-specific DDL and stored procedures. These are reference/setup scripts that
+would need separate database-side migration using DMS schema conversion. They are NOT used
+by the application at runtime and serve as documentation/setup references only.
+
+============================================================================
+9. ITEMS REQUIRING MANUAL REVIEW
+============================================================================
+  1. DMS tool was unavailable - all SQL conversions done manually
+  2. SQL equivalency tool returned errors for all statements
+  3. Transaction blocks (statements 3, 4, 5) were restructured to avoid T-SQL variables
+  4. Connection strings use placeholder credentials (postgres/postgres)
+  5. SQL setup scripts not converted (database-side migration needed)
