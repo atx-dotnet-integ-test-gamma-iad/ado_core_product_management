@@ -1,0 +1,79 @@
+============================================================================
+DMS CONVERSION FAILURE SUMMARY LOG
+Date: 2026-04-30
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+============================================================================
+
+ALL 7 SQL statements failed DMS conversion with the same error.
+
+DMS Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+All statements were manually converted using the rule:
+DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+Manual conversion rules applied:
+1. All schema object names converted to lowercase (tables, columns, aliases)
+2. GETDATE() -> NOW()
+3. SCOPE_IDENTITY() -> RETURNING clause  
+4. DECLARE @variable pattern -> handled via application-level code or PostgreSQL DO blocks
+5. BEGIN TRANSACTION -> BEGIN
+6. ROUND with integer division -> explicit ::numeric cast for PostgreSQL
+7. All SQL logic and structure preserved
+
+============================================================================
+STATEMENT 1: GetAllProductsAsync
+============================================================================
+DMS Input: CTE with AVG/COUNT OVER(), CASE, ROUND, ORDER BY with CASE
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:14:49
+Manual Conversion: Lowercase all identifiers, compatible PostgreSQL syntax
+
+============================================================================
+STATEMENT 2: GetProductByIdAsync
+============================================================================
+DMS Input: CTE with LAG window function, parameterized @ProductId
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:15:52
+Manual Conversion: Lowercase all identifiers, compatible PostgreSQL syntax
+
+============================================================================
+STATEMENT 3: InsertProductAsync
+============================================================================
+DMS Input: Transaction block with SCOPE_IDENTITY, GETDATE, multi-table INSERT/UPDATE
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:16:09
+Manual Conversion: SCOPE_IDENTITY -> RETURNING, GETDATE -> NOW(), lowercase identifiers
+
+============================================================================
+STATEMENT 4: UpdateProductAsync
+============================================================================
+DMS Input: Transaction with DECLARE, SELECT into variables, UPDATE, INSERT history
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:16:24
+Manual Conversion: GETDATE -> NOW(), lowercase identifiers, DECLARE removed (app-level)
+
+============================================================================
+STATEMENT 5: DeleteProductAsync
+============================================================================
+DMS Input: Transaction with DECLARE, SELECT, INSERT history, DELETE, UPDATE with CASE
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:16:41
+Manual Conversion: GETDATE -> NOW(), lowercase identifiers, DECLARE removed (app-level)
+
+============================================================================
+STATEMENT 6: GetProductsByPriceRangeAsync
+============================================================================
+DMS Input: CTE with RANK, PERCENT_RANK window functions, BETWEEN
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:16:56
+Manual Conversion: Lowercase all identifiers, compatible PostgreSQL syntax
+
+============================================================================
+STATEMENT 7: GetLowStockProductsAsync
+============================================================================
+DMS Input: CTE with AVG, MIN, MAX window functions, ROUND
+DMS Output: ERROR - Metadata model creation failed
+DMS Timestamp: 2026-04-30T18:17:11
+Manual Conversion: Lowercase all identifiers, ::numeric cast for integer division in ROUND
