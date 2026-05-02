@@ -1,0 +1,100 @@
+{
+  "migration_report": {
+    "title": "Microsoft SQL Server to PostgreSQL Migration Report",
+    "date": "2026-05-02",
+    "source_database": "Microsoft SQL Server",
+    "target_database": "PostgreSQL",
+    "application": "AdoCore (.NET ADO Application)",
+    "summary": {
+      "total_sql_statements_from_code": 7,
+      "total_sql_scripts_converted": 2,
+      "dms_conversion_attempts": 8,
+      "dms_conversion_successes": 0,
+      "dms_conversion_failures": 8,
+      "dms_failure_reason": "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}",
+      "manual_conversions": 7,
+      "manual_conversion_method": "DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA",
+      "equivalency_validations_attempted": 7,
+      "equivalency_validations_equivalent": 0,
+      "equivalency_validations_non_equivalent": 0,
+      "equivalency_validations_error": 7,
+      "equivalency_error_reason": "'uniqueID'"
+    },
+    "files_modified": [
+      {
+        "file": "sourceCode/DataAccess/ProductRepository.cs",
+        "changes": [
+          "Replaced all 7 SQL statements with PostgreSQL equivalents",
+          "SCOPE_IDENTITY() -> lastval()",
+          "GETDATE() -> NOW()",
+          "DECLARE @var -> DO $$ DECLARE v_var",
+          "BEGIN TRANSACTION -> BEGIN",
+          "All schema objects converted to lowercase",
+          "using Microsoft.Data.SqlClient -> using Npgsql",
+          "SqlConnection -> NpgsqlConnection",
+          "SqlCommand -> NpgsqlCommand",
+          "SqlDataReader -> NpgsqlDataReader"
+        ]
+      },
+      {
+        "file": "sourceCode/AdoCore.csproj",
+        "changes": [
+          "Microsoft.Data.SqlClient 5.1.4 -> Npgsql 8.0.0"
+        ]
+      },
+      {
+        "file": "sourceCode/appsettings.json",
+        "changes": [
+          "Server= -> Host=",
+          "Removed Trusted_Connection, MultipleActiveResultSets, TrustServerCertificate",
+          "Added Username and Password PostgreSQL parameters"
+        ]
+      },
+      {
+        "file": "sourceCode/Scripts/01_InitialSetup.sql",
+        "changes": [
+          "IF NOT EXISTS -> CREATE TABLE IF NOT EXISTS",
+          "IDENTITY(1,1) -> SERIAL",
+          "GETDATE() -> NOW()",
+          "nvarchar -> varchar",
+          "CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION",
+          "Removed GO statements",
+          "SCOPE_IDENTITY() -> RETURNING clause",
+          "Removed SET NOCOUNT ON"
+        ]
+      },
+      {
+        "file": "sourceCode/Database/Scripts/01_InitialSetup.sql",
+        "changes": [
+          "IF EXISTS/sys.objects checks -> DROP IF EXISTS",
+          "IDENTITY(1,1) -> SERIAL",
+          "GETDATE() -> NOW()",
+          "nvarchar -> varchar",
+          "[dbo].[table] -> table (lowercase)",
+          "[bit] -> boolean",
+          "SYSTEM_USER -> CURRENT_USER",
+          "CREATE OR ALTER PROCEDURE -> CREATE OR REPLACE FUNCTION",
+          "SQL Server trigger -> PostgreSQL trigger function + trigger",
+          "Removed GO statements",
+          "SCOPE_IDENTITY() -> RETURNING clause",
+          "Removed SET NOCOUNT ON"
+        ]
+      }
+    ],
+    "files_created": [
+      "sourceCode/extracted_statements.sql",
+      "sourceCode/converted_statements.sql",
+      "sourceCode/dms_conversion_summary.txt",
+      "sourceCode/sql_equivalency_validation_report.json",
+      "sourceCode/migration_report.json"
+    ],
+    "build_status": "SUCCESS - 0 errors, 12 warnings (pre-existing nullable reference warnings + Npgsql NU1903 advisory)",
+    "manual_review_required": [
+      "All 7 SQL statement pairs received ERROR from SQL Equivalency tool - manual review of conversion correctness recommended",
+      "DMS tool was consistently unavailable - all conversions were manual with lowercase schema mapping",
+      "DO $$ blocks in UpdateProductAsync and DeleteProductAsync use PL/pgSQL variables instead of SQL Server DECLARE @var pattern - verify runtime behavior",
+      "InsertProductAsync uses lastval() instead of SCOPE_IDENTITY() - verify correct sequence value is returned in multi-session environments",
+      "Npgsql 8.0.0 has a known vulnerability advisory (NU1903) - consider upgrading to a patched version"
+    ]
+  }
+}

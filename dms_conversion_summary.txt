@@ -1,0 +1,65 @@
+DMS Conversion Summary Report
+==============================
+Date: 2026-05-02
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+DMS Tool Status: FAILED for ALL 7 statements
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+
+All statements were submitted to the DMS tool and all received the same error.
+Manual conversion was applied using DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA rules.
+
+Statement-by-Statement DMS Submission Log:
+==========================================
+
+Statement 1 (GetAllProductsAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: Schema objects lowercased (Products->products, ProductId->productid, etc.)
+
+Statement 2 (GetProductByIdAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: Schema objects lowercased
+
+Statement 3 (InsertProductAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: SCOPE_IDENTITY() -> lastval(), GETDATE() -> NOW(), DECLARE removed, BEGIN TRANSACTION -> BEGIN
+
+Statement 4 (UpdateProductAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: GETDATE() -> NOW(), DECLARE removed, variable assignment restructured, BEGIN TRANSACTION -> BEGIN
+
+Statement 5 (DeleteProductAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: GETDATE() -> NOW(), DECLARE removed, variable assignment restructured, BEGIN TRANSACTION -> BEGIN
+
+Statement 6 (GetProductsByPriceRangeAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: Schema objects lowercased
+
+Statement 7 (GetLowStockProductsAsync):
+  - DMS Submission: YES
+  - DMS Status: ERROR
+  - DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+  - Manual Conversion: YES - Applied lowercase schema objects
+  - Key Changes: Schema objects lowercased, added ::numeric cast for integer division in ROUND
