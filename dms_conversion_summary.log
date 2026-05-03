@@ -1,0 +1,85 @@
+============================================================
+DMS CONVERSION FAILURE LOG
+============================================================
+Date: 2026-05-03
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+============================================================
+ERROR SUMMARY
+============================================================
+All 7 DMS conversion attempts failed with the same error:
+Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+
+This error occurred consistently across all 7 statement conversion attempts.
+Each statement was passed to the DMS tool with max_poll_attempts=30 and poll_interval_seconds=15.
+The error occurs at the "create_metadata_model" workflow step.
+
+============================================================
+FALLBACK: Manual conversion applied with lowercase schema mapping
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+============================================================
+
+Key conversion rules applied manually:
+1. All schema object names (tables, columns, aliases) converted to lowercase
+2. SCOPE_IDENTITY() -> INSERT...RETURNING clause
+3. GETDATE() -> NOW()
+4. BEGIN TRANSACTION -> BEGIN
+5. DECLARE @Variable -> Handled via application-level parameters or subqueries
+6. DECIMAL(18,2) -> NUMERIC(18,2) where needed in CAST operations
+7. Integer division -> CAST to NUMERIC for proper decimal division in PostgreSQL
+
+============================================================
+STATEMENT-BY-STATEMENT DMS ATTEMPTS
+============================================================
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:46:11
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:46:43
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 3: InsertProductAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:46:59
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping + SCOPE_IDENTITY() -> RETURNING + GETDATE() -> NOW() + BEGIN TRANSACTION -> BEGIN
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 4: UpdateProductAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:47:13
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping + GETDATE() -> NOW() + BEGIN TRANSACTION -> BEGIN
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 5: DeleteProductAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:47:27
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping + GETDATE() -> NOW() + BEGIN TRANSACTION -> BEGIN
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:47:41
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Attempt Timestamp: 2026-05-03T02:47:58
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema mapping + CAST for integer division
+Conversion Method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
