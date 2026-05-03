@@ -1,0 +1,76 @@
+-- =====================================================
+-- DMS Conversion Failure Summary
+-- =====================================================
+-- All 7 SQL statements were submitted to the DMS MCP tool
+-- (dms-mcp___statement_conversion_tool) for conversion.
+-- 
+-- DMS Configuration Used:
+--   migration_project_identifier: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+--   database_name: ProductManagement
+--   schema_name: dbo
+--   region: us-east-1
+--
+-- ALL 7 statements failed with the same error:
+--   "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+--
+-- Multiple retry attempts were made with increased poll_interval_seconds (15, 20)
+-- and max_poll_attempts (30). The error persisted for all attempts.
+--
+-- As per the transformation definition, since DMS failed:
+-- - All statements were manually converted to PostgreSQL
+-- - All schema object names were converted to lowercase
+-- - Conversion method documented as: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+--
+-- Key SQL Server to PostgreSQL conversions applied:
+-- 1. SCOPE_IDENTITY() -> INSERT...RETURNING productid
+-- 2. GETDATE() -> NOW()
+-- 3. BEGIN TRANSACTION/COMMIT -> Managed in C# code via Npgsql transactions
+-- 4. DECLARE @var TYPE / SET @var = ... -> Replaced with CTEs and subqueries
+-- 5. All table/column names -> lowercase
+-- 6. ROUND with decimal division -> explicit ::numeric cast for PostgreSQL
+-- 7. Transaction blocks restructured for Npgsql compatibility
+--
+-- Statement Details:
+-- =====================================================
+
+-- Statement 1: GetAllProductsAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:51:57
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: Schema objects to lowercase, ROUND cast to numeric
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+-- Statement 2: GetProductByIdAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:52:30
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: Schema objects to lowercase, ROUND cast to numeric
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+-- Statement 3: InsertProductAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:52:45
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: SCOPE_IDENTITY() -> RETURNING, GETDATE() -> NOW(), removed DECLARE @var, restructured for Npgsql
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+-- Statement 4: UpdateProductAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:52:58
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: DECLARE @var -> subqueries, GETDATE() -> NOW(), restructured for Npgsql
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+-- Statement 5: DeleteProductAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:53:11
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: DECLARE @var -> subqueries, GETDATE() -> NOW(), restructured for Npgsql
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+-- Statement 6: GetProductsByPriceRangeAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:53:25
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: Schema objects to lowercase
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+-- Statement 7: GetLowStockProductsAsync
+-- DMS Attempt Timestamp: 2026-05-03T05:53:39
+-- DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+-- Manual Conversion: Schema objects to lowercase, ROUND cast to numeric
+-- Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
