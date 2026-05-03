@@ -1,0 +1,91 @@
+========================================
+DMS Statement Conversion Failure Summary Log
+========================================
+Date: 2026-05-03
+Migration Project ARN: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Schema: dbo
+========================================
+
+SUMMARY:
+- Total statements attempted: 7
+- DMS successful conversions: 0
+- DMS failed conversions: 7
+- Manual conversions applied: 7
+- Conversion method for all: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+DMS ERROR (consistent across all 7 statements):
+  Status: error
+  Error: "Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}"
+  Note: The DMS statement_conversion_tool consistently failed at the metadata model creation step.
+        The schema_mapping_tool worked successfully, providing target schema information used for manual conversion.
+
+MANUAL CONVERSION APPROACH:
+  - Used DMS schema_mapping_tool output to determine target schema naming
+  - Target schema: productmanagement_dbo
+  - All table names: lowercase (products, producthistory, productstats)
+  - All column names: lowercase (productid, name, description, price, stockquantity, etc.)
+  - GETDATE() -> clock_timestamp() (per DMS schema mapping default values)
+  - SCOPE_IDENTITY() -> RETURNING clause
+  - DECLARE @var / SET @var -> Restructured to separate commands for ADO.NET usage
+  - BEGIN TRANSACTION / COMMIT -> Managed via NpgsqlTransaction in C# code
+  - SQL Server data types -> PostgreSQL equivalents per DMS mapping
+
+SQL EQUIVALENCY TOOL RESULTS:
+  - All 7 statement pairs submitted to sql-equivalency___validate_sql_equivalence
+  - All 7 returned ERROR status with error: "'uniqueID'"
+  - Note: The equivalency tool appears to have a systemic issue unrelated to statement content
+
+========================================
+STATEMENT DETAILS:
+========================================
+
+--- Statement 1: GetAllProductsAsync ---
+DMS Input: CTE with AVG/COUNT window functions, CASE, ROUND, INNER JOIN
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Applied lowercase schema objects. CTE name changed to productstats_cte to avoid conflict with table name.
+Equivalency: ERROR ('uniqueID')
+
+--- Statement 2: GetProductByIdAsync ---
+DMS Input: CTE with LAG window function, CASE, ROUND, LEFT JOIN
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Applied lowercase schema objects. CTE name changed to producthistory_cte to avoid conflict with table name.
+Equivalency: ERROR ('uniqueID')
+
+--- Statement 3: InsertProductAsync ---
+DMS Input: Transaction block with SCOPE_IDENTITY(), GETDATE(), multiple INSERT/UPDATE
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Restructured from monolithic transaction to separate ADO.NET commands.
+  - SCOPE_IDENTITY() replaced with RETURNING productid
+  - GETDATE() replaced with clock_timestamp()
+  - Variables managed in C# code instead of SQL DECLARE
+  - Transaction managed via NpgsqlTransaction in C# code
+Equivalency: ERROR ('uniqueID')
+
+--- Statement 4: UpdateProductAsync ---
+DMS Input: Transaction with DECLARE variables, SELECT INTO vars, UPDATE, INSERT
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Restructured to separate ADO.NET commands.
+  - SELECT into @vars replaced with SELECT returning values to C# reader
+  - GETDATE() replaced with clock_timestamp()
+  - Transaction managed via NpgsqlTransaction in C# code
+Equivalency: ERROR ('uniqueID')
+
+--- Statement 5: DeleteProductAsync ---
+DMS Input: Transaction with DECLARE variables, DELETE, CASE in UPDATE
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Restructured to separate ADO.NET commands.
+  - Same patterns as Statement 4
+  - CASE expression preserved (PostgreSQL compatible)
+Equivalency: ERROR ('uniqueID')
+
+--- Statement 6: GetProductsByPriceRangeAsync ---
+DMS Input: CTE with RANK, PERCENT_RANK, BETWEEN, CASE
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Applied lowercase schema objects. RANK(), PERCENT_RANK(), BETWEEN all PostgreSQL compatible.
+Equivalency: ERROR ('uniqueID')
+
+--- Statement 7: GetLowStockProductsAsync ---
+DMS Input: CTE with AVG/MIN/MAX window functions, CASE, ROUND
+DMS Output: ERROR - Metadata model creation failed
+Manual Conversion: Applied lowercase schema objects. Added ::NUMERIC cast for integer division in ROUND() to prevent PostgreSQL integer division truncation.
+Equivalency: ERROR ('uniqueID')
