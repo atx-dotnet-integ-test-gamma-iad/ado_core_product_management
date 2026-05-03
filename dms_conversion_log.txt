@@ -1,0 +1,40 @@
+=== DMS CONVERSION FAILURE LOG ===
+Date: 2026-05-03
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+
+=== DMS Error Details ===
+Tool: dms-mcp___statement_conversion_tool
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Status: error
+Multiple attempts made with different poll intervals (default, 15s/30 attempts, 20s/30 attempts)
+All attempts failed with the same error.
+
+=== DMS Schema Mapping Tool Results (Successful) ===
+The DMS schema_mapping_tool was used successfully to obtain the target schema mappings:
+
+1. Products -> products (schema: productmanagement_dbo)
+   Columns: productid, name, description, price, stockquantity, categoryid, supplierid, sku, weight, dimensions, isdiscontinued, reorderlevel, createddate, modifieddate
+   
+2. ProductHistory -> producthistory (schema: productmanagement_dbo)
+   Columns: historyid, productid, action, oldprice, newprice, oldstock, newstock, actiondate, modifiedby
+
+3. ProductStats -> productstats (schema: productmanagement_dbo)
+   Columns: statid, totalproducts, averageprice, totalstockvalue, lowstockcount, discontinuedcount, lastupdated
+
+=== Key Conversion Rules Applied ===
+Based on DMS schema mappings:
+- GETDATE() -> clock_timestamp() (from DMS default value mapping)
+- SCOPE_IDENTITY() -> RETURNING clause (PostgreSQL standard)
+- DECLARE @var / SET @var -> CTE approach with writable CTEs
+- BEGIN TRANSACTION / COMMIT -> Managed by Npgsql transaction API
+- All table names lowercase (per DMS mapping)
+- All column names lowercase (per DMS mapping)
+- INT IDENTITY -> INTEGER GENERATED ALWAYS AS IDENTITY (per DMS mapping)
+- DECIMAL -> NUMERIC (per DMS mapping)
+- DATETIME -> TIMESTAMP WITHOUT TIME ZONE (per DMS mapping)
+- NVARCHAR -> VARCHAR (per DMS mapping)
+
+=== Statements Affected ===
+All 7 statements were affected by the DMS statement conversion failure.
+All 7 statements were manually converted using DMS schema mapping data.
+Conversion method: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
