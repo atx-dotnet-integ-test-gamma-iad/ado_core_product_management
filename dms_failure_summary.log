@@ -1,0 +1,79 @@
+================================================================
+DMS Conversion Failure Summary Log
+================================================================
+
+Tool: dms-mcp___statement_conversion_tool
+Migration Project: arn:aws:dms:us-east-1:812756961751:migration-project:NXKVMFZHAZFJFF6HU2YPUQHSI4
+Database: ProductManagement
+Schema: dbo
+Region: us-east-1
+
+Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+
+All 7 SQL statements from ProductRepository.cs failed DMS conversion with the same error.
+Each statement was attempted through the DMS tool and documented below.
+Manual conversion applied with lowercase schema object names per transformation definition.
+
+================================================================
+Statement 1: GetAllProductsAsync
+DMS Attempt Timestamp: 2026-05-04T14:12:23.854346 (first attempt), 2026-05-04T14:12:41.710957 (retry with extended polling)
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema objects, PostgreSQL-compatible syntax
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 2: GetProductByIdAsync
+DMS Attempt Timestamp: 2026-05-04T14:13:14.658307
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema objects, renamed CTE to avoid table name conflict
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 3: InsertProductAsync
+DMS Attempt Timestamp: 2026-05-04T14:13:30.831054
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: SCOPE_IDENTITY() -> RETURNING, GETDATE() -> NOW(), restructured for C# ADO.NET transaction management
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 4: UpdateProductAsync
+DMS Attempt Timestamp: 2026-05-04T14:13:45.166058
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: GETDATE() -> NOW(), DECLARE removed, split into individual statements for C# transaction
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 5: DeleteProductAsync
+DMS Attempt Timestamp: 2026-05-04T14:13:59.058164
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: GETDATE() -> NOW(), DECLARE removed, split into individual statements for C# transaction
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 6: GetProductsByPriceRangeAsync
+DMS Attempt Timestamp: 2026-05-04T14:14:12.518922
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema objects
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+Statement 7: GetLowStockProductsAsync
+DMS Attempt Timestamp: 2026-05-04T14:14:28.747476
+DMS Status: error
+DMS Error: Metadata model creation failed: {'error': 'Unknown metadata model creation status: RECEIVED'}
+Manual Conversion: Applied lowercase schema objects, added CAST for integer division
+Conversion Reason: DMS_FAILURE_MANUAL_CONVERSION_WITH_LOWERCASE_SCHEMA
+
+================================================================
+SQL Equivalency Validation Summary
+================================================================
+Tool: sql-equivalency___validate_sql_equivalence
+All 7 statement pairs returned ERROR status from the equivalency tool.
+Error: 'uniqueID' (consistent across all statements)
+All equivalency statuses are recorded as ERROR per tool output, NOT agent judgment.
