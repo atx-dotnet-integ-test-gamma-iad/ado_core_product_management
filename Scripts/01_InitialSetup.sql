@@ -1,103 +1,290 @@
--- Create ProductManagement Database
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'ProductManagement')
-BEGIN
-    CREATE DATABASE ProductManagement;
-END
-GO
+-- Create ProductManagement Schema for PostgreSQL
+CREATE SCHEMA IF NOT EXISTS productmanagement_dbo;
 
-USE ProductManagement;
-GO
+-- Drop existing objects in correct order
+DROP TRIGGER IF EXISTS trg_products_history ON productmanagement_dbo.products;
+DROP TABLE IF EXISTS productmanagement_dbo.producthistory CASCADE;
+DROP TABLE IF EXISTS productmanagement_dbo.products CASCADE;
+DROP TABLE IF EXISTS productmanagement_dbo.categories CASCADE;
+DROP TABLE IF EXISTS productmanagement_dbo.suppliers CASCADE;
+DROP TABLE IF EXISTS productmanagement_dbo.productstats CASCADE;
+
+-- Create Categories Table
+CREATE TABLE productmanagement_dbo.categories(
+    categoryid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    description VARCHAR(200),
+    parentcategoryid INTEGER,
+    createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Add self-referencing foreign key for Categories
+ALTER TABLE productmanagement_dbo.categories
+ADD CONSTRAINT fk_categories_categories 
+FOREIGN KEY (parentcategoryid) REFERENCES productmanagement_dbo.categories (categoryid);
+
+-- Create Suppliers Table
+CREATE TABLE productmanagement_dbo.suppliers(
+    supplierid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    contactname VARCHAR(100),
+    email VARCHAR(100),
+    phone VARCHAR(20),
+    address VARCHAR(200),
+    country VARCHAR(50),
+    isactive NUMERIC(1,0) NOT NULL DEFAULT 1,
+    createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);
 
 -- Create Products Table
-IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Products]') AND type in (N'U'))
-BEGIN
-    CREATE TABLE [dbo].[Products](
-        [ProductId] [int] IDENTITY(1,1) PRIMARY KEY,
-        [Name] [nvarchar](100) NOT NULL,
-        [Description] [nvarchar](500) NULL,
-        [Price] [decimal](18, 2) NOT NULL,
-        [StockQuantity] [int] NOT NULL,
-        [CreatedDate] [datetime] NOT NULL DEFAULT GETDATE(),
-        [ModifiedDate] [datetime] NULL
-    )
-END
-GO
+CREATE TABLE productmanagement_dbo.products(
+    productid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    price NUMERIC(18,2) NOT NULL,
+    stockquantity INTEGER NOT NULL,
+    categoryid INTEGER,
+    supplierid INTEGER,
+    sku VARCHAR(50),
+    weight NUMERIC(10,2),
+    dimensions VARCHAR(50),
+    isdiscontinued NUMERIC(1,0) NOT NULL DEFAULT 0,
+    reorderlevel INTEGER NOT NULL DEFAULT 10,
+    createddate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    modifieddate TIMESTAMP WITHOUT TIME ZONE,
+    CONSTRAINT fk_products_categories FOREIGN KEY (categoryid) 
+        REFERENCES productmanagement_dbo.categories (categoryid),
+    CONSTRAINT fk_products_suppliers FOREIGN KEY (supplierid) 
+        REFERENCES productmanagement_dbo.suppliers (supplierid)
+);
 
--- Create Stored Procedure for Getting All Products
-CREATE OR ALTER PROCEDURE [dbo].[sp_GetAllProducts]
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT ProductId, Name, Description, Price, StockQuantity, CreatedDate, ModifiedDate
-    FROM Products
-    ORDER BY Name;
-END
-GO
+-- Create ProductHistory Table
+CREATE TABLE productmanagement_dbo.producthistory(
+    historyid INTEGER NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    productid INTEGER NOT NULL,
+    action VARCHAR(10) NOT NULL,
+    oldprice NUMERIC(18,2),
+    newprice NUMERIC(18,2),
+    oldstock INTEGER,
+    newstock INTEGER,
+    actiondate TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp(),
+    modifiedby VARCHAR(100),
+    CONSTRAINT fk_producthistory_products FOREIGN KEY (productid) 
+        REFERENCES productmanagement_dbo.products (productid)
+);
 
--- Create Stored Procedure for Getting Product by ID
-CREATE OR ALTER PROCEDURE [dbo].[sp_GetProductById]
-    @ProductId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT ProductId, Name, Description, Price, StockQuantity, CreatedDate, ModifiedDate
-    FROM Products
-    WHERE ProductId = @ProductId;
-END
-GO
+-- Create ProductStats Table
+CREATE TABLE productmanagement_dbo.productstats(
+    statid INTEGER NOT NULL DEFAULT 1 PRIMARY KEY,
+    totalproducts INTEGER NOT NULL DEFAULT 0,
+    averageprice NUMERIC(18,2) NOT NULL DEFAULT 0,
+    totalstockvalue NUMERIC(18,2) NOT NULL DEFAULT 0,
+    lowstockcount INTEGER NOT NULL DEFAULT 0,
+    discontinuedcount INTEGER NOT NULL DEFAULT 0,
+    lastupdated TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT clock_timestamp()
+);
 
--- Create Stored Procedure for Inserting Product
-CREATE OR ALTER PROCEDURE [dbo].[sp_InsertProduct]
-    @Name NVARCHAR(100),
-    @Description NVARCHAR(500),
-    @Price DECIMAL(18,2),
-    @StockQuantity INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    INSERT INTO Products (Name, Description, Price, StockQuantity)
-    VALUES (@Name, @Description, @Price, @StockQuantity);
+-- Create Indexes
+CREATE INDEX ix_products_categoryid ON productmanagement_dbo.products (categoryid);
+CREATE INDEX ix_products_supplierid ON productmanagement_dbo.products (supplierid);
+CREATE UNIQUE INDEX ix_products_sku ON productmanagement_dbo.products (sku);
+CREATE INDEX ix_producthistory_productid ON productmanagement_dbo.producthistory (productid);
+CREATE INDEX ix_producthistory_actiondate ON productmanagement_dbo.producthistory (actiondate);
+
+-- Insert Sample Categories
+INSERT INTO productmanagement_dbo.categories (name, description, parentcategoryid)
+OVERRIDING SYSTEM VALUE
+VALUES 
+    (1, 'Electronics', 'Electronic devices and accessories', NULL),
+    (2, 'Computers', 'Computers and related equipment', 1),
+    (3, 'Peripherals', 'Computer peripherals and accessories', 1),
+    (4, 'Audio', 'Audio equipment and accessories', 1),
+    (5, 'Storage', 'Data storage devices', 1),
+    (6, 'Gaming', 'Gaming equipment and accessories', NULL),
+    (7, 'Office', 'Office equipment and supplies', NULL),
+    (8, 'Networking', 'Networking equipment and accessories', 1),
+    (9, 'Laptops', 'Portable computers', 2),
+    (10, 'Desktops', 'Desktop computers', 2),
+    (11, 'Keyboards', 'Computer keyboards', 3),
+    (12, 'Mice', 'Computer mice and pointing devices', 3),
+    (13, 'Headphones', 'Audio headphones and headsets', 4),
+    (14, 'Speakers', 'Audio speakers', 4),
+    (15, 'External Drives', 'External storage devices', 5),
+    (16, 'Gaming PCs', 'Gaming computers', 6),
+    (17, 'Gaming Accessories', 'Gaming peripherals', 6),
+    (18, 'Printers', 'Printing devices', 7),
+    (19, 'Routers', 'Network routers', 8),
+    (20, 'Switches', 'Network switches', 8);
+
+-- Insert Sample Suppliers
+INSERT INTO productmanagement_dbo.suppliers (name, contactname, email, phone, address, country)
+VALUES 
+    ('TechGlobal Inc.', 'John Smith', 'john@techglobal.com', '+1-555-0101', '123 Tech Street, Silicon Valley, CA', 'USA'),
+    ('ElectroParts Ltd.', 'Sarah Johnson', 'sarah@electroparts.com', '+44-20-7123-4567', '45 Circuit Road, London', 'UK'),
+    ('Digital Solutions', 'Michael Chen', 'michael@digitalsolutions.com', '+86-10-1234-5678', '789 Digital Avenue, Beijing', 'China'),
+    ('Gaming Gear Co.', 'David Wilson', 'david@gaminggear.com', '+1-555-0202', '456 Game Street, Seattle, WA', 'USA'),
+    ('AudioTech Systems', 'Emma Brown', 'emma@audiotech.com', '+1-555-0303', '789 Sound Road, Nashville, TN', 'USA'),
+    ('Storage Solutions', 'James Lee', 'james@storagesolutions.com', '+1-555-0404', '321 Data Drive, Austin, TX', 'USA'),
+    ('Office Supplies Pro', 'Lisa Anderson', 'lisa@officesupplies.com', '+1-555-0505', '654 Office Park, Chicago, IL', 'USA'),
+    ('Network Experts', 'Robert Taylor', 'robert@networkexperts.com', '+1-555-0606', '987 Network Way, Boston, MA', 'USA');
+
+-- Insert Sample Products
+INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity, categoryid, supplierid, sku, weight, dimensions, reorderlevel)
+VALUES 
+    -- Laptops
+    ('ProBook X1', 'High-performance business laptop with 16GB RAM', 1299.99, 15, 9, 1, 'LAP-X1-001', 1.8, '14" x 9" x 0.7"', 5),
+    ('Gaming Beast', 'Gaming laptop with RTX 3080, 32GB RAM', 2499.99, 8, 9, 4, 'LAP-GB-001', 2.5, '15.6" x 11" x 1"', 3),
+    ('UltraBook Air', 'Ultra-thin laptop with 12-hour battery', 999.99, 20, 9, 1, 'LAP-UA-001', 1.2, '13" x 8" x 0.5"', 7),
     
-    SELECT SCOPE_IDENTITY() AS ProductId;
-END
-GO
+    -- Desktops
+    ('WorkStation Pro', 'Professional workstation with dual monitors', 1999.99, 10, 10, 1, 'DESK-WP-001', 15.0, '18" x 8" x 16"', 4),
+    ('Gaming Tower', 'High-end gaming desktop with liquid cooling', 2999.99, 5, 16, 4, 'DESK-GT-001', 20.0, '20" x 10" x 18"', 2),
+    
+    -- Keyboards
+    ('Mechanical Pro', 'Mechanical keyboard with RGB lighting', 149.99, 30, 11, 2, 'KB-MP-001', 1.2, '17" x 5" x 1.5"', 10),
+    ('Wireless Elite', 'Wireless keyboard with numeric pad', 79.99, 25, 11, 2, 'KB-WE-001', 0.8, '18" x 6" x 1"', 8),
+    
+    -- Mice
+    ('Gaming Mouse Pro', 'High-precision gaming mouse', 89.99, 40, 12, 4, 'M-GP-001', 0.3, '5" x 3" x 1.5"', 15),
+    ('Wireless Track', 'Wireless mouse with long battery life', 49.99, 35, 12, 2, 'M-WT-001', 0.2, '4" x 2.5" x 1.2"', 12),
+    
+    -- Headphones
+    ('Noise Cancelling Pro', 'Premium noise-cancelling headphones', 299.99, 20, 13, 5, 'HP-NC-001', 0.4, '7" x 6" x 3"', 8),
+    ('Gaming Headset', '7.1 surround sound gaming headset', 129.99, 25, 13, 4, 'HP-GH-001', 0.5, '8" x 7" x 4"', 10),
+    
+    -- Speakers
+    ('Studio Monitors', 'Professional studio monitors', 399.99, 10, 14, 5, 'SP-SM-001', 8.0, '12" x 8" x 10"', 4),
+    ('Bluetooth Soundbar', 'Wireless soundbar with subwoofer', 249.99, 15, 14, 5, 'SP-BS-001', 5.0, '36" x 3" x 4"', 6),
+    
+    -- External Drives
+    ('SSD Pro 1TB', '1TB external SSD with USB 3.1', 199.99, 30, 15, 6, 'ED-SP-001', 0.2, '4" x 2" x 0.5"', 12),
+    ('HDD Backup 4TB', '4TB external HDD for backup', 129.99, 25, 15, 6, 'ED-HB-001', 0.5, '5" x 3" x 1"', 10),
+    
+    -- Printers
+    ('Laser Pro', 'Business laser printer with duplex', 399.99, 12, 18, 7, 'PR-LP-001', 25.0, '18" x 16" x 12"', 5),
+    ('Photo Inkjet', 'Photo-quality inkjet printer', 299.99, 15, 18, 7, 'PR-PI-001', 15.0, '16" x 14" x 8"', 6),
+    
+    -- Networking
+    ('WiFi 6 Router', 'High-speed WiFi 6 router', 199.99, 20, 19, 8, 'NET-WR-001', 1.5, '10" x 7" x 2"', 8),
+    ('Gigabit Switch', '24-port gigabit network switch', 299.99, 10, 20, 8, 'NET-GS-001', 3.0, '17" x 10" x 1.5"', 4);
 
--- Create Stored Procedure for Updating Product
-CREATE OR ALTER PROCEDURE [dbo].[sp_UpdateProduct]
-    @ProductId INT,
-    @Name NVARCHAR(100),
-    @Description NVARCHAR(500),
-    @Price DECIMAL(18,2),
-    @StockQuantity INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE Products
-    SET Name = @Name,
-        Description = @Description,
-        Price = @Price,
-        StockQuantity = @StockQuantity,
-        ModifiedDate = GETDATE()
-    WHERE ProductId = @ProductId;
-END
-GO
+-- Insert initial stats record
+INSERT INTO productmanagement_dbo.productstats (statid, totalproducts, averageprice, totalstockvalue, lowstockcount, discontinuedcount, lastupdated)
+VALUES (1, 0, 0, 0, 0, 0, clock_timestamp());
 
--- Create Stored Procedure for Deleting Product
-CREATE OR ALTER PROCEDURE [dbo].[sp_DeleteProduct]
-    @ProductId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DELETE FROM Products
-    WHERE ProductId = @ProductId;
-END
-GO
+-- Update initial statistics
+UPDATE productmanagement_dbo.productstats
+SET 
+    totalproducts = (SELECT COUNT(*) FROM productmanagement_dbo.products),
+    averageprice = (SELECT AVG(price) FROM productmanagement_dbo.products),
+    totalstockvalue = (SELECT SUM(price * stockquantity) FROM productmanagement_dbo.products),
+    lowstockcount = (SELECT COUNT(*) FROM productmanagement_dbo.products WHERE stockquantity <= reorderlevel),
+    discontinuedcount = (SELECT COUNT(*) FROM productmanagement_dbo.products WHERE isdiscontinued = 1),
+    lastupdated = clock_timestamp()
+WHERE statid = 1;
 
--- Insert Sample Data
-IF NOT EXISTS (SELECT TOP 1 1 FROM Products)
+-- Create Trigger Function for Product History
+CREATE OR REPLACE FUNCTION productmanagement_dbo.trg_products_history_func()
+RETURNS TRIGGER AS $$
 BEGIN
-    EXEC sp_InsertProduct 'Laptop', 'High-performance laptop', 999.99, 10;
-    EXEC sp_InsertProduct 'Mouse', 'Wireless gaming mouse', 49.99, 20;
-    EXEC sp_InsertProduct 'Keyboard', 'Mechanical keyboard', 129.99, 15;
-END
-GO 
+    -- Handle INSERT
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO productmanagement_dbo.producthistory (productid, action, newprice, newstock, modifiedby)
+        VALUES (NEW.productid, 'INSERT', NEW.price, NEW.stockquantity, current_user);
+        RETURN NEW;
+    END IF;
+    
+    -- Handle UPDATE
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD.price <> NEW.price OR OLD.stockquantity <> NEW.stockquantity THEN
+            INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, newprice, oldstock, newstock, modifiedby)
+            VALUES (NEW.productid, 'UPDATE', OLD.price, NEW.price, OLD.stockquantity, NEW.stockquantity, current_user);
+        END IF;
+        RETURN NEW;
+    END IF;
+    
+    -- Handle DELETE
+    IF TG_OP = 'DELETE' THEN
+        INSERT INTO productmanagement_dbo.producthistory (productid, action, oldprice, oldstock, modifiedby)
+        VALUES (OLD.productid, 'DELETE', OLD.price, OLD.stockquantity, current_user);
+        RETURN OLD;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create Trigger
+CREATE TRIGGER trg_products_history
+AFTER INSERT OR UPDATE OR DELETE ON productmanagement_dbo.products
+FOR EACH ROW EXECUTE FUNCTION productmanagement_dbo.trg_products_history_func();
+
+-- Create Function for Getting All Products (equivalent to stored procedure)
+CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_getallproducts()
+RETURNS TABLE(productid INTEGER, name VARCHAR, description VARCHAR, price NUMERIC, stockquantity INTEGER, createddate TIMESTAMP, modifieddate TIMESTAMP) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate
+    FROM productmanagement_dbo.products p
+    ORDER BY p.name;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create Function for Getting Product by ID
+CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_getproductbyid(p_productid INTEGER)
+RETURNS TABLE(productid INTEGER, name VARCHAR, description VARCHAR, price NUMERIC, stockquantity INTEGER, createddate TIMESTAMP, modifieddate TIMESTAMP) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT p.productid, p.name, p.description, p.price, p.stockquantity, p.createddate, p.modifieddate
+    FROM productmanagement_dbo.products p
+    WHERE p.productid = p_productid;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create Function for Inserting Product
+CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_insertproduct(
+    p_name VARCHAR,
+    p_description VARCHAR,
+    p_price NUMERIC,
+    p_stockquantity INTEGER
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_productid INTEGER;
+BEGIN
+    INSERT INTO productmanagement_dbo.products (name, description, price, stockquantity)
+    VALUES (p_name, p_description, p_price, p_stockquantity)
+    RETURNING productmanagement_dbo.products.productid INTO v_productid;
+    
+    RETURN v_productid;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create Function for Updating Product
+CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_updateproduct(
+    p_productid INTEGER,
+    p_name VARCHAR,
+    p_description VARCHAR,
+    p_price NUMERIC,
+    p_stockquantity INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE productmanagement_dbo.products
+    SET name = p_name,
+        description = p_description,
+        price = p_price,
+        stockquantity = p_stockquantity,
+        modifieddate = clock_timestamp()
+    WHERE productid = p_productid;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create Function for Deleting Product
+CREATE OR REPLACE FUNCTION productmanagement_dbo.sp_deleteproduct(p_productid INTEGER)
+RETURNS VOID AS $$
+BEGIN
+    DELETE FROM productmanagement_dbo.products
+    WHERE productid = p_productid;
+END;
+$$ LANGUAGE plpgsql;
